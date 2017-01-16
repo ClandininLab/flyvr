@@ -1,5 +1,46 @@
 #include "stdafx.h"
+#include <windows.h>
+
+using namespace System;
+using namespace System::IO::Ports;
+
 #include "arduino.h"
+
+// Method definition for GrblBoard class
+GrblBoard::GrblBoard(SerialPort^ arduino){
+	this->arduino = arduino;
+}
+void GrblBoard::Init(){
+	StepIdleDelay(255); // causes stepper motor to hold position after movement
+	StatusReportMask(1); // status will include running state and machine position
+	StepsPerMM_X(40); // number of steps per millimeter of X movement
+	StepsPerMM_Y(40); // number of steps per millimeter of Y movement
+	MaxVelocityX(100000); // maximum X velocity, in mm/min
+	MaxVelocityY(100000); // maximum Y velocity, in mm/min
+	MaxAccelerationX(200); // maximum X acceleration, in mm/sec^2
+	MaxAccelerationY(200); // maximum Y acceleration, in mm/sec^2
+	SetUnitMM(); // all measurements in millimeters
+	MaxFeedRate(100000); // maximum feed rate, in mm/min
+	MoveRelative(); // use relative movement, rather than absolute
+}
+void GrblBoard::GrblCommand(int key, int value){
+	String^ cmdString = String::Format("${0}={1}", key, value);
+	arduino->WriteLine(cmdString);
+	Sleep(10);
+}
+void GrblBoard::RawCommand(String^ cmdString){
+	arduino->WriteLine(cmdString);
+	Sleep(10);
+}
+void GrblBoard::MaxFeedRate(int value){
+	String^ cmdString = String::Format("F{0}", value);
+	RawCommand(cmdString);
+}
+void GrblBoard::Move(double X, double Y){
+	String^ cmdString = String::Format("G1X{0:0.000}Y{1:0.000}", X, Y);
+	arduino->WriteLine(cmdString);
+	Sleep(10);
+}
 
 // This function takes the status query response (response to "?" command) as a string and breaks it down into useful data types.
 GrblStatus parse_grbl_status(System::String^ query_response)
