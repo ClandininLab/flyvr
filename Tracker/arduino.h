@@ -25,6 +25,7 @@ public:
 	void South() { Move(1, 0); }
 	void East() { Move(0, 1); }
 	void West() { Move(0, -1); }
+	bool IsMoving();
 };
 
 // Stuff for storing grbl status upon query command ("?")

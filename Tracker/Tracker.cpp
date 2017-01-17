@@ -14,6 +14,7 @@
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/features2d/features2d.hpp>
 
 #include <windows.h>
 
@@ -157,6 +158,8 @@ int main() {
 	SerialPort ^arduino;
 	GrblBoard ^grbl;
 
+	int px_threshold = 60;
+
 	// Open the serial port connection to Arduino
 	arduino = gcnew SerialPort("COM4", 400000);
 	arduino->Open();
@@ -164,62 +167,63 @@ int main() {
 
 	grbl = gcnew GrblBoard(arduino);
 	grbl->Init();
+	Sleep(10);
 
-	grbl->North();
-	Sleep(1000);
-	grbl->South();
-	Sleep(1000);
-	grbl->East();
-	Sleep(1000);
-	grbl->West();
-	Sleep(1000);
+	// Set up video capture
+	VideoCapture cap(CV_CAP_ANY); // This is sufficient for a single camera setup. Otherwise, it will need to be more specific.
+
+	// Original, unprocessed, captured frame from the camera.
+	Mat im;
+	Mat im_with_keypoints;
+	SimpleBlobDetector detector;
+	std::vector<KeyPoint> keypoints;
+
+	double minErr = 5;
+	double maxMove = 20;
+
+	while (cap.read(im)){
+
+		cvtColor(im, im, CV_BGR2GRAY);
+		blur(im, im, Size(10, 10));
+		//int binary_threshold = 200; // out of 255
+		//threshold(im, im, binary_threshold, 255, CV_THRESH_BINARY);
+
+		detector.detect(im, keypoints);
+		drawKeypoints(im, keypoints, im_with_keypoints, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+
+		imshow("keypoints", im_with_keypoints);
+		waitKey(1);
+
+		if (keypoints.size() == 0){
+			continue;
+		}		
+
+		double X = keypoints[0].pt.x - 640.0 / 2;
+		double Y = keypoints[0].pt.y - 480.0 / 2;
+
+		Console::WriteLine(System::String::Format("X={0:0.000},Y={1:0.000}", X, Y));
+
+		if ((abs(X)>minErr || abs(Y)>minErr) && !grbl->IsMoving()){
+
+			double xMove = -X / 4.08;
+			double yMove = Y / 4.08;
+
+			xMove = xMove > maxMove ? maxMove : xMove;
+			xMove = xMove < -maxMove ? -maxMove : xMove;
+
+			yMove = yMove > maxMove ? maxMove : yMove;
+			yMove = yMove < -maxMove ? -maxMove : yMove;
+			
+			grbl->Move(xMove, yMove);
+		}
+
+		if (waitKey(1) == 27) break;
+	}
 
 	// Close the serial port connection to Arduino
 	arduino->Close();
 	return 0;
 
-//	// Set up files for testing and logging
-//	ofstream loop_time_file;
-//	loop_time_file.open("loop_time.txt");
-//	loop_time_file << "\n";
-//	ofstream data_input_time_file;
-//	data_input_time_file.open("data_input_time.txt");
-//	data_input_time_file << "query send time, query receive time, frame cap time, image processing time, move command send time";
-//	ofstream command_time_file;
-//	command_time_file.open("command_time.txt");
-//	ofstream command_file;
-//	command_file.open("commands.txt");
-//	ofstream misc_time_file; // I just use this for logging timers that I might want to move around
-//	misc_time_file.open("misc_times.txt");
-//	ofstream position_file;
-//	position_file.open("positions.txt");
-//	VideoWriter video("out.avi", CV_FOURCC('M', 'J', 'P', 'G'), 10, Size(200, 200), true);
-//
-//	start_counter(); // For getting timing data
-//	// Timers for stuff that might need them. Can add more later.
-//	double move_init_timer = get_counter();
-//	double loop_timer = get_counter(); // This is the main timer to monitor the loop
-//	double command_timer = get_counter(); // Log how long it takes to write a move command into the buffer
-//	double data_input_timer = get_counter(); // Log how long it takes to grab a camera frame and the motor status
-//	double misc_timer = get_counter();
-//	double query_timer = get_counter();
-//	double arduino_command_timer = get_counter(); // Timer used to send commands to
-//	double frame_cap_delay = get_counter();
-//	double screen_update_timer = get_counter();
-//	
-//	int moves_in_queue = 0;
-//
-//	// Configure serial comms for Arduino
-//	SysString^ port_name;
-//	SysString^ serial_response;
-//	SysString^ serial_message;
-//
-//
-//
-//	// Motor parameters (for Grbl)
-//	double steps_per_mm_x = 40;
-//	double steps_per_mm_y = 40;
-//	
 //	// Define some OpenCV primary colors for convenience
 //	Scalar color_white = Scalar(255, 255, 255);
 //	Scalar color_black = Scalar(0, 0, 0);
@@ -234,12 +238,7 @@ int main() {
 //					 // Keeping it separate from the subsequent processing because sometimes it's useful to have the original.
 //	Mat processed_frame; // This is the one that will be processed and used to find contours on
 //	
-//	VideoCapture vid_cap(CV_CAP_ANY); // This is sufficient for a single camera setup. Otherwise, it will need to be more specific.
-//	vid_cap.set(CV_CAP_PROP_FPS, 240); // Need to set the exposure time to appropriate value in Pylon Viewer as well
-//	vid_cap.set(CV_CAP_PROP_FRAME_HEIGHT, 200); // 200x200 window
-//	vid_cap.set(CV_CAP_PROP_FRAME_WIDTH, 200);
-//
-//	initialize_grbl(arduino);
+
 //
 //
 //	HINSTANCE hInstance = GetModuleHandle(NULL);

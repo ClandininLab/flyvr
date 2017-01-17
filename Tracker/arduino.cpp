@@ -15,12 +15,12 @@ void GrblBoard::Init(){
 	StatusReportMask(1); // status will include running state and machine position
 	StepsPerMM_X(40); // number of steps per millimeter of X movement
 	StepsPerMM_Y(40); // number of steps per millimeter of Y movement
-	MaxVelocityX(100000); // maximum X velocity, in mm/min
-	MaxVelocityY(100000); // maximum Y velocity, in mm/min
-	MaxAccelerationX(200); // maximum X acceleration, in mm/sec^2
-	MaxAccelerationY(200); // maximum Y acceleration, in mm/sec^2
+	MaxVelocityX(2000); // maximum X velocity, in mm/min
+	MaxVelocityY(2000); // maximum Y velocity, in mm/min
+	MaxAccelerationX(100); // maximum X acceleration, in mm/sec^2
+	MaxAccelerationY(100); // maximum Y acceleration, in mm/sec^2
 	SetUnitMM(); // all measurements in millimeters
-	MaxFeedRate(100000); // maximum feed rate, in mm/min
+	MaxFeedRate(2000); // maximum feed rate, in mm/min
 	MoveRelative(); // use relative movement, rather than absolute
 }
 void GrblBoard::GrblCommand(int key, int value){
@@ -40,6 +40,18 @@ void GrblBoard::Move(double X, double Y){
 	String^ cmdString = String::Format("G1X{0:0.000}Y{1:0.000}", X, Y);
 	arduino->WriteLine(cmdString);
 	Sleep(10);
+}
+bool GrblBoard::IsMoving(){
+	arduino->DiscardInBuffer();
+	arduino->WriteLine("?");
+	Sleep(10);
+	String^ resp = arduino->ReadLine();
+	if (String::Compare(resp, 0, "<Run", 0, 4) == 0){
+		return true;
+	}
+	else {
+		return false;
+	}
 }
 
 // This function takes the status query response (response to "?" command) as a string and breaks it down into useful data types.
