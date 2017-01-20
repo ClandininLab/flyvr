@@ -103,7 +103,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>Create</PrecompiledHeader>
       <AdditionalIncludeDirectories>C:\lib\glfw-3.1.2.bin.WIN64\include;$(OPENCV_DIR)\include;$(FREEGLUT_DIR)\include\GL;$(GLEW_DIR)\include\GL;C:\lib\glm\glm;C:\lib\glm\glm</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -129,7 +129,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeader>Create</PrecompiledHeader>
       <AdditionalIncludeDirectories>C:\lib\glfw-3.1.2.bin.WIN64\include;$(OPENCV_DIR)\include;"$(FREEGLUT_DIR)\include\GL";"$(GLEW_DIR)\include\GL";C:\lib\glm\glm</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -167,8 +167,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="stimulus.cpp" />
-    <ClCompile Include="timer.cpp" />
     <ClCompile Include="Tracker.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>

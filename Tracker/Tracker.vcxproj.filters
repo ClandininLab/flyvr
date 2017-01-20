@@ -52,12 +52,6 @@
     <ClCompile Include="arduino.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="stimulus.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="timer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Tracker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
