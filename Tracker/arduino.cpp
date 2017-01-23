@@ -43,16 +43,20 @@ void GrblBoard::Move(double X, double Y){
 	arduino->WriteLine(cmdString);
 }
 GrblStatus GrblBoard::ReadStatus(){
+	// Query status.
 	arduino->DiscardInBuffer();
 	arduino->WriteLine("?");
-	
+
 	// Read response from GRBL
 	// example:
-	// <Idle, MPos:-100.000,-100.000,0.000>
+	// <Idle,MPos:0.000,0.000,0.000>
 	String^ resp = arduino->ReadLine();
+	while (!resp->StartsWith("<")){
+		resp = arduino->ReadLine();
+	}
 
 	// Match 
-	Regex^ regex = gcnew Regex("<\\s*(Idle|Run),\\s*MPos:\\s*(-?\\d+\\.\\d+),\\s*(-?\\d+\\.\\d+),\\s*(-?\\d+\\.\\d+)\\s*>");
+	Regex^ regex = gcnew Regex("<(Idle|Run),MPos:(-?\\d+\\.\\d+),(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)>");
 	Match^ match = regex->Match(resp);
 
 	GrblStatus status;

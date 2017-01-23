@@ -1,19 +1,22 @@
 // Tracker.cpp : main project file.
 
 #include "stdafx.h"
-#include "arduino.h"
-#include "glew.h"
-#include "freeglut.h"
+
 #include <stdio.h>
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <windows.h>
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
-#include <windows.h>
+#include "glew.h"
+#include "freeglut.h"
+
+#include "arduino.h"
+#include "timer.h"
 
 #pragma comment(lib, "user32.lib")
 
@@ -22,8 +25,6 @@ using namespace System::IO::Ports;
 using namespace System::Threading;
 using namespace std;
 using namespace cv;
-
-using namespace System::Text::RegularExpressions;
 
 // Global variables related to GLUT because GLUT is dumb and requires use of global variables like this
 /*
@@ -35,6 +36,16 @@ HDC device_context_handles[4], hdc1, hdc2, hdc3, hdc4;
 HGLRC render_context_handles[4], hrc1, hrc2, hrc3, hrc4;
 WNDCLASS wc;
 */
+
+// Global variables containing the move command
+double xMove = 0.0;
+double yMove = 0.0;
+
+// Global variable used to signal when serial port should close
+bool killSerial = false;
+
+// Mutex to manage access to xMove and yMove
+HANDLE ghMutex;
 
 /*
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
@@ -117,45 +128,101 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
 }
 */
 
-/// start of code from http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
-double PCFreq = 0.0;
-__int64 CounterStart = 0;
+DWORD WINAPI SerialThread(LPVOID lpParam){
+	// lpParam not used in this example
+	UNREFERENCED_PARAMETER(lpParam);
 
-void StartCounter()
-{
-	LARGE_INTEGER li;
-	if (!QueryPerformanceFrequency(&li))
-		cout << "QueryPerformanceFrequency failed!\n";
+	// Create the timer
+	DebugTimer^ loopTimer = gcnew DebugTimer("serial_loop_time.txt");
 
-	PCFreq = double(li.QuadPart) / 1000.0;
-
-	QueryPerformanceCounter(&li);
-	CounterStart = li.QuadPart;
-}
-double GetCounter()
-{
-	LARGE_INTEGER li;
-	QueryPerformanceCounter(&li);
-	return double(li.QuadPart - CounterStart) / PCFreq;
-}
-/// end of code from http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
-
-int main() {
 	SerialPort ^arduino;
 	GrblBoard ^grbl;
 	GrblStatus status;
 
-	ofstream loop_time_file;
-	loop_time_file.open("loop_time.txt");
+	double xMoveLocal = 0.0;
+	double yMoveLocal = 0.0;
 
 	// Open the serial port connection to Arduino
 	arduino = gcnew SerialPort("COM4", 400000);
 	arduino->Open();
-	Sleep(10);
 
 	// Initialize settings of GrblBoard
 	grbl = gcnew GrblBoard(arduino);
 	grbl->Init();
+
+	Console::WriteLine("Serial started.");
+
+	// Continually poll GRBL status and move if desired
+	while (!killSerial){
+		loopTimer->Tick();
+
+		// Read the current status
+		status = grbl->ReadStatus();
+
+		// Lock access to xMove and yMove
+		WaitForSingleObject(ghMutex, INFINITE);
+
+		// Read out the move command and reset it to zero
+		xMoveLocal = xMove;
+		yMoveLocal = yMove;
+		xMove = 0.0;
+		yMove = 0.0;
+
+		// Release access to xMove and yMove
+		ReleaseMutex(ghMutex);
+
+		// Run the move command if applicable
+		if ((xMoveLocal != 0.0 || yMoveLocal != 0.0) && !status.isMoving){
+			Console::WriteLine("Moving.");
+			grbl->Move(xMoveLocal, yMoveLocal);
+		}
+
+		loopTimer->Tock();
+	}
+
+	// Close the loop time file stream
+	loopTimer->Close();
+
+	// Close the arduino connection
+	arduino->Close();
+
+	Console::WriteLine("Serial stopped.");
+
+	return TRUE;
+}
+
+// clamp "value" between "min" and "max"
+double clamp(double value, double min, double max){
+	if (value < min){
+		value = min;
+	}
+	else if (value > max) {
+		value = max;
+	}
+	return value;
+}
+
+int main() {
+	// Create the timer
+	DebugTimer^ loopTimer = gcnew DebugTimer("main_loop_time.txt");
+
+	HANDLE aThread;
+	DWORD ThreadID;
+
+	// Create the mutex for managing the serial port connection
+	ghMutex = CreateMutex(
+		NULL,              // default security attributes
+		FALSE,             // initially not owned
+		NULL);             // unnamed mutex
+
+	// Start the serial thread
+	aThread = CreateThread(
+		NULL,       // default security attributes
+		0,          // default stack size
+		(LPTHREAD_START_ROUTINE)SerialThread,
+		NULL,       // no thread function arguments
+		0,          // default creation flags
+		&ThreadID); // receive thread identifier
 
 	// Set up video capture
 	VideoCapture cap(CV_CAP_ANY); // This is sufficient for a single camera setup. Otherwise, it will need to be more specific.
@@ -170,54 +237,59 @@ int main() {
 
 	double minErr = 5;
 	double maxMove = 40;
+	double minMove = -maxMove;
 
-	double LoopTime;
+	for(int i=0; i<1000; i++){
+		loopTimer->Tick();
 
-	for(int i=0; i<2000; i++){
-		StartCounter();
+		// Perform image processing
 		cap.read(im);
-
 		cvtColor(im, im, CV_BGR2GRAY);
 		blur(im, im, Size(10, 10));
 		detector.detect(im, keypoints);
 
-		// drawKeypoints(im, keypoints, im_with_keypoints, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-		// imshow("keypoints", im_with_keypoints);
+		/* drawKeypoints(im, keypoints, im_with_keypoints, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+		imshow("keypoints", im_with_keypoints);
+		waitKey(1); */
 
 		if (keypoints.size() == 0){
+			loopTimer->Tock();
 			continue;
 		}		
 
-		double X = keypoints[0].pt.x - 200.0 / 2;
-		double Y = keypoints[0].pt.y - 200.0 / 2;
+		// Lock access to xMove and yMove
+		WaitForSingleObject(ghMutex, INFINITE);
 
-		// Console::WriteLine(System::String::Format("X={0:0.000},Y={1:0.000}", X, Y));
+		xMove = keypoints[0].pt.x - 200.0 / 2;
+		yMove = keypoints[0].pt.y - 200.0 / 2;
 
-		status = grbl->ReadStatus();
+		if (abs(xMove)>minErr || abs(yMove)>minErr){
+			xMove = -xMove / 4.08;
+			yMove = yMove / 4.08;
 
-		if ((abs(X)>minErr || abs(Y)>minErr) && !status.isMoving){
-
-			double xMove = -X / 4.08;
-			double yMove = Y / 4.08;
-
-			xMove = xMove > maxMove ? maxMove : xMove;
-			xMove = xMove < -maxMove ? -maxMove : xMove;
-
-			yMove = yMove > maxMove ? maxMove : yMove;
-			yMove = yMove < -maxMove ? -maxMove : yMove;
-			
-			grbl->Move(xMove, yMove);
+			xMove = clamp(xMove, minMove, maxMove);
+			yMove = clamp(yMove, minMove, maxMove);			
 		}
-		LoopTime = GetCounter();
-		loop_time_file << LoopTime << "\n";
+
+		// Release access to xMove and yMove
+		ReleaseMutex(ghMutex);
+
+		loopTimer->Tock();
 	}
 
-	// Close the serial port connection to Arduino
-	arduino->Close();
-	loop_time_file.close();
+	// Close the loop time file stream
+	loopTimer->Close();
 
-	// Pause before exiting so the console output may be reviewed
-	// system("pause");
+	// Kill the serial thread
+	killSerial = true;
+
+	// Wait for serial thread to terminate
+	WaitForSingleObject(aThread, INFINITE);
+
+	// Close the handles to the mutexes and serial thread
+	CloseHandle(aThread);
+	CloseHandle(ghMutex);
+
 	return 0;
 
 //	HINSTANCE hInstance = GetModuleHandle(NULL);

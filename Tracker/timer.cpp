@@ -1,28 +1,33 @@
 #include "stdafx.h"
 
-#include <stdio.h>
-#include <iostream>
-#include <Windows.h>
+#include <windows.h>
 
-double PCFreq = 0.0;
-__int64 CounterStart = 0;
+#include "timer.h"
 
-void start_counter()
+DebugTimer::DebugTimer(String^ fileName){
+	fileStream = gcnew StreamWriter(fileName);
+}
+
+void DebugTimer::Close(){
+	fileStream->Close();
+}
+
+// start of code modified from http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
+void DebugTimer::Tick()
 {
 	LARGE_INTEGER li;
 	if (!QueryPerformanceFrequency(&li))
-		std::cout << "QueryPerformanceFrequency failed!\n";
+		Console::WriteLine("QueryPerformanceFrequency failed!");
 
 	PCFreq = double(li.QuadPart) / 1000.0;
 
 	QueryPerformanceCounter(&li);
 	CounterStart = li.QuadPart;
 }
-
-double get_counter()
+void DebugTimer::Tock()
 {
 	LARGE_INTEGER li;
 	QueryPerformanceCounter(&li);
-	return double(li.QuadPart - CounterStart) / PCFreq;
+	fileStream->WriteLine(double(li.QuadPart - CounterStart) / PCFreq);
 }
-
+// end of code modified from http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
