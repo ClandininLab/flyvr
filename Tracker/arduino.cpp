@@ -8,8 +8,10 @@ using namespace System::Text::RegularExpressions;
 #include "arduino.h"
 
 // Method definition for GrblBoard class
-GrblBoard::GrblBoard(SerialPort^ arduino){
-	this->arduino = arduino;
+GrblBoard::GrblBoard(){
+	arduino = gcnew SerialPort("COM4", 400000);
+	arduino->Open();
+	Init();
 }
 void GrblBoard::Init(){
 	StepIdleDelay(255); // causes stepper motor to hold position after movement
@@ -26,6 +28,9 @@ void GrblBoard::Init(){
 }
 void GrblBoard::Reset(){
 	arduino->WriteLine("\x18");
+}
+void GrblBoard::Close(){
+	arduino->Close();
 }
 void GrblBoard::GrblCommand(int key, int value){
 	String^ cmdString = String::Format("${0}={1}", key, value);
@@ -48,14 +53,13 @@ GrblStatus GrblBoard::ReadStatus(){
 	arduino->WriteLine("?");
 
 	// Read response from GRBL
-	// example:
-	// <Idle,MPos:0.000,0.000,0.000>
 	String^ resp = arduino->ReadLine();
 	while (!resp->StartsWith("<")){
 		resp = arduino->ReadLine();
 	}
 
-	// Match 
+	// Parse response from GRBL
+	// <Idle,MPos:0.000,0.000,0.000>
 	Regex^ regex = gcnew Regex("<(Idle|Run),MPos:(-?\\d+\\.\\d+),(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)>");
 	Match^ match = regex->Match(resp);
 

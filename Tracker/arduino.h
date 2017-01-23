@@ -22,9 +22,10 @@ public ref class GrblBoard
 {
 public:
 	SerialPort^ arduino;
-	GrblBoard(SerialPort^ arduino);
+	GrblBoard();
 	void Init();
 	void Reset();
+	void Close();
 	void GrblCommand(int key, int value);
 	void RawCommand(String^ cmdString);
 	void StepIdleDelay(int value){ GrblCommand(1, value); }

@@ -2,10 +2,6 @@
 
 #include "stdafx.h"
 
-#include <stdio.h>
-#include <iostream>
-#include <string>
-#include <fstream>
 #include <windows.h>
 
 #include <opencv2/highgui/highgui.hpp>
@@ -26,17 +22,6 @@ using namespace System::Threading;
 using namespace std;
 using namespace cv;
 
-// Global variables related to GLUT because GLUT is dumb and requires use of global variables like this
-/*
-FlyPosition fly_position;
-int windows[4], window1, window2, window3, window4;
-int num_context;
-HWND window_handles[4], hwnd1, hwnd2, hwnd3, hwnd4;
-HDC device_context_handles[4], hdc1, hdc2, hdc3, hdc4;
-HGLRC render_context_handles[4], hrc1, hrc2, hrc3, hrc4;
-WNDCLASS wc;
-*/
-
 // Global variables containing the move command
 double xMove = 0.0;
 double yMove = 0.0;
@@ -45,88 +30,7 @@ double yMove = 0.0;
 bool killSerial = false;
 
 // Mutex to manage access to xMove and yMove
-HANDLE ghMutex;
-
-/*
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
-{
-	switch (uMsg)
-	{
-	case WM_CREATE:
-		{
-		PIXELFORMATDESCRIPTOR pfd =
-		{
-			sizeof(PIXELFORMATDESCRIPTOR),
-			1,
-			PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,    //Flags
-			PFD_TYPE_RGBA,            //The kind of framebuffer. RGBA or palette.
-			32,                        //Colordepth of the framebuffer.
-			0, 0, 0, 0, 0, 0,
-			0,
-			0,
-			0,
-			0, 0, 0, 0,
-			24,                        //Number of bits for the depthbuffer
-			8,                        //Number of bits for the stencilbuffer
-			0,                        //Number of Aux buffers in the framebuffer.
-			PFD_MAIN_PLANE,
-			0,
-			0, 0, 0
-		};
-
-		HDC hdc = GetDC(hwnd);
-
-		int pixel_format_num = ChoosePixelFormat(hdc, &pfd);
-		SetPixelFormat(hdc, pixel_format_num, &pfd);
-
-		}
-		break;
-
-	default:
-		return DefWindowProc(hwnd, uMsg, wParam, lParam);
-	}
-	return 0;
-}
-
-BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
-{
-
-	int *monitor_num = (int*)dwData;
-
-	MONITORINFOEX monitor_info;
-	ZeroMemory(&monitor_info, sizeof(MONITORINFOEX));
-	monitor_info.cbSize = sizeof(MONITORINFOEX);
-
-	bool success = GetMonitorInfo(hMonitor, &monitor_info);
-	if (success) {
-		wprintf(L"Device Name of Monitor: %s\n", monitor_info.szDevice);
-		POINT monitorTopLeft;
-		int width = abs(abs(monitor_info.rcMonitor.left) - abs(monitor_info.rcMonitor.right));
-		int height = abs(abs(monitor_info.rcMonitor.top) - abs(monitor_info.rcMonitor.bottom));
-		monitorTopLeft.x = monitor_info.rcMonitor.left;
-		monitorTopLeft.y = monitor_info.rcMonitor.top;
-		if (monitorTopLeft.x == 0 && monitorTopLeft.y == 0) {
-			return TRUE;
-		}
-		HWND hwnd = CreateWindow(wc.lpszClassName, L"opengl_window", WS_OVERLAPPEDWINDOW|WS_VISIBLE, monitorTopLeft.x, monitorTopLeft.y, width, height, NULL, NULL, wc.hInstance, NULL);
-		if (hwnd) {
-			window_handles[*monitor_num] = hwnd;
-			HDC hdc = GetWindowDC(hwnd);
-			
-			if (hdc) {
-				device_context_handles[*monitor_num] = hdc;
-			} else {
-				printf("FAIL TO GET HDC\n");
-			}
-
-		} else {
-			printf("FAIL TO GET HWND\n");
-		}
-	}
-	(*monitor_num)++;
-	return TRUE;
-}
-*/
+HANDLE moveMutex;
 
 DWORD WINAPI SerialThread(LPVOID lpParam){
 	// lpParam not used in this example
@@ -135,22 +39,14 @@ DWORD WINAPI SerialThread(LPVOID lpParam){
 	// Create the timer
 	DebugTimer^ loopTimer = gcnew DebugTimer("serial_loop_time.txt");
 
-	SerialPort ^arduino;
 	GrblBoard ^grbl;
 	GrblStatus status;
 
 	double xMoveLocal = 0.0;
 	double yMoveLocal = 0.0;
 
-	// Open the serial port connection to Arduino
-	arduino = gcnew SerialPort("COM4", 400000);
-	arduino->Open();
-
-	// Initialize settings of GrblBoard
-	grbl = gcnew GrblBoard(arduino);
-	grbl->Init();
-
-	Console::WriteLine("Serial started.");
+	// Connect to GRBL
+	grbl = gcnew GrblBoard();
 
 	// Continually poll GRBL status and move if desired
 	while (!killSerial){
@@ -160,7 +56,7 @@ DWORD WINAPI SerialThread(LPVOID lpParam){
 		status = grbl->ReadStatus();
 
 		// Lock access to xMove and yMove
-		WaitForSingleObject(ghMutex, INFINITE);
+		WaitForSingleObject(moveMutex, INFINITE);
 
 		// Read out the move command and reset it to zero
 		xMoveLocal = xMove;
@@ -169,60 +65,50 @@ DWORD WINAPI SerialThread(LPVOID lpParam){
 		yMove = 0.0;
 
 		// Release access to xMove and yMove
-		ReleaseMutex(ghMutex);
+		ReleaseMutex(moveMutex);
 
 		// Run the move command if applicable
 		if ((xMoveLocal != 0.0 || yMoveLocal != 0.0) && !status.isMoving){
-			Console::WriteLine("Moving.");
 			grbl->Move(xMoveLocal, yMoveLocal);
 		}
 
 		loopTimer->Tock();
 	}
 
-	// Close the loop time file stream
+	// Close streams
 	loopTimer->Close();
-
-	// Close the arduino connection
-	arduino->Close();
-
-	Console::WriteLine("Serial stopped.");
+	grbl->Close();
 
 	return TRUE;
 }
 
 // clamp "value" between "min" and "max"
 double clamp(double value, double min, double max){
-	if (value < min){
-		value = min;
+	if (abs(value) < min){
+		return 0.0;
+	}
+	else if (value < -max){
+		return -max;
 	}
 	else if (value > max) {
-		value = max;
+		return max;
 	}
-	return value;
+	else {
+		return value;
+	}
 }
 
 int main() {
 	// Create the timer
 	DebugTimer^ loopTimer = gcnew DebugTimer("main_loop_time.txt");
 
-	HANDLE aThread;
-	DWORD ThreadID;
-
 	// Create the mutex for managing the serial port connection
-	ghMutex = CreateMutex(
-		NULL,              // default security attributes
-		FALSE,             // initially not owned
-		NULL);             // unnamed mutex
+	moveMutex = CreateMutex(NULL, FALSE, NULL);
 
 	// Start the serial thread
-	aThread = CreateThread(
-		NULL,       // default security attributes
-		0,          // default stack size
-		(LPTHREAD_START_ROUTINE)SerialThread,
-		NULL,       // no thread function arguments
-		0,          // default creation flags
-		&ThreadID); // receive thread identifier
+	HANDLE serialThread;
+	DWORD ThreadID;
+	serialThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)SerialThread, NULL, 0, &ThreadID);
 
 	// Set up video capture
 	VideoCapture cap(CV_CAP_ANY); // This is sufficient for a single camera setup. Otherwise, it will need to be more specific.
@@ -235,11 +121,10 @@ int main() {
 	SimpleBlobDetector detector;
 	std::vector<KeyPoint> keypoints;
 
-	double minErr = 5;
+	double minMove = 1;
 	double maxMove = 40;
-	double minMove = -maxMove;
 
-	for(int i=0; i<1000; i++){
+	for (int i = 0; i < 10000; i++){
 		loopTimer->Tick();
 
 		// Perform image processing
@@ -248,49 +133,129 @@ int main() {
 		blur(im, im, Size(10, 10));
 		detector.detect(im, keypoints);
 
-		/* drawKeypoints(im, keypoints, im_with_keypoints, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+		drawKeypoints(im, keypoints, im_with_keypoints, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 		imshow("keypoints", im_with_keypoints);
-		waitKey(1); */
+		waitKey(1);
 
 		if (keypoints.size() == 0){
 			loopTimer->Tock();
 			continue;
-		}		
+		}
 
 		// Lock access to xMove and yMove
-		WaitForSingleObject(ghMutex, INFINITE);
+		WaitForSingleObject(moveMutex, INFINITE);
 
 		xMove = keypoints[0].pt.x - 200.0 / 2;
 		yMove = keypoints[0].pt.y - 200.0 / 2;
 
-		if (abs(xMove)>minErr || abs(yMove)>minErr){
-			xMove = -xMove / 4.08;
-			yMove = yMove / 4.08;
+		xMove = -xMove / 4.471;
+		yMove = yMove / 4.471;
 
-			xMove = clamp(xMove, minMove, maxMove);
-			yMove = clamp(yMove, minMove, maxMove);			
-		}
+		xMove = clamp(xMove, minMove, maxMove);
+		yMove = clamp(yMove, minMove, maxMove);
 
 		// Release access to xMove and yMove
-		ReleaseMutex(ghMutex);
+		ReleaseMutex(moveMutex);
 
 		loopTimer->Tock();
 	}
 
-	// Close the loop time file stream
+	// Close streams
 	loopTimer->Close();
 
 	// Kill the serial thread
 	killSerial = true;
 
 	// Wait for serial thread to terminate
-	WaitForSingleObject(aThread, INFINITE);
+	WaitForSingleObject(serialThread, INFINITE);
 
 	// Close the handles to the mutexes and serial thread
-	CloseHandle(aThread);
-	CloseHandle(ghMutex);
+	CloseHandle(serialThread);
+	CloseHandle(moveMutex);
 
 	return 0;
+}
+
+/*
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+switch (uMsg)
+{
+case WM_CREATE:
+{
+PIXELFORMATDESCRIPTOR pfd =
+{
+sizeof(PIXELFORMATDESCRIPTOR),
+1,
+PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,    //Flags
+PFD_TYPE_RGBA,            //The kind of framebuffer. RGBA or palette.
+32,                        //Colordepth of the framebuffer.
+0, 0, 0, 0, 0, 0,
+0,
+0,
+0,
+0, 0, 0, 0,
+24,                        //Number of bits for the depthbuffer
+8,                        //Number of bits for the stencilbuffer
+0,                        //Number of Aux buffers in the framebuffer.
+PFD_MAIN_PLANE,
+0,
+0, 0, 0
+};
+
+HDC hdc = GetDC(hwnd);
+
+int pixel_format_num = ChoosePixelFormat(hdc, &pfd);
+SetPixelFormat(hdc, pixel_format_num, &pfd);
+
+}
+break;
+
+default:
+return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+return 0;
+}
+
+BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+{
+
+int *monitor_num = (int*)dwData;
+
+MONITORINFOEX monitor_info;
+ZeroMemory(&monitor_info, sizeof(MONITORINFOEX));
+monitor_info.cbSize = sizeof(MONITORINFOEX);
+
+bool success = GetMonitorInfo(hMonitor, &monitor_info);
+if (success) {
+wprintf(L"Device Name of Monitor: %s\n", monitor_info.szDevice);
+POINT monitorTopLeft;
+int width = abs(abs(monitor_info.rcMonitor.left) - abs(monitor_info.rcMonitor.right));
+int height = abs(abs(monitor_info.rcMonitor.top) - abs(monitor_info.rcMonitor.bottom));
+monitorTopLeft.x = monitor_info.rcMonitor.left;
+monitorTopLeft.y = monitor_info.rcMonitor.top;
+if (monitorTopLeft.x == 0 && monitorTopLeft.y == 0) {
+return TRUE;
+}
+HWND hwnd = CreateWindow(wc.lpszClassName, L"opengl_window", WS_OVERLAPPEDWINDOW|WS_VISIBLE, monitorTopLeft.x, monitorTopLeft.y, width, height, NULL, NULL, wc.hInstance, NULL);
+if (hwnd) {
+window_handles[*monitor_num] = hwnd;
+HDC hdc = GetWindowDC(hwnd);
+
+if (hdc) {
+device_context_handles[*monitor_num] = hdc;
+} else {
+printf("FAIL TO GET HDC\n");
+}
+
+} else {
+printf("FAIL TO GET HWND\n");
+}
+}
+(*monitor_num)++;
+return TRUE;
+}
+*/
 
 //	HINSTANCE hInstance = GetModuleHandle(NULL);
 //	if (!hInstance) {
@@ -356,5 +321,4 @@ int main() {
 //	arduino->Close();
 //
 //	return 0;
-}
 
