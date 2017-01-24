@@ -10,8 +10,9 @@ public:
 	double PCFreq = 0.0;
 	__int64 CounterStart = 0;
 	StreamWriter^ fileStream;
-	DebugTimer(String^ fileName);
+	DebugTimer(System::String^ fileName);
 	void Tick();
+	void Tock(System::String^ format);
 	void Tock();
 	void Close();
 };

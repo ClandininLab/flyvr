@@ -19,18 +19,21 @@
 using namespace System;
 using namespace System::IO::Ports;
 using namespace System::Threading;
-using namespace std;
 using namespace cv;
 
 // Global variables containing the move command
 double xMove = 0.0;
 double yMove = 0.0;
 
+// Global variables containing the last known GRBL position
+double xStatus = 0.0;
+double yStatus = 0.0;
+
 // Global variable used to signal when serial port should close
 bool killSerial = false;
 
 // Mutex to manage access to xMove and yMove
-HANDLE moveMutex;
+HANDLE coordMutex;
 
 DWORD WINAPI SerialThread(LPVOID lpParam){
 	// lpParam not used in this example
@@ -55,8 +58,8 @@ DWORD WINAPI SerialThread(LPVOID lpParam){
 		// Read the current status
 		status = grbl->ReadStatus();
 
-		// Lock access to xMove and yMove
-		WaitForSingleObject(moveMutex, INFINITE);
+		// Lock access to global coordinates
+		WaitForSingleObject(coordMutex, INFINITE);
 
 		// Read out the move command and reset it to zero
 		xMoveLocal = xMove;
@@ -64,8 +67,12 @@ DWORD WINAPI SerialThread(LPVOID lpParam){
 		xMove = 0.0;
 		yMove = 0.0;
 
+		// Update the GRBL position
+		xStatus = status.x;
+		yStatus = status.y;
+
 		// Release access to xMove and yMove
-		ReleaseMutex(moveMutex);
+		ReleaseMutex(coordMutex);
 
 		// Run the move command if applicable
 		if ((xMoveLocal != 0.0 || yMoveLocal != 0.0) && !status.isMoving){
@@ -102,8 +109,8 @@ int main() {
 	// Create the timer
 	DebugTimer^ loopTimer = gcnew DebugTimer("main_loop_time.txt");
 
-	// Create the mutex for managing the serial port connection
-	moveMutex = CreateMutex(NULL, FALSE, NULL);
+	// Create the mutexes
+	coordMutex = CreateMutex(NULL, FALSE, NULL);
 
 	// Start the serial thread
 	HANDLE serialThread;
@@ -121,10 +128,13 @@ int main() {
 	SimpleBlobDetector detector;
 	std::vector<KeyPoint> keypoints;
 
+	double xCam, yCam, xMoveLocal, yMoveLocal;
+	double xStatusLocal, yStatusLocal;
+
 	double minMove = 1;
 	double maxMove = 40;
 
-	for (int i = 0; i < 10000; i++){
+	for (int i = 0; i < 5000; i++){
 		loopTimer->Tick();
 
 		// Perform image processing
@@ -133,31 +143,45 @@ int main() {
 		blur(im, im, Size(10, 10));
 		detector.detect(im, keypoints);
 
-		drawKeypoints(im, keypoints, im_with_keypoints, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-		imshow("keypoints", im_with_keypoints);
-		waitKey(1);
+		//drawKeypoints(im, keypoints, im_with_keypoints, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+		//imshow("keypoints", im_with_keypoints);
+		//waitKey(1);
 
 		if (keypoints.size() == 0){
-			loopTimer->Tock();
+			loopTimer->Tock("0.000,0.000,0.000,0.000,{0:0.000}");
 			continue;
 		}
 
-		// Lock access to xMove and yMove
-		WaitForSingleObject(moveMutex, INFINITE);
+		// Calculate coordinates of the dot with respect to the center of the frame
+		xCam = keypoints[0].pt.x - 200.0/2;
+		yCam = keypoints[0].pt.y - 200.0/2;
 
-		xMove = keypoints[0].pt.x - 200.0 / 2;
-		yMove = keypoints[0].pt.y - 200.0 / 2;
+		// Scale coordinates to mm
+		xCam = xCam / 4.471;
+		yCam = yCam / 4.471;
 
-		xMove = -xMove / 4.471;
-		yMove = yMove / 4.471;
+		// Calculate move command
+		xMoveLocal = clamp(-xCam, minMove, maxMove);
+		yMoveLocal = clamp(yCam, minMove, maxMove);
 
-		xMove = clamp(xMove, minMove, maxMove);
-		yMove = clamp(yMove, minMove, maxMove);
+		// Lock access to coordinate data
+		WaitForSingleObject(coordMutex, INFINITE);
 
-		// Release access to xMove and yMove
-		ReleaseMutex(moveMutex);
+		xMove = xMoveLocal;
+		yMove = yMoveLocal;
 
-		loopTimer->Tock();
+		xStatusLocal = xStatus;
+		yStatusLocal = yStatus;
+
+		// Release access to coordinate data
+		ReleaseMutex(coordMutex);
+
+		// Format data for logging
+		System::String^ format = System::String::Format("{0:0.000},{1:0.000},{2:0.000},{3:0.000},{{0:0.000}}", 
+			xCam, yCam, xStatusLocal, yStatusLocal);
+
+		// Log data
+		loopTimer->Tock(format);
 	}
 
 	// Close streams
@@ -171,7 +195,7 @@ int main() {
 
 	// Close the handles to the mutexes and serial thread
 	CloseHandle(serialThread);
-	CloseHandle(moveMutex);
+	CloseHandle(coordMutex);
 
 	return 0;
 }

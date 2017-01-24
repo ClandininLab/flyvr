@@ -16,18 +16,29 @@ void DebugTimer::Close(){
 void DebugTimer::Tick()
 {
 	LARGE_INTEGER li;
+
+	// Record CPU frequency
 	if (!QueryPerformanceFrequency(&li))
 		Console::WriteLine("QueryPerformanceFrequency failed!");
-
 	PCFreq = double(li.QuadPart) / 1000.0;
 
+	// Record start time
 	QueryPerformanceCounter(&li);
 	CounterStart = li.QuadPart;
 }
-void DebugTimer::Tock()
+void DebugTimer::Tock(){
+	Tock("{0:0.000}");
+}
+void DebugTimer::Tock(String^ format)
 {
 	LARGE_INTEGER li;
+	double duration;
+
+	// Record duration
 	QueryPerformanceCounter(&li);
-	fileStream->WriteLine(double(li.QuadPart - CounterStart) / PCFreq);
+	duration = double(li.QuadPart - CounterStart) / PCFreq;
+
+	// Write duration to file
+	fileStream->WriteLine(format, duration);
 }
 // end of code modified from http://stackoverflow.com/questions/1739259/how-to-use-queryperformancecounter
