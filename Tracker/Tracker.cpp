@@ -116,49 +116,77 @@ int main() {
 	HANDLE serialThread;
 	DWORD ThreadID;
 	serialThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)SerialThread, NULL, 0, &ThreadID);
+	
+	// Options
+	int width = 200;
+	int height = 200;
+	int blur_size = 10;
+	int buffer = blur_size;
+	int cropped_width = width - 2 * buffer;
+	int cropped_height = height - 2 * buffer;
 
 	// Set up video capture
 	VideoCapture cap(CV_CAP_ANY); // This is sufficient for a single camera setup. Otherwise, it will need to be more specific.
-	cap.set(CV_CAP_PROP_FRAME_WIDTH, 200);
-	cap.set(CV_CAP_PROP_FRAME_HEIGHT, 200);
+	cap.set(CV_CAP_PROP_FRAME_WIDTH, width);
+	cap.set(CV_CAP_PROP_FRAME_HEIGHT, height);
 
 	// Original, unprocessed, captured frame from the camera.
-	Mat im;
-	Mat im_with_keypoints;
-	SimpleBlobDetector detector;
-	std::vector<KeyPoint> keypoints;
+	Mat im, src;
+	RotatedRect box;
+	vector<vector<Point>> contours;
+	vector<Vec4i> hierarchy;
 
-	double xCam, yCam, xMoveLocal, yMoveLocal;
+	double xCam, yCam, xMoveLocal, yMoveLocal, aCam;
 	double xStatusLocal, yStatusLocal;
 
 	double minMove = 1;
 	double maxMove = 40;
 
-	for (int i = 0; i < 5000; i++){
+	for (int i = 0; i < 3000; i++){
 		loopTimer->Tick();
 
-		// Perform image processing
-		cap.read(im);
-		cvtColor(im, im, CV_BGR2GRAY);
-		blur(im, im, Size(10, 10));
-		detector.detect(im, keypoints);
+		// Read image
+		cap.read(src);
 
-		//drawKeypoints(im, keypoints, im_with_keypoints, Scalar(0, 0, 255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
-		//imshow("keypoints", im_with_keypoints);
+		// Display image
+		//imshow("Result", src);
 		//waitKey(1);
 
-		if (keypoints.size() == 0){
-			loopTimer->Tock("0.000,0.000,0.000,0.000,{0:0.000}");
+		// Crop, convert to grayscale, threshold
+		cvtColor(src, im, CV_BGR2GRAY);
+		blur(im, im, Size(blur_size, blur_size));
+		im = im(Rect(buffer, buffer, cropped_width, cropped_height));
+		threshold(im, im, 110, 255, THRESH_BINARY_INV);
+
+		// Detect contours
+		findContours(im, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
+
+		// Find biggest contour
+		int idx_max = -1;
+		double size_max = -1;
+		for (int idx = 0; idx < contours.size(); idx++){
+			if (contours[idx].size() > size_max){
+				size_max = contours[idx].size();
+				idx_max = idx;
+			}
+		}
+
+		// Fit ellipse
+		if (size_max > 5){
+			box = fitEllipse(Mat(contours[idx_max]));
+		} else {
+			loopTimer->Tock("0.000,0.000,0.000,0.000,0.000,{0:0.000}");
 			continue;
 		}
 
 		// Calculate coordinates of the dot with respect to the center of the frame
-		xCam = keypoints[0].pt.x - 200.0/2;
-		yCam = keypoints[0].pt.y - 200.0/2;
+		xCam = box.center.x - cropped_width/2.0;
+		yCam = box.center.y - cropped_height/2.0;
+		aCam = box.angle;
 
 		// Scale coordinates to mm
-		xCam = xCam / 4.471;
-		yCam = yCam / 4.471;
+		xCam = xCam / 9.1051;
+		yCam = yCam / 9.1051;
 
 		// Calculate move command
 		xMoveLocal = clamp(-xCam, minMove, maxMove);
@@ -177,13 +205,13 @@ int main() {
 		ReleaseMutex(coordMutex);
 
 		// Format data for logging
-		System::String^ format = System::String::Format("{0:0.000},{1:0.000},{2:0.000},{3:0.000},{{0:0.000}}", 
-			xCam, yCam, xStatusLocal, yStatusLocal);
+		System::String^ format = System::String::Format("{0:0.000},{1:0.000},{2:0.000},{3:0.000},{4:0.000},{{0:0.000}}", 
+			xCam, yCam, xStatusLocal, yStatusLocal, aCam);
 
 		// Log data
 		loopTimer->Tock(format);
 	}
-
+	
 	// Close streams
 	loopTimer->Close();
 
