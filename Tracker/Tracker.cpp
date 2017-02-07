@@ -142,15 +142,11 @@ int main() {
 	double minMove = 1;
 	double maxMove = 40;
 
-	for (int i = 0; i < 3000; i++){
+	for (int i = 0; i < 10000; i++){
 		loopTimer->Tick();
 
 		// Read image
 		cap.read(src);
-
-		// Display image
-		//imshow("Result", src);
-		//waitKey(1);
 
 		// Crop, convert to grayscale, threshold
 		cvtColor(src, im, CV_BGR2GRAY);
@@ -174,8 +170,15 @@ int main() {
 		// Fit ellipse
 		if (size_max > 5){
 			box = fitEllipse(Mat(contours[idx_max]));
+			src = src(Rect(buffer, buffer, cropped_width, cropped_height));
+			ellipse(src, box, Scalar(0,0,255), 2, 8);
+			imshow("Result", src);
+			waitKey(1);
 		} else {
 			loopTimer->Tock("0.000,0.000,0.000,0.000,0.000,{0:0.000}");
+			src = src(Rect(buffer, buffer, cropped_width, cropped_height));
+			imshow("Result", src);
+			waitKey(1);
 			continue;
 		}
 
