@@ -74,14 +74,16 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\lib\glm\glm;$(IncludePath)</IncludePath>
+    <IncludePath>$(OPENCV_INC_DIR);$(SFML_INC_DIR);$(GLEW_INC_DIR);$(IncludePath)</IncludePath>
+    <LibraryPath>$(GLEW_LIB_DIR);$(SFML_LIB_DIR);$(OPENCV_LIB_DIR);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>C:\lib\glm\glm;$(IncludePath)</IncludePath>
+    <IncludePath>$(OPENCV_INC_DIR);$(SFML_INC_DIR);$(GLEW_INC_DIR);$(OGRE_HOME)\include;$(OGRE_HOME)\include\OIS;$(OGRE_HOME)\include\OGRE;$(IncludePath)</IncludePath>
+    <LibraryPath>$(GLEW_LIB_DIR);$(SFML_LIB_DIR);$(OPENCV_LIB_DIR);$(OGRE_HOME)\lib\$(Configuration);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -104,13 +106,18 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Create</PrecompiledHeader>
-      <AdditionalIncludeDirectories>C:\lib\glfw-3.1.2.bin.WIN64\include;$(OPENCV_DIR)\include;$(FREEGLUT_DIR)\include\GL;$(GLEW_DIR)\include\GL;C:\lib\glm\glm;C:\lib\glm\glm</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
+      <RuntimeLibrary>
+      </RuntimeLibrary>
+      <CompileAsManaged>true</CompileAsManaged>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opencv_calib3d2410d.lib;opencv_contrib2410d.lib;opencv_core2410d.lib;opencv_features2d2410d.lib;opencv_flann2410d.lib;opencv_gpu2410d.lib;opencv_highgui2410d.lib;opencv_imgproc2410d.lib;opencv_legacy2410d.lib;opencv_ml2410d.lib;opencv_nonfree2410d.lib;opencv_objdetect2410d.lib;opencv_photo2410d.lib;opencv_stitching2410d.lib;opencv_superres2410d.lib;opencv_video2410d.lib;opencv_videostab2410d.lib;opengl32.lib;freeglut.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenGL32.lib;glew32.lib;sfml-window.lib;sfml-graphics.lib;sfml-system.lib;opencv_core2410.lib;opencv_imgproc2410.lib;opencv_highgui2410.lib;opencv_features2d2410.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>$(OPENCV_DIR)\x64\vc12\lib;$(FREEGLUT_DIR)\lib\x64;$(GLEW_DIR)\lib\Release\x64;C:\lib\glfw-3.1.2.bin.WIN64\include</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -130,13 +137,18 @@
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>WIN32;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeader>Create</PrecompiledHeader>
-      <AdditionalIncludeDirectories>C:\lib\glfw-3.1.2.bin.WIN64\include;$(OPENCV_DIR)\include;"$(FREEGLUT_DIR)\include\GL";"$(GLEW_DIR)\include\GL";C:\lib\glm\glm</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>
+      </AdditionalIncludeDirectories>
+      <RuntimeLibrary>
+      </RuntimeLibrary>
+      <CompileAsManaged>true</CompileAsManaged>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opencv_calib3d2410.lib;opencv_contrib2410.lib;opencv_core2410.lib;opencv_features2d2410.lib;opencv_flann2410.lib;opencv_gpu2410.lib;opencv_highgui2410.lib;opencv_imgproc2410.lib;opencv_legacy2410.lib;opencv_ml2410.lib;opencv_nonfree2410.lib;opencv_objdetect2410.lib;opencv_photo2410.lib;opencv_stitching2410.lib;opencv_superres2410.lib;opencv_video2410.lib;opencv_videostab2410.lib;opengl32.lib;freeglut.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>OpenGL32.lib;glew32.lib;sfml-window.lib;sfml-graphics.lib;sfml-system.lib;opencv_core2410.lib;opencv_imgproc2410.lib;opencv_highgui2410.lib;opencv_features2d2410.lib;OgreMain.lib;OIS.lib;OgreOverlay.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
-      <AdditionalLibraryDirectories>$(OPENCV_DIR)\x64\vc12\lib;$(FREEGLUT_DIR)\lib\x64;$(GLEW_DIR)\lib\Release\x64;C:\lib\glfw-3.1.2.bin.WIN64\include</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -149,7 +161,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="arduino.h" />
-    <ClInclude Include="stimulus.h" />
+    <ClInclude Include="MinimalOgre.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="timer.h" />
@@ -161,6 +173,7 @@
   <ItemGroup>
     <ClCompile Include="arduino.cpp" />
     <ClCompile Include="AssemblyInfo.cpp" />
+    <ClCompile Include="MinimalOgre.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

@@ -2,14 +2,13 @@
 
 #include "stdafx.h"
 
+#include "MinimalOgre.h"
+
 #include <windows.h>
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/features2d/features2d.hpp>
-
-#include "glew.h"
-#include "freeglut.h"
 
 #include "arduino.h"
 #include "timer.h"
@@ -106,6 +105,16 @@ double clamp(double value, double min, double max){
 }
 
 int main() {
+	MinimalOgre app;
+	try {
+		app.go();
+	}
+	catch (Ogre::Exception& e) {
+		std::cerr << "An exception has occured: " <<
+			e.getFullDescription().c_str() << std::endl;
+	}
+
+	return 0;
 	// Create the timer
 	DebugTimer^ loopTimer = gcnew DebugTimer("main_loop_time.txt");
 
@@ -159,7 +168,7 @@ int main() {
 
 		// Find biggest contour
 		int idx_max = -1;
-		double size_max = -1;
+		size_t size_max = -1;
 		for (int idx = 0; idx < contours.size(); idx++){
 			if (contours[idx].size() > size_max){
 				size_max = contours[idx].size();

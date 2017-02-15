@@ -30,10 +30,10 @@
     <ClInclude Include="tracker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="stimulus.h">
+    <ClInclude Include="timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="timer.h">
+    <ClInclude Include="MinimalOgre.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -56,6 +56,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="timer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MinimalOgre.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
