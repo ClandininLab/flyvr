@@ -2,7 +2,7 @@
 
 #include "stdafx.h"
 
-#include "MinimalOgre.h"
+#include "TutorialApplication.h"
 
 #include <windows.h>
 
@@ -31,8 +31,18 @@ double yStatus = 0.0;
 // Global variable used to signal when serial port should close
 bool killSerial = false;
 
+// Global variable used to signal when the Ogre3D window should close
+bool kill3D = false;
+
+// Global variable used to indicate when the Ogre3D engine is running
+bool readyFor3D = false;
+
 // Mutex to manage access to xMove and yMove
 HANDLE coordMutex;
+
+// Mutex to manage access to 3D graphics variables
+HANDLE gfxMutex;
+double cameraX=0, cameraY=47, cameraZ=222;
 
 DWORD WINAPI SerialThread(LPVOID lpParam){
 	// lpParam not used in this example
@@ -104,27 +114,57 @@ double clamp(double value, double min, double max){
 	}
 }
 
-int main() {
-	MinimalOgre app;
+DWORD WINAPI GraphicsThread(LPVOID lpParam){
+	// lpParam not used in this example
+	UNREFERENCED_PARAMETER(lpParam);
+	TutorialApplication app;
+	double cameraX_local, cameraY_local, cameraZ_local;
 	try {
 		app.go();
+		readyFor3D = true;
+		while (!kill3D){
+			// Copy over the camera position information
+			WaitForSingleObject(gfxMutex, INFINITE);
+			cameraX_local = cameraX;
+			cameraY_local = cameraY;
+			cameraZ_local = cameraZ;
+			ReleaseMutex(gfxMutex);
+
+			// Move the camera
+			app.setCameraPosition(cameraX_local, cameraY_local, cameraZ_local);
+
+			// Render the frame
+			app.renderOneFrame();
+		}
 	}
 	catch (Ogre::Exception& e) {
 		std::cerr << "An exception has occured: " <<
 			e.getFullDescription().c_str() << std::endl;
 	}
+	return TRUE;
+}
 
-	return 0;
+int main() {
+	
 	// Create the timer
 	DebugTimer^ loopTimer = gcnew DebugTimer("main_loop_time.txt");
 
 	// Create the mutexes
 	coordMutex = CreateMutex(NULL, FALSE, NULL);
+	gfxMutex = CreateMutex(NULL, FALSE, NULL);
 
 	// Start the serial thread
 	HANDLE serialThread;
-	DWORD ThreadID;
-	serialThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)SerialThread, NULL, 0, &ThreadID);
+	DWORD serThreadID;
+	serialThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)SerialThread, NULL, 0, &serThreadID);
+	
+	// Create the graphics thread
+	HANDLE graphicsThread;
+	DWORD gfxThreadID;
+	graphicsThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)GraphicsThread, NULL, 0, &gfxThreadID);
+
+	// Wait for 3D engine to be up and running
+	while (!readyFor3D);
 	
 	// Options
 	int width = 200;
@@ -168,7 +208,7 @@ int main() {
 
 		// Find biggest contour
 		int idx_max = -1;
-		size_t size_max = -1;
+		size_t size_max = 0;
 		for (int idx = 0; idx < contours.size(); idx++){
 			if (contours[idx].size() > size_max){
 				size_max = contours[idx].size();
@@ -181,13 +221,13 @@ int main() {
 			box = fitEllipse(Mat(contours[idx_max]));
 			src = src(Rect(buffer, buffer, cropped_width, cropped_height));
 			ellipse(src, box, Scalar(0,0,255), 2, 8);
-			imshow("Result", src);
-			waitKey(1);
+			//imshow("Result", src);
+			//waitKey(1);
 		} else {
 			loopTimer->Tock("0.000,0.000,0.000,0.000,0.000,{0:0.000}");
 			src = src(Rect(buffer, buffer, cropped_width, cropped_height));
-			imshow("Result", src);
-			waitKey(1);
+			//imshow("Result", src);
+			//waitKey(1);
 			continue;
 		}
 
@@ -216,6 +256,13 @@ int main() {
 		// Release access to coordinate data
 		ReleaseMutex(coordMutex);
 
+		// Update camera display
+		WaitForSingleObject(gfxMutex, INFINITE);
+		cameraX = yStatusLocal + yCam + 85.175;
+		cameraY = 47;
+		cameraZ = xStatusLocal - xCam + 715;
+		ReleaseMutex(gfxMutex);
+
 		// Format data for logging
 		System::String^ format = System::String::Format("{0:0.000},{1:0.000},{2:0.000},{3:0.000},{4:0.000},{{0:0.000}}", 
 			xCam, yCam, xStatusLocal, yStatusLocal, aCam);
@@ -236,6 +283,16 @@ int main() {
 	// Close the handles to the mutexes and serial thread
 	CloseHandle(serialThread);
 	CloseHandle(coordMutex);
+
+	// Kill the 3D graphics thread
+	kill3D = true;
+
+	// Wait for serial thread to terminate
+	WaitForSingleObject(graphicsThread, INFINITE);
+
+	// Close the handles to the mutexes and graphics thread
+	CloseHandle(graphicsThread);
+	CloseHandle(gfxMutex);
 
 	return 0;
 }

@@ -59,8 +59,9 @@ GrblStatus GrblBoard::ReadStatus(){
 	}
 
 	// Parse response from GRBL
-	// <Idle,MPos:0.000,0.000,0.000>
-	Regex^ regex = gcnew Regex("<(Idle|Run),MPos:(-?\\d+\\.\\d+),(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)>");
+	// The format changed a bit between 0.9 and 1.1
+	// <Idle|MPos:0.000,0.000,0.000
+	Regex^ regex = gcnew Regex("<(Idle|Run)\\|MPos:(-?\\d+\\.\\d+),(-?\\d+\\.\\d+),(-?\\d+\\.\\d+)");
 	Match^ match = regex->Match(resp);
 
 	GrblStatus status;
