@@ -75,15 +75,15 @@ public:
     virtual ~BaseApplication(void);
 
     virtual void go(void);
-	virtual void setCameraPosition(double x, double y, double z);
-	virtual void setCameraTarget(double x, double y, double z);
+	virtual void setCameraPosition(double x, double y, double z, unsigned idx=0);
+	virtual void setCameraTarget(double x, double y, double z, unsigned idx=0);
 	virtual void renderOneFrame(void);
 	virtual void destroyScene(void);
 
 protected:
     virtual bool setup();
     virtual bool configure(void);
-	virtual bool createMultipleRenderWindows();
+	virtual bool createMultipleRenderWindows(unsigned start, unsigned end);
     virtual void chooseSceneManager(void);
     virtual void createCamera(void);
     virtual void createFrameListener(void);
@@ -108,6 +108,7 @@ protected:
 
     Ogre::Root*                 mRoot;
     Ogre::Camera*               mCamera;
+	Ogre::Camera*               mCameras[2];
     Ogre::SceneManager*         mSceneMgr;
     Ogre::RenderWindow*         mWindow;
 	Ogre::RenderWindowList      mRenderWindows;

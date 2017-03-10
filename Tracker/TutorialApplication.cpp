@@ -15,6 +15,8 @@ void TutorialApplication::createScene(void)
 	mSceneMgr->setAmbientLight(Ogre::ColourValue(0.5, 0.5, 0.5));
 
 	setCameraPosition(0, 47, 222);
+	setCameraPosition(0, 47, 222, 1);
+	setCameraPosition(0, 47, 222, 2);
 
 	Ogre::Light* light = mSceneMgr->createLight("MainLight");
 	light->setPosition(20.0, 80.0, 50.0);

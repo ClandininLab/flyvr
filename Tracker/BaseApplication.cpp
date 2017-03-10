@@ -70,10 +70,9 @@ bool BaseApplication::configure(void)
     if(mRoot->showConfigDialog())
     {
         // If returned true, user clicked OK so initialise.
-        // Here we choose to let the system create a default rendering window by passing 'true'.
-        // mWindow = mRoot->initialise(true, "TutorialApplication Render Window");
 
-		createMultipleRenderWindows();
+        // Create multiple render windows, using code from PlayPen.cpp
+		createMultipleRenderWindows(1,3);
 
         return true;
     }
@@ -83,13 +82,14 @@ bool BaseApplication::configure(void)
     }
 }
 //---------------------------------------------------------------------------
-bool BaseApplication::createMultipleRenderWindows()
+bool BaseApplication::createMultipleRenderWindows(unsigned start, unsigned end)
 {
 	// Create the main window.
-	mWindow = mRoot->initialise(true, "RenderWindow_0");
+	Ogre::String strWindowName = "RenderWindow_" + Ogre::StringConverter::toString(start);
+	mWindow = mRoot->initialise(true, strWindowName);
 
 	// Create the rest of the windows.
-	for (unsigned i = 1; i < mRoot->getDisplayMonitorCount(); ++i)
+	for (unsigned i = start+1; i <= end; i++)
 	{
 		Ogre::String strWindowName = "RenderWindow_" + Ogre::StringConverter::toString(i);
 		Ogre::NameValuePairList nvList;
@@ -117,14 +117,24 @@ void BaseApplication::chooseSceneManager(void)
     mSceneMgr->addRenderQueueListener(mOverlaySystem);
 }
 //---------------------------------------------------------------------------
-void BaseApplication::setCameraPosition(double x, double y, double z)
+void BaseApplication::setCameraPosition(double x, double y, double z, unsigned idx)
 {
-	mCamera->setPosition(Ogre::Vector3(x, y, z));
+	if (idx == 0){
+		mCamera->setPosition(Ogre::Vector3(x, y, z));
+	}
+	else {
+		mCameras[idx-1]->setPosition(Ogre::Vector3(x, y, z));
+	}
 }
 //---------------------------------------------------------------------------
-void BaseApplication::setCameraTarget(double x, double y, double z)
+void BaseApplication::setCameraTarget(double x, double y, double z, unsigned idx)
 {
-	mCamera->lookAt(Ogre::Vector3(x, y, z));
+	if (idx == 0){
+		mCamera->lookAt(Ogre::Vector3(x, y, z));
+	}
+	else {
+		mCameras[idx-1]->lookAt(Ogre::Vector3(x, y, z));
+	}
 }
 //---------------------------------------------------------------------------
 void BaseApplication::renderOneFrame(void)
@@ -144,6 +154,14 @@ void BaseApplication::createCamera(void)
     mCamera->setNearClipDistance(5);
 
     mCameraMan = new OgreBites::SdkCameraMan(mCamera);   // Create a default camera controller
+
+	// Create the other cameras
+	for (unsigned i = 0; i <= 1; i++){
+		Ogre::String strCameraName = "PlayerCam_" + Ogre::StringConverter::toString(i);
+		mCameras[i] = mSceneMgr->createCamera(strCameraName);
+		mCameras[i]->setPosition(Ogre::Vector3(0, 0, 80));
+		mCameras[i]->lookAt(Ogre::Vector3(0, 0, -300));
+	}
 }
 //---------------------------------------------------------------------------
 void BaseApplication::createFrameListener(void)
@@ -176,7 +194,7 @@ void BaseApplication::createFrameListener(void)
     mTrayMgr = new OgreBites::SdkTrayManager("InterfaceName", mWindow, mInputContext, this);
     mTrayMgr->showFrameStats(OgreBites::TL_BOTTOMLEFT);
     mTrayMgr->showLogo(OgreBites::TL_BOTTOMRIGHT);
-    mTrayMgr->hideCursor();
+    //mTrayMgr->hideCursor();
 
     // Create a params panel for displaying sample details
     Ogre::StringVector items;
@@ -225,7 +243,7 @@ void BaseApplication::attachCameraToAdditionalRenderWindows()
 	{
 		Ogre::RenderWindow* pCurWindow = mRenderWindows[i];
 
-		pCurWindow->addViewport(mCamera);
+		pCurWindow->addViewport(mCameras[i]);
 	}
 }
 //---------------------------------------------------------------------------

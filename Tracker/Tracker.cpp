@@ -42,7 +42,9 @@ HANDLE coordMutex;
 
 // Mutex to manage access to 3D graphics variables
 HANDLE gfxMutex;
-double cameraX=0, cameraY=47, cameraZ=222;
+double camera0_X = 0, camera0_Y = 47, camera0_Z = 222;
+double camera1_X = 0, camera1_Y = 47, camera1_Z = 222;
+double camera2_X = 0, camera2_Y = 47, camera2_Z = 222;
 
 DWORD WINAPI SerialThread(LPVOID lpParam){
 	// lpParam not used in this example
@@ -118,20 +120,30 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 	// lpParam not used in this example
 	UNREFERENCED_PARAMETER(lpParam);
 	TutorialApplication app;
-	double cameraX_local, cameraY_local, cameraZ_local;
+	double camera0_X_local, camera0_Y_local, camera0_Z_local;
+	double camera1_X_local, camera1_Y_local, camera1_Z_local;
+	double camera2_X_local, camera2_Y_local, camera2_Z_local;
 	try {
 		app.go();
 		readyFor3D = true;
 		while (!kill3D){
 			// Copy over the camera position information
 			WaitForSingleObject(gfxMutex, INFINITE);
-			cameraX_local = cameraX;
-			cameraY_local = cameraY;
-			cameraZ_local = cameraZ;
+			camera0_X_local = camera0_X;
+			camera0_Y_local = camera0_Y;
+			camera0_Z_local = camera0_Z;
+			camera1_X_local = camera1_X;
+			camera1_Y_local = camera1_Y;
+			camera1_Z_local = camera1_Z;
+			camera2_X_local = camera2_X;
+			camera2_Y_local = camera2_Y;
+			camera2_Z_local = camera2_Z;
 			ReleaseMutex(gfxMutex);
 
-			// Move the camera
-			app.setCameraPosition(cameraX_local, cameraY_local, cameraZ_local);
+			// Move the cameras
+			app.setCameraPosition(camera0_X_local, camera0_Y_local, camera0_Z_local, 0);
+			app.setCameraPosition(camera1_X_local, camera1_Y_local, camera1_Z_local, 1);
+			app.setCameraPosition(camera2_X_local, camera2_Y_local, camera2_Z_local, 2);
 
 			// Render the frame
 			app.renderOneFrame();
@@ -195,7 +207,7 @@ int main() {
 	double xStatusLocal, yStatusLocal;
 	*/
 
-	for (int i = 0; i < 10; i++){
+	for (int i = 0; i < 3000; i++){
 
 //		loopTimer->Tick();
 
@@ -271,12 +283,12 @@ int main() {
 		cameraY = 47;
 		cameraZ = xStatusLocal - xCam + 715;
 		*/
-		cameraX = 0;
-		cameraY = 47;
-		cameraZ = 222;
+		camera0_X += 0.05;
+		camera1_Y += 0.05;
+		camera2_Z += 0.05;
 		ReleaseMutex(gfxMutex);
 
-		Sleep(1000);
+		Sleep(5);
 
 		/*
 		// Format data for logging
