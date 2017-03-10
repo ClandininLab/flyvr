@@ -83,11 +83,13 @@ public:
 protected:
     virtual bool setup();
     virtual bool configure(void);
+	virtual bool createMultipleRenderWindows();
     virtual void chooseSceneManager(void);
     virtual void createCamera(void);
     virtual void createFrameListener(void);
     virtual void createScene(void) = 0; // Override me!
     virtual void createViewports(void);
+	virtual void attachCameraToAdditionalRenderWindows(void);
     virtual void setupResources(void);
     virtual void createResourceListener(void);
     virtual void loadResources(void);
@@ -108,6 +110,7 @@ protected:
     Ogre::Camera*               mCamera;
     Ogre::SceneManager*         mSceneMgr;
     Ogre::RenderWindow*         mWindow;
+	Ogre::RenderWindowList      mRenderWindows;
     Ogre::String                mResourcesCfg;
     Ogre::String                mPluginsCfg;
 

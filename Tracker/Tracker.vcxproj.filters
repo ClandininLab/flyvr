@@ -39,9 +39,6 @@
     <ClInclude Include="TutorialApplication.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TinyOgre.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="app.rc">
@@ -68,9 +65,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TutorialApplication.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="TinyOgre.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

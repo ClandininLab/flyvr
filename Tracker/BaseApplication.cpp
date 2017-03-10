@@ -71,7 +71,9 @@ bool BaseApplication::configure(void)
     {
         // If returned true, user clicked OK so initialise.
         // Here we choose to let the system create a default rendering window by passing 'true'.
-        mWindow = mRoot->initialise(true, "TutorialApplication Render Window");
+        // mWindow = mRoot->initialise(true, "TutorialApplication Render Window");
+
+		createMultipleRenderWindows();
 
         return true;
     }
@@ -79,6 +81,30 @@ bool BaseApplication::configure(void)
     {
         return false;
     }
+}
+//---------------------------------------------------------------------------
+bool BaseApplication::createMultipleRenderWindows()
+{
+	// Create the main window.
+	mWindow = mRoot->initialise(true, "RenderWindow_0");
+
+	// Create the rest of the windows.
+	for (unsigned i = 1; i < mRoot->getDisplayMonitorCount(); ++i)
+	{
+		Ogre::String strWindowName = "RenderWindow_" + Ogre::StringConverter::toString(i);
+		Ogre::NameValuePairList nvList;
+
+		nvList["monitorIndex"] = Ogre::StringConverter::toString(i);
+
+		Ogre::RenderWindow* currRenderWindow = mRoot->createRenderWindow(strWindowName,
+			mWindow->getWidth(), mWindow->getHeight(), mWindow->isFullScreen(), &nvList);
+
+		currRenderWindow->setDeactivateOnFocusChange(false);
+
+		mRenderWindows.push_back(currRenderWindow);
+	}
+
+	return true;
 }
 //---------------------------------------------------------------------------
 void BaseApplication::chooseSceneManager(void)
@@ -182,10 +208,25 @@ void BaseApplication::createViewports(void)
 {
     // Create one viewport, entire window
     Ogre::Viewport* vp = mWindow->addViewport(mCamera);
+
     vp->setBackgroundColour(Ogre::ColourValue(0,0,0));
 
     // Alter the camera aspect ratio to match the viewport
     mCamera->setAspectRatio(Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
+
+	// Add the secondary viewports
+	attachCameraToAdditionalRenderWindows();
+}
+//---------------------------------------------------------------------------
+void BaseApplication::attachCameraToAdditionalRenderWindows()
+{
+	// Create camera for the secondary render windows.
+	for (unsigned int i = 0; i < mRenderWindows.size(); ++i)
+	{
+		Ogre::RenderWindow* pCurWindow = mRenderWindows[i];
+
+		pCurWindow->addViewport(mCamera);
+	}
 }
 //---------------------------------------------------------------------------
 void BaseApplication::setupResources(void)

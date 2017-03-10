@@ -145,20 +145,25 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 }
 
 int main() {
-	
+
+	/*
 	// Create the timer
 	DebugTimer^ loopTimer = gcnew DebugTimer("main_loop_time.txt");
+	*/
 
-	// Create the mutexes
-	coordMutex = CreateMutex(NULL, FALSE, NULL);
-	gfxMutex = CreateMutex(NULL, FALSE, NULL);
-
-	// Start the serial thread
+	/*
+	// GRBL Setup
 	HANDLE serialThread;
 	DWORD serThreadID;
 	serialThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)SerialThread, NULL, 0, &serThreadID);
-	
-	// Create the graphics thread
+	coordMutex = CreateMutex(NULL, FALSE, NULL);
+
+	double minMove = 1;
+	double maxMove = 40;
+	*/
+
+	// Graphics setup
+	gfxMutex = CreateMutex(NULL, FALSE, NULL);
 	HANDLE graphicsThread;
 	DWORD gfxThreadID;
 	graphicsThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)GraphicsThread, NULL, 0, &gfxThreadID);
@@ -166,7 +171,8 @@ int main() {
 	// Wait for 3D engine to be up and running
 	while (!readyFor3D);
 	
-	// Options
+	/*
+	// Camera setup
 	int width = 200;
 	int height = 200;
 	int blur_size = 10;
@@ -187,13 +193,13 @@ int main() {
 
 	double xCam, yCam, xMoveLocal, yMoveLocal, aCam;
 	double xStatusLocal, yStatusLocal;
+	*/
 
-	double minMove = 1;
-	double maxMove = 40;
+	for (int i = 0; i < 10; i++){
 
-	for (int i = 0; i < 10000; i++){
-		loopTimer->Tick();
+//		loopTimer->Tick();
 
+		/*
 		// Read image
 		cap.read(src);
 
@@ -224,7 +230,7 @@ int main() {
 			//imshow("Result", src);
 			//waitKey(1);
 		} else {
-			loopTimer->Tock("0.000,0.000,0.000,0.000,0.000,{0:0.000}");
+			// loopTimer->Tock("0.000,0.000,0.000,0.000,0.000,{0:0.000}");
 			src = src(Rect(buffer, buffer, cropped_width, cropped_height));
 			//imshow("Result", src);
 			//waitKey(1);
@@ -256,21 +262,33 @@ int main() {
 		// Release access to coordinate data
 		ReleaseMutex(coordMutex);
 
-		// Update camera display
+		*/
+
+		// Update graphics display
 		WaitForSingleObject(gfxMutex, INFINITE);
+		/*
 		cameraX = yStatusLocal + yCam + 85.175;
 		cameraY = 47;
 		cameraZ = xStatusLocal - xCam + 715;
+		*/
+		cameraX = 0;
+		cameraY = 47;
+		cameraZ = 222;
 		ReleaseMutex(gfxMutex);
 
+		Sleep(1000);
+
+		/*
 		// Format data for logging
 		System::String^ format = System::String::Format("{0:0.000},{1:0.000},{2:0.000},{3:0.000},{4:0.000},{{0:0.000}}", 
 			xCam, yCam, xStatusLocal, yStatusLocal, aCam);
 
 		// Log data
 		loopTimer->Tock(format);
+		*/
 	}
 	
+	/*
 	// Close streams
 	loopTimer->Close();
 
@@ -283,6 +301,7 @@ int main() {
 	// Close the handles to the mutexes and serial thread
 	CloseHandle(serialThread);
 	CloseHandle(coordMutex);
+	*/
 
 	// Kill the 3D graphics thread
 	kill3D = true;
@@ -296,150 +315,3 @@ int main() {
 
 	return 0;
 }
-
-/*
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-switch (uMsg)
-{
-case WM_CREATE:
-{
-PIXELFORMATDESCRIPTOR pfd =
-{
-sizeof(PIXELFORMATDESCRIPTOR),
-1,
-PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,    //Flags
-PFD_TYPE_RGBA,            //The kind of framebuffer. RGBA or palette.
-32,                        //Colordepth of the framebuffer.
-0, 0, 0, 0, 0, 0,
-0,
-0,
-0,
-0, 0, 0, 0,
-24,                        //Number of bits for the depthbuffer
-8,                        //Number of bits for the stencilbuffer
-0,                        //Number of Aux buffers in the framebuffer.
-PFD_MAIN_PLANE,
-0,
-0, 0, 0
-};
-
-HDC hdc = GetDC(hwnd);
-
-int pixel_format_num = ChoosePixelFormat(hdc, &pfd);
-SetPixelFormat(hdc, pixel_format_num, &pfd);
-
-}
-break;
-
-default:
-return DefWindowProc(hwnd, uMsg, wParam, lParam);
-}
-return 0;
-}
-
-BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
-{
-
-int *monitor_num = (int*)dwData;
-
-MONITORINFOEX monitor_info;
-ZeroMemory(&monitor_info, sizeof(MONITORINFOEX));
-monitor_info.cbSize = sizeof(MONITORINFOEX);
-
-bool success = GetMonitorInfo(hMonitor, &monitor_info);
-if (success) {
-wprintf(L"Device Name of Monitor: %s\n", monitor_info.szDevice);
-POINT monitorTopLeft;
-int width = abs(abs(monitor_info.rcMonitor.left) - abs(monitor_info.rcMonitor.right));
-int height = abs(abs(monitor_info.rcMonitor.top) - abs(monitor_info.rcMonitor.bottom));
-monitorTopLeft.x = monitor_info.rcMonitor.left;
-monitorTopLeft.y = monitor_info.rcMonitor.top;
-if (monitorTopLeft.x == 0 && monitorTopLeft.y == 0) {
-return TRUE;
-}
-HWND hwnd = CreateWindow(wc.lpszClassName, L"opengl_window", WS_OVERLAPPEDWINDOW|WS_VISIBLE, monitorTopLeft.x, monitorTopLeft.y, width, height, NULL, NULL, wc.hInstance, NULL);
-if (hwnd) {
-window_handles[*monitor_num] = hwnd;
-HDC hdc = GetWindowDC(hwnd);
-
-if (hdc) {
-device_context_handles[*monitor_num] = hdc;
-} else {
-printf("FAIL TO GET HDC\n");
-}
-
-} else {
-printf("FAIL TO GET HWND\n");
-}
-}
-(*monitor_num)++;
-return TRUE;
-}
-*/
-
-//	HINSTANCE hInstance = GetModuleHandle(NULL);
-//	if (!hInstance) {
-//		printf("NOT VALID HINSTANCE\n");
-//	}
-//
-//	wc.style = CS_OWNDC;
-//	wc.lpfnWndProc = WindowProc;
-//	wc.hInstance = hInstance;
-//	wc.hbrBackground = (HBRUSH)(COLOR_BACKGROUND);
-//	wc.lpszClassName = L"opengl_window";
-//	if (!RegisterClass(&wc)) {
-//		printf("COULD NOT REGISTER CLASS\n");
-//	}
-//
-//	char *myargv[1];
-//	int myargc = 1;
-//	myargv[0] = _strdup("Myappname");
-//	glutInit(&myargc, myargv);
-//	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-//
-//	int monitor_num = 0;
-//	EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, (LPARAM)&monitor_num);
-//
-//	num_context = monitor_num;
-//	for (int m_num = 0; m_num < num_context; m_num++) {
-//		HWND curr_hwnd = window_handles[m_num];
-//		if (IsWindow(curr_hwnd)) {
-//			printf("VALID WINDOW\n");
-//		}
-//		else {
-//			printf("INVALID WINDOW #%d", m_num);
-//		}
-//		HDC curr_hdc = device_context_handles[m_num];
-//		HGLRC curr_hglrc = wglCreateContext(curr_hdc);
-//		render_context_handles[m_num] = curr_hglrc;
-//		if (wglMakeCurrent(curr_hdc, curr_hglrc)) {
-//			//glewInit();
-//		}
-//	}
-//
-//	// Start threads
-//	//HANDLE camera_display_handle = (HANDLE) _beginthread(cameraDisplayLoop, 0, &capped_frame); // Hopefully this allows the camera display to work without slowing down the main loop
-//	// @@@@@@ MAIN LOOP @@@@@@
-//			
-//				if (get_counter() - screen_update_timer >= 8)
-//				{
-//					for (int rc_num = 0; rc_num < num_context; rc_num++) {
-//						HGLRC curr_hglrc = render_context_handles[rc_num];
-//						HDC curr_hdc = device_context_handles[rc_num];
-//						if (wglMakeCurrent(curr_hdc, curr_hglrc)) {
-//							draw_cylinder_bars(rc_num, closed_loop_stimulus);
-//						}
-//					}
-//
-//					screen_update_timer = get_counter();
-//				}
-//
-
-//	//CloseHandle(camera_display_handle);
-//
-//
-//	arduino->Close();
-//
-//	return 0;
-
