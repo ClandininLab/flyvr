@@ -13,7 +13,12 @@
 #include "arduino.h"
 #include "timer.h"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #pragma comment(lib, "user32.lib")
+
+#define N_FILT 100
 
 using namespace System;
 using namespace System::IO::Ports;
@@ -158,12 +163,9 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 
 int main() {
 
-	/*
 	// Create the timer
 	DebugTimer^ loopTimer = gcnew DebugTimer("main_loop_time.txt");
-	*/
 
-	/*
 	// GRBL Setup
 	HANDLE serialThread;
 	DWORD serThreadID;
@@ -172,7 +174,6 @@ int main() {
 
 	double minMove = 1;
 	double maxMove = 40;
-	*/
 
 	// Graphics setup
 	gfxMutex = CreateMutex(NULL, FALSE, NULL);
@@ -183,7 +184,6 @@ int main() {
 	// Wait for 3D engine to be up and running
 	while (!readyFor3D);
 	
-	/*
 	// Camera setup
 	int width = 200;
 	int height = 200;
@@ -205,13 +205,16 @@ int main() {
 
 	double xCam, yCam, xMoveLocal, yMoveLocal, aCam;
 	double xStatusLocal, yStatusLocal;
-	*/
 
-	for (int i = 0; i < 3000; i++){
+	double filt_array[N_FILT];
+	for (unsigned i = 0; i < N_FILT; i++){
+		filt_array[i] = 0.0;
+	}
 
-//		loopTimer->Tick();
+	for (int i = 0; i < 12000; i++){
 
-		/*
+		loopTimer->Tick();
+
 		// Read image
 		cap.read(src);
 
@@ -242,7 +245,7 @@ int main() {
 			//imshow("Result", src);
 			//waitKey(1);
 		} else {
-			// loopTimer->Tock("0.000,0.000,0.000,0.000,0.000,{0:0.000}");
+			loopTimer->Tock("0.000,0.000,0.000,0.000,0.000,{0:0.000}");
 			src = src(Rect(buffer, buffer, cropped_width, cropped_height));
 			//imshow("Result", src);
 			//waitKey(1);
@@ -274,33 +277,37 @@ int main() {
 		// Release access to coordinate data
 		ReleaseMutex(coordMutex);
 
-		*/
+		// Update filter buffer
+		for (unsigned i = N_FILT-1; i >= 1; i--){
+			filt_array[i] = filt_array[i - 1];
+		}
+		filt_array[0] = aCam;
+
+		// Update filtered angle
+		double aCam_filt = 0.0;
+		for (unsigned i = 0; i < N_FILT; i++){
+			aCam_filt += filt_array[i];
+		}
+		aCam_filt /= 1.0*N_FILT;
 
 		// Update graphics display
 		WaitForSingleObject(gfxMutex, INFINITE);
-		/*
-		cameraX = yStatusLocal + yCam + 85.175;
-		cameraY = 47;
-		cameraZ = xStatusLocal - xCam + 715;
-		*/
-		camera0_X += 0.05;
-		camera1_Y += 0.05;
-		camera2_Z += 0.05;
+
+		camera0_X = 222*cos(aCam_filt*M_PI/180.0);
+		camera0_Z = 222*sin(aCam_filt*M_PI/180.0);
+		camera1_X = (yStatusLocal + yCam);
+		camera2_Z = 222 + (xStatusLocal - xCam);
+
 		ReleaseMutex(gfxMutex);
 
-		Sleep(5);
-
-		/*
 		// Format data for logging
 		System::String^ format = System::String::Format("{0:0.000},{1:0.000},{2:0.000},{3:0.000},{4:0.000},{{0:0.000}}", 
 			xCam, yCam, xStatusLocal, yStatusLocal, aCam);
 
 		// Log data
 		loopTimer->Tock(format);
-		*/
 	}
 	
-	/*
 	// Close streams
 	loopTimer->Close();
 
@@ -313,7 +320,6 @@ int main() {
 	// Close the handles to the mutexes and serial thread
 	CloseHandle(serialThread);
 	CloseHandle(coordMutex);
-	*/
 
 	// Kill the 3D graphics thread
 	kill3D = true;
