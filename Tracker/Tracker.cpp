@@ -2,7 +2,7 @@
 
 #include "stdafx.h"
 
-#include "TutorialApplication.h"
+#include "OgreApplication.h"
 
 #include <windows.h>
 
@@ -47,6 +47,7 @@ HANDLE coordMutex;
 
 // Mutex to manage access to 3D graphics variables
 HANDLE gfxMutex;
+
 double camera0_X = 0, camera0_Y = 47, camera0_Z = 222;
 double camera1_X = 0, camera1_Y = 47, camera1_Z = 222;
 double camera2_X = 0, camera2_Y = 47, camera2_Z = 222;
@@ -124,7 +125,7 @@ double clamp(double value, double min, double max){
 DWORD WINAPI GraphicsThread(LPVOID lpParam){
 	// lpParam not used in this example
 	UNREFERENCED_PARAMETER(lpParam);
-	TutorialApplication app;
+	OgreApplication app;
 	double camera0_X_local, camera0_Y_local, camera0_Z_local;
 	double camera1_X_local, camera1_Y_local, camera1_Z_local;
 	double camera2_X_local, camera2_Y_local, camera2_Z_local;
@@ -207,11 +208,13 @@ int main() {
 	double xStatusLocal, yStatusLocal;
 
 	double filt_array[N_FILT];
+	double lastAngle = 0.0;
+	double unwrapTol = 160.0;
 	for (unsigned i = 0; i < N_FILT; i++){
 		filt_array[i] = 0.0;
 	}
 
-	for (int i = 0; i < 12000; i++){
+	for (int i = 0; i < 5000; i++){
 
 		loopTimer->Tick();
 
@@ -256,6 +259,14 @@ int main() {
 		xCam = box.center.x - cropped_width/2.0;
 		yCam = box.center.y - cropped_height/2.0;
 		aCam = box.angle;
+
+		// Unwrap angle
+		while (lastAngle - aCam > unwrapTol){
+			aCam += 180.0;
+		}
+		while (aCam - lastAngle > unwrapTol){
+			aCam -= 180.0;
+		}
 
 		// Scale coordinates to mm
 		xCam = xCam / 9.1051;

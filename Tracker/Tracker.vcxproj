@@ -163,12 +163,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="arduino.h" />
-    <ClInclude Include="BaseApplication.h" />
+    <ClInclude Include="OgreApplication.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="timer.h" />
     <ClInclude Include="tracker.h" />
-    <ClInclude Include="TutorialApplication.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="app.rc" />
@@ -176,7 +175,7 @@
   <ItemGroup>
     <ClCompile Include="arduino.cpp" />
     <ClCompile Include="AssemblyInfo.cpp" />
-    <ClCompile Include="BaseApplication.cpp" />
+    <ClCompile Include="OgreApplication.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -187,7 +186,6 @@
     <ClCompile Include="Tracker.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="TutorialApplication.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="app.ico" />

@@ -1,6 +1,6 @@
 /*
 -----------------------------------------------------------------------------
-Filename:    BaseApplication.h
+Filename:    OgreApplication.h
 -----------------------------------------------------------------------------
 
 This source file is part of the
@@ -15,8 +15,8 @@ http://www.ogre3d.org/wiki/
 -----------------------------------------------------------------------------
 */
 
-#ifndef __BaseApplication_h_
-#define __BaseApplication_h_
+#ifndef __OgreApplication_h_
+#define __OgreApplication_h_
 
 #include <OgreCamera.h>
 #include <OgreEntity.h>
@@ -27,52 +27,23 @@ http://www.ogre3d.org/wiki/
 #include <OgreRenderWindow.h>
 #include <OgreConfigFile.h>
 
-#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE
-#  include <OIS/OISEvents.h>
-#  include <OIS/OISInputManager.h>
-#  include <OIS/OISKeyboard.h>
-#  include <OIS/OISMouse.h>
+#include <OISEvents.h>
+#include <OISInputManager.h>
+#include <OISKeyboard.h>
+#include <OISMouse.h>
 
-#  include <OGRE/SdkTrays.h>
-#  include <OGRE/SdkCameraMan.h>
-#else
-#  include <OISEvents.h>
-#  include <OISInputManager.h>
-#  include <OISKeyboard.h>
-#  include <OISMouse.h>
+#include <SdkTrays.h>
 
-#  include <SdkTrays.h>
-#  include <SdkCameraMan.h>
-#endif
-
-#ifdef OGRE_STATIC_LIB
-#  define OGRE_STATIC_GL
-#  if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
-#    define OGRE_STATIC_Direct3D9
-// D3D10 will only work on vista, so be careful about statically linking
-#    if OGRE_USE_D3D10
-#      define OGRE_STATIC_Direct3D10
-#    endif
-#  endif
-#  define OGRE_STATIC_BSPSceneManager
-#  define OGRE_STATIC_ParticleFX
-#  define OGRE_STATIC_CgProgramManager
-#  ifdef OGRE_USE_PCZ
-#    define OGRE_STATIC_PCZSceneManager
-#    define OGRE_STATIC_OctreeZone
-#  else
-#    define OGRE_STATIC_OctreeSceneManager
-#  endif
-#  include "OgreStaticPluginLoader.h"
-#endif
+#define FIRST_DISPLAY 1
+#define DISPLAY_COUNT 3
 
 //---------------------------------------------------------------------------
 
-class BaseApplication : public Ogre::FrameListener, public Ogre::WindowEventListener, public OIS::KeyListener, public OIS::MouseListener, OgreBites::SdkTrayListener
+class OgreApplication : public Ogre::FrameListener, public Ogre::WindowEventListener, public OIS::KeyListener, public OIS::MouseListener, OgreBites::SdkTrayListener
 {
 public:
-    BaseApplication(void);
-    virtual ~BaseApplication(void);
+    OgreApplication(void);
+    virtual ~OgreApplication(void);
 
     virtual void go(void);
 	virtual void setCameraPosition(double x, double y, double z, unsigned idx=0);
@@ -83,13 +54,12 @@ public:
 protected:
     virtual bool setup();
     virtual bool configure(void);
-	virtual bool createMultipleRenderWindows(unsigned start, unsigned end);
+	virtual bool createWindows();
+	virtual void createScene();
     virtual void chooseSceneManager(void);
-    virtual void createCamera(void);
+    virtual void createCameras(void);
     virtual void createFrameListener(void);
-    virtual void createScene(void) = 0; // Override me!
     virtual void createViewports(void);
-	virtual void attachCameraToAdditionalRenderWindows(void);
     virtual void setupResources(void);
     virtual void createResourceListener(void);
     virtual void loadResources(void);
@@ -107,11 +77,9 @@ protected:
     virtual void windowClosed(Ogre::RenderWindow* rw);
 
     Ogre::Root*                 mRoot;
-    Ogre::Camera*               mCamera;
-	Ogre::Camera*               mCameras[2];
+	Ogre::Camera*               mCameras[DISPLAY_COUNT];
     Ogre::SceneManager*         mSceneMgr;
-    Ogre::RenderWindow*         mWindow;
-	Ogre::RenderWindowList      mRenderWindows;
+    Ogre::RenderWindow*         mWindows[DISPLAY_COUNT];
     Ogre::String                mResourcesCfg;
     Ogre::String                mPluginsCfg;
 
@@ -120,10 +88,8 @@ protected:
     // OgreBites
     OgreBites::InputContext     mInputContext;
     OgreBites::SdkTrayManager*	mTrayMgr;
-    OgreBites::SdkCameraMan*    mCameraMan;     	// Basic camera controller
     OgreBites::ParamsPanel*     mDetailsPanel;   	// Sample details panel
     bool                        mCursorWasVisible;	// Was cursor visible before dialog appeared?
-    bool                        mShutDown;
 
     //OIS Input devices
     OIS::InputManager*          mInputManager;
@@ -132,14 +98,10 @@ protected:
 
     // Added for Mac compatibility
     Ogre::String                 m_ResourcePath;
-
-#ifdef OGRE_STATIC_LIB
-    Ogre::StaticPluginLoader m_StaticPluginLoader;
-#endif
 };
 
 //---------------------------------------------------------------------------
 
-#endif // #ifndef __BaseApplication_h_
+#endif // #ifndef __OgreApplication_h_
 
 //---------------------------------------------------------------------------

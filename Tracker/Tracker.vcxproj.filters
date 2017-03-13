@@ -33,10 +33,7 @@
     <ClInclude Include="timer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="BaseApplication.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TutorialApplication.h">
+    <ClInclude Include="OgreApplication.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -61,10 +58,7 @@
     <ClCompile Include="timer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="BaseApplication.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="TutorialApplication.cpp">
+    <ClCompile Include="OgreApplication.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
