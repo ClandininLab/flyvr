@@ -19,6 +19,9 @@ http://www.ogre3d.org/wiki/
 
 #include "OgreApplication.h"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 //---------------------------------------------------------------------------
 OgreApplication::OgreApplication(void)
     : mRoot(0),
@@ -56,11 +59,9 @@ bool OgreApplication::configure(void)
     // Show the configuration dialog and initialise the system.
     // You can skip this and use root.restoreConfig() to load configuration
     // settings if you were sure there are valid ones saved in ogre.cfg.
-    if(mRoot->showConfigDialog())
+    if(mRoot->restoreConfig())
     {
-        // If returned true, user clicked OK so initialise.
-
-        // Create multiple render windows, using code from PlayPen.cpp
+       // Create multiple render windows
 		createWindows();
 
         return true;
@@ -73,24 +74,30 @@ bool OgreApplication::configure(void)
 //---------------------------------------------------------------------------
 bool OgreApplication::createWindows()
 {
-	// Create a render window on the first display
-	Ogre::String strWindowName = "Window" + Ogre::StringConverter::toString(FIRST_DISPLAY);
-	mWindows[0] = mRoot->initialise(true, strWindowName);
+	// Multiple window code modified from PlayPen.cpp
 
-	// Create the rest of the windows.
-	for (unsigned i = FIRST_DISPLAY+1; i <= (FIRST_DISPLAY+DISPLAY_COUNT-1); i++)
+	// Initialize root, but do not create a render window yet
+	mRoot->initialise(false);
+
+	// Create array of monitor indices
+	const unsigned monitorIndices[] = DISPLAY_LIST;
+
+	// Create all render windows
+	for (unsigned i = 0; i < DISPLAY_COUNT; i++)
 	{
-		Ogre::String strWindowName = "Window" + Ogre::StringConverter::toString(i);
+		unsigned monitorIndex = monitorIndices[i];
+
+		Ogre::String strWindowName = "Window" + Ogre::StringConverter::toString(monitorIndex);
 
 		// Select the desired monitor for this render window
 		Ogre::NameValuePairList nvList;
-		nvList["monitorIndex"] = Ogre::StringConverter::toString(i);
+		nvList["monitorIndex"] = Ogre::StringConverter::toString(monitorIndex);
 
 		// Create the render window, copying the width, height, and full screen setting from the
 		// first monitor
-		mWindows[i-FIRST_DISPLAY] = mRoot->createRenderWindow(strWindowName,
-			mWindows[0]->getWidth(), mWindows[0]->getHeight(), mWindows[0]->isFullScreen(), &nvList);
-		mWindows[i-FIRST_DISPLAY]->setDeactivateOnFocusChange(false);
+		mWindows[i] = mRoot->createRenderWindow(strWindowName,
+			DISPLAY_WIDTH_PIXELS, DISPLAY_HEIGHT_PIXELS, DISPLAY_FULLSCREEN, &nvList);
+		mWindows[i]->setDeactivateOnFocusChange(false);
 	}
 
 	return true;
@@ -113,7 +120,7 @@ void OgreApplication::setCameraPosition(double x, double y, double z, unsigned i
 //---------------------------------------------------------------------------
 void OgreApplication::setCameraTarget(double x, double y, double z, unsigned idx)
 {
-	mCameras[idx-1]->lookAt(Ogre::Vector3(x, y, z));
+	mCameras[idx]->lookAt(Ogre::Vector3(x, y, z));
 }
 //---------------------------------------------------------------------------
 void OgreApplication::renderOneFrame(void)
@@ -127,8 +134,10 @@ void OgreApplication::createCameras(void)
 	for (unsigned i = 0; i < DISPLAY_COUNT; i++){
 		Ogre::String strCameraName = "Camera" + Ogre::StringConverter::toString(i);
 		mCameras[i] = mSceneMgr->createCamera(strCameraName);
-		mCameras[i]->setPosition(Ogre::Vector3(0, 0, 80));
-		mCameras[i]->lookAt(Ogre::Vector3(0, 0, -300));
+		mCameras[i]->setNearClipDistance(Ogre::Real(DISPLAY_WIDTH_METERS / 2.0));
+		mCameras[i]->setFOVy(Ogre::Radian(0.51238946));
+		setCameraPosition(0.0, 0.0, 80.0, i);
+		setCameraTarget(0.0, 0.0, -300.0, i);
 	}
 }
 //---------------------------------------------------------------------------
@@ -204,14 +213,6 @@ void OgreApplication::setupResources(void)
             typeName = i->first;
             archName = i->second;
 
-#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE
-            // OS X does not set the working directory relative to the app.
-            // In order to make things portable on OS X we need to provide
-            // the loading with it's own bundle path location.
-            if (!Ogre::StringUtil::startsWith(archName, "/", false)) // only adjust relative directories
-                archName = Ogre::String(Ogre::macBundlePath() + "/" + archName);
-#endif
-
             Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
                 archName, typeName, secName);
         }
@@ -229,26 +230,10 @@ void OgreApplication::loadResources(void)
 //---------------------------------------------------------------------------
 void OgreApplication::go(void)
 {
-#ifdef _DEBUG
-#ifndef OGRE_STATIC_LIB
-    mResourcesCfg = m_ResourcePath + "resources_d.cfg";
-    mPluginsCfg = m_ResourcePath + "plugins_d.cfg";
-#else
-    mResourcesCfg = "resources_d.cfg";
-    mPluginsCfg = "plugins_d.cfg";
-#endif
-#else
-#ifndef OGRE_STATIC_LIB
     mResourcesCfg = m_ResourcePath + "resources.cfg";
     mPluginsCfg = m_ResourcePath + "plugins.cfg";
-#else
-    mResourcesCfg = "resources.cfg";
-    mPluginsCfg = "plugins.cfg";
-#endif
-#endif
 
 	setup();
-
 }
 //---------------------------------------------------------------------------
 bool OgreApplication::setup(void)
@@ -348,48 +333,44 @@ void OgreApplication::windowClosed(Ogre::RenderWindow* rw)
     }
 }
 
+void OgreApplication::setPatternRotation(double rad){
+	double delta = 2 * M_PI / double(PANEL_COUNT);
+
+	for (unsigned i = 0; i < PANEL_COUNT; i += 2){
+		double angle = i*delta + rad;
+		mPanelNodes[i]->setPosition(Ogre::Vector3(PATTERN_RADIUS*cos(angle), 0.0, PATTERN_RADIUS*sin(angle)));
+		mPanelNodes[i]->setOrientation(mPanelNodes[i]->getInitialOrientation());
+		mPanelNodes[i]->yaw(Ogre::Radian(-M_PI / 2 - angle));
+	}
+}
+
 void OgreApplication::createScene(void)
 {
 	mSceneMgr->setAmbientLight(Ogre::ColourValue(0.5, 0.5, 0.5));
 
 	// Set the position of all cameras
-	setCameraPosition(0, 47, 222, 0);
-	setCameraPosition(0, 47, 222, 1);
-	setCameraPosition(0, 47, 222, 2);
+	for (unsigned i = 0; i < DISPLAY_COUNT; i++){
+		setCameraPosition(0, 47, 222, i);
+	}
 
 	Ogre::Light* light = mSceneMgr->createLight("MainLight");
 	light->setPosition(20.0, 80.0, 50.0);
 
-	Ogre::Entity* ogreEntity = mSceneMgr->createEntity("ogrehead.mesh");
+	double delta = 2 * M_PI / double(PANEL_COUNT);
+	double panel_width = 2 * PATTERN_RADIUS * tan(delta / 2.0);
 
-	Ogre::SceneNode* ogreNode = mSceneMgr->getRootSceneNode()->createChildSceneNode();
-	ogreNode->attachObject(ogreEntity);
+	for (unsigned i = 0; i < PANEL_COUNT; i += 2){
+		Ogre::Entity* panelEnt = mSceneMgr->createEntity("cube.mesh");
+		mPanelNodes[i] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
 
-	Ogre::Entity* ogreEntity2 = mSceneMgr->createEntity("ogrehead.mesh");
+		double angle = i*delta;
+		mPanelNodes[i]->setScale(Ogre::Real(0.01 * panel_width), 
+			                     Ogre::Real(0.01 * PANEL_HEIGHT), 
+						         Ogre::Real(0.01 * PANEL_THICKNESS));
+		mPanelNodes[i]->attachObject(panelEnt);
+	}
 
-	Ogre::SceneNode* ogreNode2 = mSceneMgr->getRootSceneNode()->createChildSceneNode(
-		Ogre::Vector3(84, 48, 0));
-	ogreNode2->attachObject(ogreEntity2);
-
-	Ogre::Entity* ogreEntity3 = mSceneMgr->createEntity("ogrehead.mesh");
-
-	Ogre::SceneNode* ogreNode3 = mSceneMgr->getRootSceneNode()->createChildSceneNode();
-	ogreNode3->setPosition(Ogre::Vector3(0, 104, 0));
-	ogreNode3->setScale(Ogre::Real(2), Ogre::Real(1.2), Ogre::Real(1));
-	ogreNode3->attachObject(ogreEntity3);
-
-	Ogre::Entity* ogreEntity4 = mSceneMgr->createEntity("ogrehead.mesh");
-
-	Ogre::SceneNode* ogreNode4 = mSceneMgr->getRootSceneNode()->createChildSceneNode();
-	ogreNode4->setPosition(-84, 48, 0);
-	ogreNode4->roll(Ogre::Degree(-90));
-	ogreNode4->attachObject(ogreEntity4);
-
+	setPatternRotation(0);
 }
-
-#if OGRE_PLATFORM == OGRE_PLATFORM_WIN32
-#define WIN32_LEAN_AND_MEAN
-#include "windows.h"
-#endif
 
 //---------------------------------------------------------------------------

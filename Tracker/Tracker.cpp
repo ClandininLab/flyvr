@@ -48,10 +48,6 @@ HANDLE coordMutex;
 // Mutex to manage access to 3D graphics variables
 HANDLE gfxMutex;
 
-double camera0_X = 0, camera0_Y = 47, camera0_Z = 222;
-double camera1_X = 0, camera1_Y = 47, camera1_Z = 222;
-double camera2_X = 0, camera2_Y = 47, camera2_Z = 222;
-
 DWORD WINAPI SerialThread(LPVOID lpParam){
 	// lpParam not used in this example
 	UNREFERENCED_PARAMETER(lpParam);
@@ -122,34 +118,42 @@ double clamp(double value, double min, double max){
 	}
 }
 
+struct Triple{
+	double x;
+	double y;
+	double z;
+};
+Triple cameras[DISPLAY_COUNT];
+Triple looks[DISPLAY_COUNT];
+
+double pattern_rotation = 0.0;
+
 DWORD WINAPI GraphicsThread(LPVOID lpParam){
 	// lpParam not used in this example
 	UNREFERENCED_PARAMETER(lpParam);
 	OgreApplication app;
-	double camera0_X_local, camera0_Y_local, camera0_Z_local;
-	double camera1_X_local, camera1_Y_local, camera1_Z_local;
-	double camera2_X_local, camera2_Y_local, camera2_Z_local;
+	Triple cameras_local[DISPLAY_COUNT];
+	Triple looks_local[DISPLAY_COUNT];
+	double pattern_rotation_local;
 	try {
 		app.go();
 		readyFor3D = true;
 		while (!kill3D){
 			// Copy over the camera position information
 			WaitForSingleObject(gfxMutex, INFINITE);
-			camera0_X_local = camera0_X;
-			camera0_Y_local = camera0_Y;
-			camera0_Z_local = camera0_Z;
-			camera1_X_local = camera1_X;
-			camera1_Y_local = camera1_Y;
-			camera1_Z_local = camera1_Z;
-			camera2_X_local = camera2_X;
-			camera2_Y_local = camera2_Y;
-			camera2_Z_local = camera2_Z;
+			memcpy(&cameras_local, &cameras, sizeof(cameras));
+			memcpy(&looks_local, &looks, sizeof(looks));
+			pattern_rotation_local = pattern_rotation;
 			ReleaseMutex(gfxMutex);
 
-			// Move the cameras
-			app.setCameraPosition(camera0_X_local, camera0_Y_local, camera0_Z_local, 0);
-			app.setCameraPosition(camera1_X_local, camera1_Y_local, camera1_Z_local, 1);
-			app.setCameraPosition(camera2_X_local, camera2_Y_local, camera2_Z_local, 2);
+			// Reposition the cameras
+			for (unsigned i = 0; i < DISPLAY_COUNT; i++){
+				app.setCameraPosition(cameras_local[i].x, cameras_local[i].y, cameras_local[i].z, i);
+				app.setCameraTarget(looks_local[i].x, looks_local[i].y, looks_local[i].z, i);
+			}
+
+			// Rotate pattern
+			app.setPatternRotation(pattern_rotation_local);
 
 			// Render the frame
 			app.renderOneFrame();
@@ -163,7 +167,6 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 }
 
 int main() {
-
 	// Create the timer
 	DebugTimer^ loopTimer = gcnew DebugTimer("main_loop_time.txt");
 
@@ -175,6 +178,25 @@ int main() {
 
 	double minMove = 1;
 	double maxMove = 40;
+
+	double angleDelta = 2*M_PI/3000;
+
+	// Initialize camera configurations
+	for (unsigned i = 0; i < DISPLAY_COUNT; i++){
+		// Camera positions
+		cameras[i].x = 0;
+		cameras[i].y = 0;
+		cameras[i].z = 0;
+
+		// Camera targets
+		looks[i].x = cameras[i].x;
+		looks[i].y = cameras[i].y;
+		looks[i].z = cameras[i].z;
+	}
+
+	looks[NORTH].z = cameras[NORTH].z-1;
+	looks[WEST].x = cameras[WEST].x-1;
+	looks[EAST].x = cameras[WEST].x+1;
 
 	// Graphics setup
 	gfxMutex = CreateMutex(NULL, FALSE, NULL);
@@ -214,7 +236,12 @@ int main() {
 		filt_array[i] = 0.0;
 	}
 
-	for (int i = 0; i < 5000; i++){
+	for (int i = 0; i < 3000; i++){
+
+		// Update graphics display
+		WaitForSingleObject(gfxMutex, INFINITE);
+		pattern_rotation += angleDelta;
+		ReleaseMutex(gfxMutex);
 
 		loopTimer->Tick();
 
@@ -300,16 +327,6 @@ int main() {
 			aCam_filt += filt_array[i];
 		}
 		aCam_filt /= 1.0*N_FILT;
-
-		// Update graphics display
-		WaitForSingleObject(gfxMutex, INFINITE);
-
-		camera0_X = 222*cos(aCam_filt*M_PI/180.0);
-		camera0_Z = 222*sin(aCam_filt*M_PI/180.0);
-		camera1_X = (yStatusLocal + yCam);
-		camera2_Z = 222 + (xStatusLocal - xCam);
-
-		ReleaseMutex(gfxMutex);
 
 		// Format data for logging
 		System::String^ format = System::String::Format("{0:0.000},{1:0.000},{2:0.000},{3:0.000},{4:0.000},{{0:0.000}}", 

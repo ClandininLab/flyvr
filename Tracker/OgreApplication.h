@@ -34,8 +34,24 @@ http://www.ogre3d.org/wiki/
 
 #include <SdkTrays.h>
 
-#define FIRST_DISPLAY 1
 #define DISPLAY_COUNT 3
+#define DISPLAY_LIST  {1,2,3}
+
+#define PATTERN_RADIUS 222
+#define PANEL_THICKNESS 1
+#define PANEL_HEIGHT 200
+#define PANEL_COUNT 100
+
+#define WEST  1
+#define NORTH 0
+#define EAST  2
+
+#define DISPLAY_WIDTH_METERS 1.111
+#define DISPLAY_HEIGHT_METERS 0.623
+
+#define DISPLAY_WIDTH_PIXELS 1600
+#define DISPLAY_HEIGHT_PIXELS 900
+#define DISPLAY_FULLSCREEN true
 
 //---------------------------------------------------------------------------
 
@@ -46,8 +62,9 @@ public:
     virtual ~OgreApplication(void);
 
     virtual void go(void);
-	virtual void setCameraPosition(double x, double y, double z, unsigned idx=0);
-	virtual void setCameraTarget(double x, double y, double z, unsigned idx=0);
+	virtual void setCameraPosition(double x, double y, double z, unsigned idx);
+	virtual void setCameraTarget(double x, double y, double z, unsigned idx);
+	virtual void setPatternRotation(double rad);
 	virtual void renderOneFrame(void);
 	virtual void destroyScene(void);
 
@@ -75,6 +92,8 @@ protected:
     virtual void windowResized(Ogre::RenderWindow* rw);
     // Unattach OIS before window shutdown (very important under Linux)
     virtual void windowClosed(Ogre::RenderWindow* rw);
+
+	Ogre::SceneNode*            mPanelNodes[PANEL_COUNT];
 
     Ogre::Root*                 mRoot;
 	Ogre::Camera*               mCameras[DISPLAY_COUNT];
