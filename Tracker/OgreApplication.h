@@ -1,22 +1,11 @@
-/*
------------------------------------------------------------------------------
-Filename:    OgreApplication.h
------------------------------------------------------------------------------
+// Steven Herbst
+// sherbst@stanford.edu
 
-This source file is part of the
-   ___                 __    __ _ _    _
-  /___\__ _ _ __ ___  / / /\ \ (_) | _(_)
- //  // _` | '__/ _ \ \ \/  \/ / | |/ / |
-/ \_// (_| | | |  __/  \  /\  /| |   <| |
-\___/ \__, |_|  \___|   \/  \/ |_|_|\_\_|
-      |___/
-Tutorial Framework (for Ogre 1.9)
-http://www.ogre3d.org/wiki/
------------------------------------------------------------------------------
-*/
+// Modified from the OGRE3D tutorial framework
+// http://www.ogre3d.org/wiki/
 
-#ifndef __OgreApplication_h_
-#define __OgreApplication_h_
+#ifndef OGRE_APPLICATION_H
+#define OGRE_APPLICATION_H
 
 #include <OgreCamera.h>
 #include <OgreEntity.h>
@@ -53,7 +42,47 @@ http://www.ogre3d.org/wiki/
 #define DISPLAY_HEIGHT_PIXELS 900
 #define DISPLAY_FULLSCREEN true
 
-//---------------------------------------------------------------------------
+// Struct for storing the parameters of the scene being displayed
+struct OgreSceneParameters{
+	double rotation;
+};
+
+// Struct for communicating 3D coordinate information
+// to OGRE through threads.
+struct Pose3D{
+	double x;
+	double y;
+	double z;
+	double roll;
+	double pitch;
+	double yaw;
+};
+
+// Storage of the camera position and look direction for each display
+Pose3D g_realPose = { 0, 0, 0, 0, 0, 0 };
+Pose3D g_virtualPose = { 0, 0, 0, 0, 0, 0 };
+
+// Storage of the OGRE scene configuration
+OgreSceneParameters g_ogreSceneParams;
+
+// Global variable used to signal when the Ogre3D window should close
+bool g_kill3D = false;
+
+// Global variable used to indicate when the Ogre3D engine is running
+bool g_readyFor3D = false;
+
+// Mutex to manage access to 3D graphics variables
+HANDLE g_ogreMutex;
+
+// Handle to manage the graphics thread
+HANDLE g_graphicsThread;
+
+// High-level thread management for graphics operations
+void StartGraphicsThread();
+void StopGraphicsThread();
+
+// Thread used to handle graphics operations
+DWORD WINAPI GraphicsThread(LPVOID lpParam);
 
 class OgreApplication : public Ogre::FrameListener, public Ogre::WindowEventListener, public OIS::KeyListener, public OIS::MouseListener, OgreBites::SdkTrayListener
 {
@@ -92,35 +121,37 @@ protected:
     virtual void windowResized(Ogre::RenderWindow* rw);
     // Unattach OIS before window shutdown (very important under Linux)
     virtual void windowClosed(Ogre::RenderWindow* rw);
+	
+	// Top-level scene management
+    Ogre::Root* mRoot;
+    Ogre::SceneManager* mSceneMgr;
 
-	Ogre::SceneNode*            mPanelNodes[PANEL_COUNT];
+	// Initialization variables
+	Ogre::String mResourcesCfg;
+	Ogre::String mPluginsCfg;
+	Ogre::OverlaySystem* mOverlaySystem;
 
-    Ogre::Root*                 mRoot;
-	Ogre::Camera*               mCameras[DISPLAY_COUNT];
-    Ogre::SceneManager*         mSceneMgr;
-    Ogre::RenderWindow*         mWindows[DISPLAY_COUNT];
-    Ogre::String                mResourcesCfg;
-    Ogre::String                mPluginsCfg;
+	// Per-display members
+	Ogre::RenderWindow* mWindows[DISPLAY_COUNT];
+	Ogre::Camera* mCameras[DISPLAY_COUNT];
 
-    Ogre::OverlaySystem*        mOverlaySystem;
+	// Scene-specific
+	Ogre::SceneNode* mPanelNodes[PANEL_COUNT];
 
     // OgreBites
-    OgreBites::InputContext     mInputContext;
-    OgreBites::SdkTrayManager*	mTrayMgr;
-    OgreBites::ParamsPanel*     mDetailsPanel;   	// Sample details panel
-    bool                        mCursorWasVisible;	// Was cursor visible before dialog appeared?
+    OgreBites::InputContext mInputContext;
+    OgreBites::SdkTrayManager* mTrayMgr;
+    OgreBites::ParamsPanel* mDetailsPanel; // Sample details panel
+    bool mCursorWasVisible;	// Was cursor visible before dialog appeared?
 
     //OIS Input devices
-    OIS::InputManager*          mInputManager;
-    OIS::Mouse*                 mMouse;
-    OIS::Keyboard*              mKeyboard;
+    OIS::InputManager* mInputManager;
+    OIS::Mouse* mMouse;
+    OIS::Keyboard* mKeyboard;
 
     // Added for Mac compatibility
-    Ogre::String                 m_ResourcePath;
+    Ogre::String m_ResourcePath;
 };
 
-//---------------------------------------------------------------------------
+#endif
 
-#endif // #ifndef __OgreApplication_h_
-
-//---------------------------------------------------------------------------

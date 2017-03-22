@@ -18,9 +18,72 @@ http://www.ogre3d.org/wiki/
 */
 
 #include "OgreApplication.h"
+#include "mutex.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+
+// High-level management of the graphics thread
+void StartGraphicsThread(){
+	// Read in stimulus configuration
+
+	// Graphics setup
+	g_ogreMutex = CreateMutex(NULL, FALSE, NULL);
+	DWORD gfxThreadID;
+	g_graphicsThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)GraphicsThread, NULL, 0, &gfxThreadID);
+
+	// Wait for 3D engine to be up and running
+	while (!g_readyFor3D);
+}
+
+void StopGraphicsThread(){
+	// Kill the 3D graphics thread
+	g_kill3D = true;
+
+	// Wait for serial thread to terminate
+	WaitForSingleObject(g_graphicsThread, INFINITE);
+
+	// Close the handles to the mutexes and graphics thread
+	CloseHandle(g_graphicsThread);
+	CloseHandle(g_ogreMutex);
+}
+
+// Thread used to handle graphics operations
+DWORD WINAPI GraphicsThread(LPVOID lpParam){
+	// lpParam not used in this example
+	UNREFERENCED_PARAMETER(lpParam);
+
+	OgreApplication app;
+	Pose3D realPose, virtualPose;
+
+	try {
+		app.go();
+		g_readyFor3D = true;
+
+		while (!g_kill3D){
+			// Copy over the camera position information
+			LOCK(g_ogreMutex);
+				realPose = g_realPose;
+				virtualPose = g_virtualPose;
+			UNLOCK(g_ogreMutex);
+
+			// Reposition the cameras
+			for (unsigned i = 0; i < DISPLAY_COUNT; i++){
+				// TODO: update each screen given realPose and virtualPose
+			}
+
+			// Render the frame
+			app.renderOneFrame();
+		}
+	}
+	catch (Ogre::Exception& e) {
+		std::cerr << "An exception has occured: " <<
+			e.getFullDescription().c_str() << std::endl;
+	}
+
+	return TRUE;
+}
+
 
 //---------------------------------------------------------------------------
 OgreApplication::OgreApplication(void)
@@ -372,5 +435,3 @@ void OgreApplication::createScene(void)
 
 	setPatternRotation(0);
 }
-
-//---------------------------------------------------------------------------

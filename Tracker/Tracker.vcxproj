@@ -163,11 +163,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="arduino.h" />
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="OgreApplication.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="timer.h" />
-    <ClInclude Include="tracker.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="app.rc" />
@@ -175,6 +175,7 @@
   <ItemGroup>
     <ClCompile Include="arduino.cpp" />
     <ClCompile Include="AssemblyInfo.cpp" />
+    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="OgreApplication.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
