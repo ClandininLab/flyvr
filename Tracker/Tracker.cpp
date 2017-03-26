@@ -2,17 +2,16 @@
 
 #include "stdafx.h"
 
-#include "OgreApplication.h"
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 #include <windows.h>
 
+#include "OgreApplication.h"
 #include "Camera.h"
 #include "arduino.h"
 #include "timer.h"
 #include "mutex.h"
-
-#define _USE_MATH_DEFINES
-#include <math.h>
 
 #pragma comment(lib, "user32.lib")
 
@@ -20,7 +19,7 @@ using namespace System;
 using namespace System::IO::Ports;
 using namespace System::Threading;
 
-#define DURATION 10.0
+#define DURATION 15.0
 #define MIN_MOVE 1
 #define MAX_MOVE 40
 
@@ -42,8 +41,8 @@ double clamp(double value, double min, double max){
 
 int main() {
 	StartGraphicsThread();
-	StartSerialThread();
-	StartCameraThread();
+	//StartSerialThread();
+	//StartCameraThread();
 	
 	__int64 startTime = GetTimeStamp();
 	double deltaT = 0.0;
@@ -51,26 +50,26 @@ int main() {
 	while (deltaT < DURATION){
 		
 		// Get fly pose
-		CamPose camPose;
-		LOCK(g_cameraMutex);
-			camPose = g_camPose;
-		UNLOCK(g_cameraMutex);
+		//CamPose camPose;
+		//LOCK(g_cameraMutex);
+		//	camPose = g_camPose;
+		//UNLOCK(g_cameraMutex);
 
 		// Calculate move command
-		GrblCommand moveCommand;
-		moveCommand.x = clamp(-camPose.x, MIN_MOVE, MAX_MOVE);
-		moveCommand.y = clamp(camPose.y, MIN_MOVE, MAX_MOVE);
+		//GrblCommand moveCommand;
+		//moveCommand.x = clamp(-camPose.x, MIN_MOVE, MAX_MOVE);
+		//moveCommand.y = clamp(camPose.y, MIN_MOVE, MAX_MOVE);
 
 		// Send move command
-		LOCK(g_moveMutex);
-			g_moveCommand = moveCommand;
-		UNLOCK(g_moveMutex);
+		//LOCK(g_moveMutex);
+		//	g_moveCommand = moveCommand;
+		//UNLOCK(g_moveMutex);
 
 		// Get CNC position
-		GrblStatus grblStatus;
-		LOCK(g_statusMutex);
-			grblStatus = g_grblStatus;
-		UNLOCK(g_statusMutex);
+		//GrblStatus grblStatus;
+		//LOCK(g_statusMutex);
+		//	grblStatus = g_grblStatus;
+		//UNLOCK(g_statusMutex);
 
 		// Compute the actual fly pose
 		// TODO: fill in calculations
@@ -101,8 +100,8 @@ int main() {
 		deltaT = (GetTimeStamp() - startTime) * TIMER_SCALE_FACTOR;
 	}
 	
-	StopCameraThread();
-	StopSerialThread();
+	//StopCameraThread();
+	//StopSerialThread();
 	StopGraphicsThread();
 
 	return 0;

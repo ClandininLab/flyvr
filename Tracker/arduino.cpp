@@ -11,6 +11,13 @@ using namespace System::Text::RegularExpressions;
 #include "timer.h"
 #include "mutex.h"
 
+// Global variable instantiations
+GrblCommand g_moveCommand = { 0, 0 };
+GrblStatus g_grblStatus;
+bool g_killSerial = false;
+HANDLE g_moveMutex, g_statusMutex;
+HANDLE g_serialThread;
+
 void StartSerialThread(){
 	DWORD serThreadID;
 	g_moveMutex = CreateMutex(NULL, FALSE, NULL);

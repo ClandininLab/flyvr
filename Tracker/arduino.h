@@ -1,5 +1,4 @@
-#ifndef ARDUINO_H
-#define ARDUINO_H
+#pragma once
 
 using namespace System;
 using namespace System::IO::Ports;
@@ -28,19 +27,19 @@ public value struct GrblStatus
 };
 
 // Global variable containing the CNC move command
-GrblCommand g_moveCommand = { 0, 0 };
+extern GrblCommand g_moveCommand;
 
 // Global variable containing the most recent GRBL status
-GrblStatus g_grblStatus;
+extern GrblStatus g_grblStatus;
 
 // Global variable used to signal when serial port should close
-bool g_killSerial = false;
+extern bool g_killSerial;
 
 // Mutex to manage access to move command and CNC status
-HANDLE g_moveMutex, g_statusMutex;
+extern HANDLE g_moveMutex, g_statusMutex;
 
 // Handle used to run SerialThread
-HANDLE g_serialThread;
+extern HANDLE g_serialThread;
 
 // High-level thread management
 void StartSerialThread();
@@ -58,7 +57,7 @@ public:
 	void Reset();
 	void Close();
 	void GrblCommand(int key, int value);
-	void RawCommand(String^ cmdString);
+	void RawCommand(System::String^ cmdString);
 	void StepIdleDelay(int value){ GrblCommand(1, value); }
 	void StatusReportMask(int value){ GrblCommand(10, value); }
 	void StepsPerMM_X(int value){ GrblCommand(100, value); }
@@ -77,5 +76,3 @@ public:
 	void West() { Move(0, -1); }
 	void ReadStatus();
 };
-
-#endif

@@ -8,6 +8,16 @@
 using namespace System;
 using namespace System::IO;
 
+// Global variable declarations
+bool g_killCamera = false;
+HANDLE g_cameraMutex;
+HANDLE g_cameraThread;
+Mat g_origFrame, g_procFrame;
+RotatedRect g_boundingBox;
+vector<vector<Point>> g_imContours;
+vector<Vec4i> g_imHierarchy;
+CamPose g_camPose;
+
 // High-level management of the graphics thread
 void StartCameraThread(){
 	// Graphics setup

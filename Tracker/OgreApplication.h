@@ -4,8 +4,7 @@
 // Modified from the OGRE3D tutorial framework
 // http://www.ogre3d.org/wiki/
 
-#ifndef OGRE_APPLICATION_H
-#define OGRE_APPLICATION_H
+#pragma once
 
 #include <OgreCamera.h>
 #include <OgreEntity.h>
@@ -15,13 +14,9 @@
 #include <OgreSceneManager.h>
 #include <OgreRenderWindow.h>
 #include <OgreConfigFile.h>
-
-#include <OISEvents.h>
-#include <OISInputManager.h>
-#include <OISKeyboard.h>
-#include <OISMouse.h>
-
 #include <SdkTrays.h>
+
+#include <OgreOverlaySystem.h>
 
 #define DISPLAY_COUNT 3
 #define DISPLAY_LIST  {1,2,3}
@@ -59,23 +54,23 @@ struct Pose3D{
 };
 
 // Storage of the camera position and look direction for each display
-Pose3D g_realPose = { 0, 0, 0, 0, 0, 0 };
-Pose3D g_virtualPose = { 0, 0, 0, 0, 0, 0 };
+extern Pose3D g_realPose;
+extern Pose3D g_virtualPose;
 
 // Storage of the OGRE scene configuration
-OgreSceneParameters g_ogreSceneParams;
+extern OgreSceneParameters g_ogreSceneParams;
 
 // Global variable used to signal when the Ogre3D window should close
-bool g_kill3D = false;
+extern bool g_kill3D;
 
 // Global variable used to indicate when the Ogre3D engine is running
-bool g_readyFor3D = false;
+extern bool g_readyFor3D;
 
 // Mutex to manage access to 3D graphics variables
-HANDLE g_ogreMutex;
+extern HANDLE g_ogreMutex;
 
 // Handle to manage the graphics thread
-HANDLE g_graphicsThread;
+extern HANDLE g_graphicsThread;
 
 // High-level thread management for graphics operations
 void StartGraphicsThread();
@@ -84,7 +79,7 @@ void StopGraphicsThread();
 // Thread used to handle graphics operations
 DWORD WINAPI GraphicsThread(LPVOID lpParam);
 
-class OgreApplication : public Ogre::FrameListener, public Ogre::WindowEventListener, public OIS::KeyListener, public OIS::MouseListener, OgreBites::SdkTrayListener
+class OgreApplication
 {
 public:
     OgreApplication(void);
@@ -95,32 +90,16 @@ public:
 	virtual void setCameraTarget(double x, double y, double z, unsigned idx);
 	virtual void setPatternRotation(double rad);
 	virtual void renderOneFrame(void);
-	virtual void destroyScene(void);
 
-protected:
     virtual bool setup();
     virtual bool configure(void);
 	virtual bool createWindows();
 	virtual void createScene();
     virtual void chooseSceneManager(void);
     virtual void createCameras(void);
-    virtual void createFrameListener(void);
     virtual void createViewports(void);
     virtual void setupResources(void);
-    virtual void createResourceListener(void);
     virtual void loadResources(void);
-    virtual bool frameRenderingQueued(const Ogre::FrameEvent& evt);
-
-    virtual bool keyPressed(const OIS::KeyEvent &arg);
-    virtual bool keyReleased(const OIS::KeyEvent &arg);
-    virtual bool mouseMoved(const OIS::MouseEvent &arg);
-    virtual bool mousePressed(const OIS::MouseEvent &arg, OIS::MouseButtonID id);
-    virtual bool mouseReleased(const OIS::MouseEvent &arg, OIS::MouseButtonID id);
-
-    // Adjust mouse clipping area
-    virtual void windowResized(Ogre::RenderWindow* rw);
-    // Unattach OIS before window shutdown (very important under Linux)
-    virtual void windowClosed(Ogre::RenderWindow* rw);
 	
 	// Top-level scene management
     Ogre::Root* mRoot;
@@ -138,20 +117,6 @@ protected:
 	// Scene-specific
 	Ogre::SceneNode* mPanelNodes[PANEL_COUNT];
 
-    // OgreBites
-    OgreBites::InputContext mInputContext;
-    OgreBites::SdkTrayManager* mTrayMgr;
-    OgreBites::ParamsPanel* mDetailsPanel; // Sample details panel
-    bool mCursorWasVisible;	// Was cursor visible before dialog appeared?
-
-    //OIS Input devices
-    OIS::InputManager* mInputManager;
-    OIS::Mouse* mMouse;
-    OIS::Keyboard* mKeyboard;
-
     // Added for Mac compatibility
     Ogre::String m_ResourcePath;
 };
-
-#endif
-

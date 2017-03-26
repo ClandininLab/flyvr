@@ -164,6 +164,7 @@
   <ItemGroup>
     <ClInclude Include="arduino.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="mutex.h" />
     <ClInclude Include="OgreApplication.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="stdafx.h" />

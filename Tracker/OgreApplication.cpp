@@ -1,21 +1,8 @@
-#include "stdafx.h"
-
 /*
------------------------------------------------------------------------------
-Filename:    OgreApplication.cpp
------------------------------------------------------------------------------
-
-This source file is part of the
-   ___                 __    __ _ _    _
-  /___\__ _ _ __ ___  / / /\ \ (_) | _(_)
- //  // _` | '__/ _ \ \ \/  \/ / | |/ / |
-/ \_// (_| | | |  __/  \  /\  /| |   <| |
-\___/ \__, |_|  \___|   \/  \/ |_|_|\_\_|
-      |___/
-Tutorial Framework (for Ogre 1.9)
-http://www.ogre3d.org/wiki/
------------------------------------------------------------------------------
+Modified from tutorial Framework for Ogre 1.9 (http://www.ogre3d.org/wiki/)
 */
+
+#include "stdafx.h"
 
 #include "OgreApplication.h"
 #include "mutex.h"
@@ -23,10 +10,17 @@ http://www.ogre3d.org/wiki/
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+// Global variable instantiations
+Pose3D g_realPose = { 0, 0, 0, 0, 0, 0 };
+Pose3D g_virtualPose = { 0, 0, 0, 0, 0, 0 };
+OgreSceneParameters g_ogreSceneParams;
+bool g_kill3D = false;
+bool g_readyFor3D = false;
+HANDLE g_ogreMutex;
+HANDLE g_graphicsThread;
+
 // High-level management of the graphics thread
 void StartGraphicsThread(){
-	// Read in stimulus configuration
-
 	// Graphics setup
 	g_ogreMutex = CreateMutex(NULL, FALSE, NULL);
 	DWORD gfxThreadID;
@@ -59,6 +53,7 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 	try {
 		app.go();
 		g_readyFor3D = true;
+		int iter = 0;
 
 		while (!g_kill3D){
 			// Copy over the camera position information
@@ -69,11 +64,19 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 
 			// Reposition the cameras
 			for (unsigned i = 0; i < DISPLAY_COUNT; i++){
-				// TODO: update each screen given realPose and virtualPose
+				// TODO: update each screen given realPose and virtualPose	
+			}
+
+			// Print the framerate.
+			if (iter % 1000 == 0){
+				System::Console::WriteLine("FPS: {0:0.000}, {1:0.000}, {2:0.000}", 
+					app.mWindows[0]->getLastFPS(), app.mWindows[1]->getLastFPS(), app.mWindows[2]->getLastFPS());
 			}
 
 			// Render the frame
 			app.renderOneFrame();
+
+			iter++;
 		}
 	}
 	catch (Ogre::Exception& e) {
@@ -84,39 +87,21 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 	return TRUE;
 }
 
-
-//---------------------------------------------------------------------------
 OgreApplication::OgreApplication(void)
     : mRoot(0),
     mSceneMgr(0),
     mResourcesCfg(Ogre::StringUtil::BLANK),
     mPluginsCfg(Ogre::StringUtil::BLANK),
-    mTrayMgr(0),
-    mDetailsPanel(0),
-    mCursorWasVisible(false),
-    mInputManager(0),
-    mMouse(0),
-    mKeyboard(0),
     mOverlaySystem(0)
 {
     m_ResourcePath = "";
 }
 
-//---------------------------------------------------------------------------
 OgreApplication::~OgreApplication(void)
 {
-    if (mTrayMgr) delete mTrayMgr;
-    if (mOverlaySystem) delete mOverlaySystem;
-
-    // Remove ourself as a Window listener
-    Ogre::WindowEventUtilities::removeWindowEventListener(mWindows[0], this);
-
-    windowClosed(mWindows[0]);
-
     delete mRoot;
 }
 
-//---------------------------------------------------------------------------
 bool OgreApplication::configure(void)
 {
     // Show the configuration dialog and initialise the system.
@@ -134,7 +119,7 @@ bool OgreApplication::configure(void)
         return false;
     }
 }
-//---------------------------------------------------------------------------
+
 bool OgreApplication::createWindows()
 {
 	// Multiple window code modified from PlayPen.cpp
@@ -165,7 +150,7 @@ bool OgreApplication::createWindows()
 
 	return true;
 }
-//---------------------------------------------------------------------------
+
 void OgreApplication::chooseSceneManager(void)
 {
     // Get the SceneManager, in this case a generic one
@@ -175,22 +160,22 @@ void OgreApplication::chooseSceneManager(void)
     mOverlaySystem = new Ogre::OverlaySystem();
     mSceneMgr->addRenderQueueListener(mOverlaySystem);
 }
-//---------------------------------------------------------------------------
+
 void OgreApplication::setCameraPosition(double x, double y, double z, unsigned idx)
 {
 	mCameras[idx]->setPosition(Ogre::Vector3(x, y, z));
 }
-//---------------------------------------------------------------------------
+
 void OgreApplication::setCameraTarget(double x, double y, double z, unsigned idx)
 {
 	mCameras[idx]->lookAt(Ogre::Vector3(x, y, z));
 }
-//---------------------------------------------------------------------------
+
 void OgreApplication::renderOneFrame(void)
 {
 	mRoot->renderOneFrame();
 }
-//---------------------------------------------------------------------------
+
 void OgreApplication::createCameras(void)
 {
 	// Create the other cameras
@@ -203,44 +188,7 @@ void OgreApplication::createCameras(void)
 		setCameraTarget(0.0, 0.0, -300.0, i);
 	}
 }
-//---------------------------------------------------------------------------
-void OgreApplication::createFrameListener(void)
-{
-    Ogre::LogManager::getSingletonPtr()->logMessage("*** Initializing OIS ***");
-    OIS::ParamList pl;
-    size_t windowHnd = 0;
-    std::ostringstream windowHndStr;
 
-    mWindows[0]->getCustomAttribute("WINDOW", &windowHnd);
-    windowHndStr << windowHnd;
-    pl.insert(std::make_pair(std::string("WINDOW"), windowHndStr.str()));
-
-    mInputManager = OIS::InputManager::createInputSystem(pl);
-
-    mKeyboard = static_cast<OIS::Keyboard*>(mInputManager->createInputObject(OIS::OISKeyboard, true));
-    mMouse = static_cast<OIS::Mouse*>(mInputManager->createInputObject(OIS::OISMouse, true));
-
-    mMouse->setEventCallback(this);
-    mKeyboard->setEventCallback(this);
-
-    // Set initial mouse clipping size
-    windowResized(mWindows[0]);
-
-    // Register as a Window listener
-    Ogre::WindowEventUtilities::addWindowEventListener(mWindows[0], this);
-
-    mInputContext.mKeyboard = mKeyboard;
-    mInputContext.mMouse = mMouse;
-    mTrayMgr = new OgreBites::SdkTrayManager("InterfaceName", mWindows[0], mInputContext, this);
-    mTrayMgr->showFrameStats(OgreBites::TL_BOTTOMLEFT);
-
-    mRoot->addFrameListener(this);
-}
-//---------------------------------------------------------------------------
-void OgreApplication::destroyScene(void)
-{
-}
-//---------------------------------------------------------------------------
 void OgreApplication::createViewports(void)
 {
 	// Create camera for the secondary render windows.
@@ -255,7 +203,7 @@ void OgreApplication::createViewports(void)
 		mCameras[i]->setAspectRatio(Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
 	}
 }
-//---------------------------------------------------------------------------
+
 void OgreApplication::setupResources(void)
 {
     // Load resource paths from config file
@@ -281,16 +229,12 @@ void OgreApplication::setupResources(void)
         }
     }
 }
-//---------------------------------------------------------------------------
-void OgreApplication::createResourceListener(void)
-{
-}
-//---------------------------------------------------------------------------
+
 void OgreApplication::loadResources(void)
 {
     Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
 }
-//---------------------------------------------------------------------------
+
 void OgreApplication::go(void)
 {
     mResourcesCfg = m_ResourcePath + "resources.cfg";
@@ -298,7 +242,7 @@ void OgreApplication::go(void)
 
 	setup();
 }
-//---------------------------------------------------------------------------
+
 bool OgreApplication::setup(void)
 {
     mRoot = new Ogre::Root(mPluginsCfg);
@@ -315,86 +259,14 @@ bool OgreApplication::setup(void)
     // Set default mipmap level (NB some APIs ignore this)
     Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
 
-    // Create any resource listeners (for loading screens)
-    createResourceListener();
     // Load resources
     loadResources();
 
     // Create the scene
     createScene();
 
-    createFrameListener();
-
     return true;
 };
-//---------------------------------------------------------------------------
-bool OgreApplication::frameRenderingQueued(const Ogre::FrameEvent& evt)
-{
-    if(mWindows[0]->isClosed())
-        return false;
-
-    // Need to capture/update each device
-    mKeyboard->capture();
-    mMouse->capture();
-
-    mTrayMgr->frameRenderingQueued(evt);
-
-    return true;
-}
-//---------------------------------------------------------------------------
-bool OgreApplication::keyPressed( const OIS::KeyEvent &arg )
-{
-    return true;
-}
-//---------------------------------------------------------------------------
-bool OgreApplication::keyReleased(const OIS::KeyEvent &arg)
-{
-    return true;
-}
-//---------------------------------------------------------------------------
-bool OgreApplication::mouseMoved(const OIS::MouseEvent &arg)
-{
-    return true;
-}
-//---------------------------------------------------------------------------
-bool OgreApplication::mousePressed(const OIS::MouseEvent &arg, OIS::MouseButtonID id)
-{
-    return true;
-}
-//---------------------------------------------------------------------------
-bool OgreApplication::mouseReleased(const OIS::MouseEvent &arg, OIS::MouseButtonID id)
-{
-    return true;
-}
-//---------------------------------------------------------------------------
-// Adjust mouse clipping area
-void OgreApplication::windowResized(Ogre::RenderWindow* rw)
-{
-    unsigned int width, height, depth;
-    int left, top;
-    rw->getMetrics(width, height, depth, left, top);
-
-    const OIS::MouseState &ms = mMouse->getMouseState();
-    ms.width = width;
-    ms.height = height;
-}
-//---------------------------------------------------------------------------
-// Unattach OIS before window shutdown (very important under Linux)
-void OgreApplication::windowClosed(Ogre::RenderWindow* rw)
-{
-    // Only close for window that created OIS (the main window in these demos)
-    if(rw == mWindows[0])
-    {
-        if(mInputManager)
-        {
-            mInputManager->destroyInputObject(mMouse);
-            mInputManager->destroyInputObject(mKeyboard);
-
-            OIS::InputManager::destroyInputSystem(mInputManager);
-            mInputManager = 0;
-        }
-    }
-}
 
 void OgreApplication::setPatternRotation(double rad){
 	double delta = 2 * M_PI / double(PANEL_COUNT);
@@ -408,7 +280,7 @@ void OgreApplication::setPatternRotation(double rad){
 }
 
 void OgreApplication::createScene(void)
-{
+{	
 	mSceneMgr->setAmbientLight(Ogre::ColourValue(0.5, 0.5, 0.5));
 
 	// Set the position of all cameras

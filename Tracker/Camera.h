@@ -1,5 +1,4 @@
-#ifndef CAMERA_H
-#define CAMERA_H
+#pragma once
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -26,13 +25,13 @@ using namespace cv;
 #define CV_CROPPED_HEIGHT (CV_FRAME_HEIGHT - 2 * CV_CROP_AMOUNT)
 
 // Global variable used to signal when the camera thread should close
-bool g_killCamera = false;
+extern bool g_killCamera;
 
 // Mutex to manage access to 3D graphics variables
-HANDLE g_cameraMutex;
+extern HANDLE g_cameraMutex;
 
 // Handle to manage the graphics thread
-HANDLE g_cameraThread;
+extern HANDLE g_cameraThread;
 
 // High-level thread management for graphics operations
 void StartCameraThread();
@@ -42,12 +41,12 @@ void StopCameraThread();
 DWORD WINAPI CameraThread(LPVOID lpParam);
 
 // Variable to hold original and processed frames
-Mat g_origFrame, g_procFrame;
+extern Mat g_origFrame, g_procFrame;
 
 // Variables related to contour search
-RotatedRect g_boundingBox;
-vector<vector<Point>> g_imContours;
-vector<Vec4i> g_imHierarchy;
+extern RotatedRect g_boundingBox;
+extern vector<vector<Point>> g_imContours;
+extern vector<Vec4i> g_imHierarchy;
 
 // Struct used to keep track of fly pose
 struct CamPose{
@@ -56,11 +55,9 @@ struct CamPose{
 	double angle;
 };
 
-CamPose g_camPose;
+extern CamPose g_camPose;
 
 // Image processing routines
 void prepFrame();
 bool locateFly();
 bool contourCompare(vector<Point> a, vector<Point> b);
-
-#endif
