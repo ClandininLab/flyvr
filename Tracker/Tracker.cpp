@@ -19,7 +19,7 @@ using namespace System;
 using namespace System::IO::Ports;
 using namespace System::Threading;
 
-#define DURATION 15.0
+#define DURATION 15
 #define MIN_MOVE 1
 #define MAX_MOVE 40
 
@@ -71,33 +71,11 @@ int main() {
 		//	grblStatus = g_grblStatus;
 		//UNLOCK(g_statusMutex);
 
-		// Compute the actual fly pose
-		// TODO: fill in calculations
-		Pose3D realPose;
-		realPose.x = 0.0;
-		realPose.y = 0.0;
-		realPose.z = 0.0;
-		realPose.roll = 0.0;
-		realPose.pitch = 0.0;
-		realPose.yaw = 0.0;
-
-		// Compute the virtual fly pose
-		// TODO: fill in calculations
-		Pose3D virtualPose;
-		virtualPose.x = 0.0;
-		virtualPose.y = 0.0;
-		virtualPose.z = 0.0;
-		virtualPose.roll = 0.0;
-		virtualPose.pitch = 0.0;
-		virtualPose.yaw = 0.0;
-
-		// Send pose command
-		LOCK(g_ogreMutex);
-			g_virtualPose = virtualPose;
-			g_realPose = realPose;
-		UNLOCK(g_ogreMutex);
-
 		deltaT = (GetTimeStamp() - startTime) * TIMER_SCALE_FACTOR;
+
+		LOCK(g_ogreMutex);
+		g_ogreSceneParams.value = deltaT / DURATION;
+		UNLOCK(g_ogreMutex);
 	}
 	
 	//StopCameraThread();

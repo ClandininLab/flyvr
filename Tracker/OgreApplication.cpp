@@ -11,8 +11,6 @@ Modified from tutorial Framework for Ogre 1.9 (http://www.ogre3d.org/wiki/)
 #include <math.h>
 
 // Global variable instantiations
-Pose3D g_realPose = { 0, 0, 0, 0, 0, 0 };
-Pose3D g_virtualPose = { 0, 0, 0, 0, 0, 0 };
 OgreSceneParameters g_ogreSceneParams;
 bool g_kill3D = false;
 bool g_readyFor3D = false;
@@ -48,24 +46,36 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 	UNREFERENCED_PARAMETER(lpParam);
 
 	OgreApplication app;
-	Pose3D realPose, virtualPose;
 
 	try {
 		app.go();
+
 		g_readyFor3D = true;
 		int iter = 0;
 
 		while (!g_kill3D){
-			// Copy over the camera position information
+			// Update displays
+			//for (unsigned i = 0; i < DISPLAY_COUNT; i++){
+			//}
+
+			double val;
 			LOCK(g_ogreMutex);
-				realPose = g_realPose;
-				virtualPose = g_virtualPose;
+			val = g_ogreSceneParams.value;
 			UNLOCK(g_ogreMutex);
 
-			// Reposition the cameras
-			for (unsigned i = 0; i < DISPLAY_COUNT; i++){
-				// TODO: update each screen given realPose and virtualPose	
-			}
+			double W = DISPLAY_WIDTH_METERS;
+			double H = DISPLAY_HEIGHT_METERS;
+
+			double R = W / 2.0 + 1;
+
+			double x = -R*cos(M_PI*val);
+			double y = 0;
+			double z = -R*sin(M_PI*val);
+			double angle = M_PI / 2 - M_PI*val;
+			Ogre::Vector3 newPos = Ogre::Vector3(x, y, z);
+			app.mPanelNodes[0]->setPosition(newPos);
+			//app.mPanelNodes[0]->setOrientation(app.mPanelNodes[0]->getInitialOrientation());
+			//app.mPanelNodes[0]->yaw(Ogre::Radian(angle));
 
 			// Print the framerate.
 			if (iter % 1000 == 0){
@@ -161,16 +171,6 @@ void OgreApplication::chooseSceneManager(void)
     mSceneMgr->addRenderQueueListener(mOverlaySystem);
 }
 
-void OgreApplication::setCameraPosition(double x, double y, double z, unsigned idx)
-{
-	mCameras[idx]->setPosition(Ogre::Vector3(x, y, z));
-}
-
-void OgreApplication::setCameraTarget(double x, double y, double z, unsigned idx)
-{
-	mCameras[idx]->lookAt(Ogre::Vector3(x, y, z));
-}
-
 void OgreApplication::renderOneFrame(void)
 {
 	mRoot->renderOneFrame();
@@ -178,14 +178,92 @@ void OgreApplication::renderOneFrame(void)
 
 void OgreApplication::createCameras(void)
 {
+	// Width and height of each monitor
+	double W = DISPLAY_WIDTH_METERS;
+	double H = DISPLAY_HEIGHT_METERS;
+
+	// Define eye position
+	Ogre::Vector3 pe = Ogre::Vector3(0, 0, 0);
+
+	// North monitor
+	mMonitors[NORTH].pa = Ogre::Vector3(-W / 2., -H / 2., -W / 2.);
+	mMonitors[NORTH].pb = mMonitors[NORTH].pa + Ogre::Vector3(W, 0, 0);
+	mMonitors[NORTH].pc = mMonitors[NORTH].pa + Ogre::Vector3(0, H, 0);
+
+	// West monitor
+	mMonitors[WEST].pa = Ogre::Vector3(-W / 2., -H / 2., W / 2.);
+	mMonitors[WEST].pb = mMonitors[WEST].pa + Ogre::Vector3(0, 0, -W);
+	mMonitors[WEST].pc = mMonitors[WEST].pa + Ogre::Vector3(0, H, 0);
+	
+	// East monitor
+	mMonitors[EAST].pa = Ogre::Vector3(W / 2., -H / 2., -W / 2.);
+	mMonitors[EAST].pb = mMonitors[EAST].pa + Ogre::Vector3(0, 0, W);
+	mMonitors[EAST].pc = mMonitors[EAST].pa + Ogre::Vector3(0, H, 0);
+
 	// Create the other cameras
 	for (unsigned i = 0; i < DISPLAY_COUNT; i++){
 		Ogre::String strCameraName = "Camera" + Ogre::StringConverter::toString(i);
 		mCameras[i] = mSceneMgr->createCamera(strCameraName);
-		mCameras[i]->setNearClipDistance(Ogre::Real(DISPLAY_WIDTH_METERS / 2.0));
-		mCameras[i]->setFOVy(Ogre::Radian(0.51238946));
-		setCameraPosition(0.0, 0.0, 80.0, i);
-		setCameraTarget(0.0, 0.0, -300.0, i);
+
+		// Determine monitor coordinates
+		Ogre::Vector3 pa = mMonitors[i].pa;
+		Ogre::Vector3 pb = mMonitors[i].pb;
+		Ogre::Vector3 pc = mMonitors[i].pc;
+
+		// Determine monitor unit vectors
+		Ogre::Vector3 vr = pb - pa;
+		vr.normalise();
+		Ogre::Vector3 vu = pc - pa;
+		vu.normalise();
+		Ogre::Vector3 vn = vr.crossProduct(vu);
+		vn.normalise();
+
+		// Determine frustum extents
+		Ogre::Vector3 va = pa - pe;
+		Ogre::Vector3 vb = pb - pe;
+		Ogre::Vector3 vc = pc - pe;
+
+		// Compute distance to screen
+		Ogre::Real d = -vn.dotProduct(va);
+
+		// Set clipping distance to screen distance
+		// May want to revist this later
+		Ogre::Real n = d;
+
+		// Compute screen coordinates
+		Ogre::Real l = vr.dotProduct(va)*n / d;
+		Ogre::Real r = vr.dotProduct(vb)*n / d;
+		Ogre::Real b = vu.dotProduct(va)*n / d;
+		Ogre::Real t = vu.dotProduct(vc)*n / d;
+
+		// Define far clipping distance to be 10 meters
+		// May want to revisit this later
+		double f = 10.0;
+
+		// Create projection matrix
+		Ogre::Matrix4 P, M, T;
+
+		P = Ogre::Matrix4(
+			(2.0f*n) / (r - l), 0, ((r + l) / (r - l)), 0,
+			0, ((2.0f*n) / (t - b)), ((t + b) / (t - b)), 0,
+			0, 0, -(f + n) / (f - n), -(2.0f*f*n) / (f - n),
+			0, 0, -1, 0);
+
+		M = Ogre::Matrix4(
+			vr.x, vu.x, vn.x,    0,
+			vr.y, vu.y, vn.y,    0,
+			vr.z, vu.z, vn.z,    0,
+			   0,    0,    0,    1);
+
+		T = Ogre::Matrix4(
+			   1,    0,    0,   -pe.x,
+			   0,    1,    0,   -pe.y,
+			   0,    0,    1,   -pe.z,
+			   0,    0,    0,       1);
+
+		Ogre::Matrix4 offAxis = P*M.transpose()*T;
+
+		mCameras[i]->setCustomProjectionMatrix(true, offAxis);
 	}
 }
 
@@ -200,7 +278,6 @@ void OgreApplication::createViewports(void)
 		
 		// Configure the viewport
 		vp->setBackgroundColour(Ogre::ColourValue(0, 0, 0));
-		mCameras[i]->setAspectRatio(Ogre::Real(vp->getActualWidth()) / Ogre::Real(vp->getActualHeight()));
 	}
 }
 
@@ -268,42 +345,23 @@ bool OgreApplication::setup(void)
     return true;
 };
 
-void OgreApplication::setPatternRotation(double rad){
-	double delta = 2 * M_PI / double(PANEL_COUNT);
-
-	for (unsigned i = 0; i < PANEL_COUNT; i += 2){
-		double angle = i*delta + rad;
-		mPanelNodes[i]->setPosition(Ogre::Vector3(PATTERN_RADIUS*cos(angle), 0.0, PATTERN_RADIUS*sin(angle)));
-		mPanelNodes[i]->setOrientation(mPanelNodes[i]->getInitialOrientation());
-		mPanelNodes[i]->yaw(Ogre::Radian(-M_PI / 2 - angle));
-	}
-}
-
 void OgreApplication::createScene(void)
 {	
 	mSceneMgr->setAmbientLight(Ogre::ColourValue(0.5, 0.5, 0.5));
 
-	// Set the position of all cameras
-	for (unsigned i = 0; i < DISPLAY_COUNT; i++){
-		setCameraPosition(0, 47, 222, i);
-	}
-
 	Ogre::Light* light = mSceneMgr->createLight("MainLight");
-	light->setPosition(20.0, 80.0, 50.0);
+	light->setPosition(0.0, 2*DISPLAY_HEIGHT_METERS, 0);
 
-	double delta = 2 * M_PI / double(PANEL_COUNT);
-	double panel_width = 2 * PATTERN_RADIUS * tan(delta / 2.0);
+	Ogre::Entity* panelEnt = mSceneMgr->createEntity("cube.mesh");
+	mPanelNodes[0] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
 
-	for (unsigned i = 0; i < PANEL_COUNT; i += 2){
-		Ogre::Entity* panelEnt = mSceneMgr->createEntity("cube.mesh");
-		mPanelNodes[i] = mSceneMgr->getRootSceneNode()->createChildSceneNode();
+	double normal = 0.01;
+	double side = 0.5;
+	mPanelNodes[0]->setScale(
+		Ogre::Real(normal * side),
+		Ogre::Real(normal * side),
+		Ogre::Real(normal * side));
+	mPanelNodes[0]->setPosition(Ogre::Vector3(-DISPLAY_WIDTH_METERS*2, 0.0, -DISPLAY_WIDTH_METERS/2.0-side));
 
-		double angle = i*delta;
-		mPanelNodes[i]->setScale(Ogre::Real(0.01 * panel_width), 
-			                     Ogre::Real(0.01 * PANEL_HEIGHT), 
-						         Ogre::Real(0.01 * PANEL_THICKNESS));
-		mPanelNodes[i]->attachObject(panelEnt);
-	}
-
-	setPatternRotation(0);
+	mPanelNodes[0]->attachObject(panelEnt);
 }

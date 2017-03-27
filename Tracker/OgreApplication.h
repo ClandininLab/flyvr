@@ -30,8 +30,8 @@
 #define NORTH 0
 #define EAST  2
 
-#define DISPLAY_WIDTH_METERS 1.111
-#define DISPLAY_HEIGHT_METERS 0.623
+#define DISPLAY_WIDTH_METERS 1.10690093 
+#define DISPLAY_HEIGHT_METERS 0.6226317743326399
 
 #define DISPLAY_WIDTH_PIXELS 1600
 #define DISPLAY_HEIGHT_PIXELS 900
@@ -39,23 +39,15 @@
 
 // Struct for storing the parameters of the scene being displayed
 struct OgreSceneParameters{
-	double rotation;
+	double value;
 };
 
-// Struct for communicating 3D coordinate information
-// to OGRE through threads.
-struct Pose3D{
-	double x;
-	double y;
-	double z;
-	double roll;
-	double pitch;
-	double yaw;
+// Used to keep track of monitors information
+struct MonitorInfo{
+	Ogre::Vector3 pa;
+	Ogre::Vector3 pb;
+	Ogre::Vector3 pc;
 };
-
-// Storage of the camera position and look direction for each display
-extern Pose3D g_realPose;
-extern Pose3D g_virtualPose;
 
 // Storage of the OGRE scene configuration
 extern OgreSceneParameters g_ogreSceneParams;
@@ -86,9 +78,6 @@ public:
     virtual ~OgreApplication(void);
 
     virtual void go(void);
-	virtual void setCameraPosition(double x, double y, double z, unsigned idx);
-	virtual void setCameraTarget(double x, double y, double z, unsigned idx);
-	virtual void setPatternRotation(double rad);
 	virtual void renderOneFrame(void);
 
     virtual bool setup();
@@ -113,6 +102,7 @@ public:
 	// Per-display members
 	Ogre::RenderWindow* mWindows[DISPLAY_COUNT];
 	Ogre::Camera* mCameras[DISPLAY_COUNT];
+	MonitorInfo mMonitors[DISPLAY_COUNT];
 
 	// Scene-specific
 	Ogre::SceneNode* mPanelNodes[PANEL_COUNT];
