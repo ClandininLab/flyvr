@@ -56,7 +56,6 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 	try {
 		app.go();
 		StimManager stim(app);
-		Sleep(5000);
 
 		g_readyFor3D = true;
 		int iter = 0;

@@ -15,11 +15,11 @@ StimManager::StimManager(OgreApplication &app)
 
 	// Read the global configuration parameters
 	// TODO: allow for RGB hex specific of interleave color
-	iColorR = iniFile.GetDoubleValue("", "interleave-color");
-	iColorG = iniFile.GetDoubleValue("", "interleave-color");
-	iColorB = iniFile.GetDoubleValue("", "interleave-color");
-	iDuration = iniFile.GetDoubleValue("", "interleave-duration");
-	randomSeed = iniFile.GetLongValue("", "random-seed");
+	iColorR = iniFile.GetDoubleValue("", "interleave-color", 0.5);
+	iColorG = iniFile.GetDoubleValue("", "interleave-color", 0.5);
+	iColorB = iniFile.GetDoubleValue("", "interleave-color", 0.5);
+	iDuration = iniFile.GetDoubleValue("", "interleave-duration", 1.0);
+	randomSeed = iniFile.GetLongValue("", "random-seed", 0);
 
 	// Read all section names
 	CSimpleIniA::TNamesDepend sections;

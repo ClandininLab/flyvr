@@ -16,24 +16,24 @@ CylinderBars::~CylinderBars(){
 }
 
 void CylinderBars::Setup(){
-	numSpatialPeriod = iniFile.GetLongValue(name.c_str(), "number-of-periods");
-	dutyCycle = iniFile.GetDoubleValue(name.c_str(), "duty-cycle");
+	numSpatialPeriod = iniFile.GetLongValue(name.c_str(), "number-of-periods", 50);
+	dutyCycle = iniFile.GetDoubleValue(name.c_str(), "duty-cycle", 0.5);
 
 	// TODO: allow interpretation of foreground color as monochrome double or RGB hex
-	foreColorR = iniFile.GetDoubleValue(name.c_str(), "foreground-color");
-	foreColorG = iniFile.GetDoubleValue(name.c_str(), "foreground-color");
-	foreColorB = iniFile.GetDoubleValue(name.c_str(), "foreground-color");
+	foreColorR = iniFile.GetDoubleValue(name.c_str(), "foreground-color", 1.0);
+	foreColorG = iniFile.GetDoubleValue(name.c_str(), "foreground-color", 1.0);
+	foreColorB = iniFile.GetDoubleValue(name.c_str(), "foreground-color", 1.0);
 
 	// TODO: allow interpretation of foreground color as monochrome double or RGB hex
-	backColorR = iniFile.GetDoubleValue(name.c_str(), "background-color");
-	backColorG = iniFile.GetDoubleValue(name.c_str(), "background-color");
-	backColorB = iniFile.GetDoubleValue(name.c_str(), "background-color");
+	backColorR = iniFile.GetDoubleValue(name.c_str(), "background-color", 0.0);
+	backColorG = iniFile.GetDoubleValue(name.c_str(), "background-color", 0.0);
+	backColorB = iniFile.GetDoubleValue(name.c_str(), "background-color", 0.0);
 
-	waitBefore = iniFile.GetDoubleValue(name.c_str(), "wait-before");
-	activeDuration = iniFile.GetDoubleValue(name.c_str(), "active-duration");
-	waitAfter = iniFile.GetDoubleValue(name.c_str(), "wait-after");
+	waitBefore = iniFile.GetDoubleValue(name.c_str(), "wait-before", 0.55);
+	activeDuration = iniFile.GetDoubleValue(name.c_str(), "active-duration", 5.0);
+	waitAfter = iniFile.GetDoubleValue(name.c_str(), "wait-after", 0.55);
 
-	rotationSpeed = -1.0 * M_PI / 180.0 * iniFile.GetDoubleValue(name.c_str(), "rotation-speed");
+	rotationSpeed = -1.0 * M_PI / 180.0 * iniFile.GetDoubleValue(name.c_str(), "rotation-speed", 15.0);
 
 	// Less commonly used parameters
 	lightHeight = iniFile.GetDoubleValue(name.c_str(), "light-height", 1.25);
