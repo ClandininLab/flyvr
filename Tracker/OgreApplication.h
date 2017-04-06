@@ -31,12 +31,14 @@
 #define NORTH 1
 #define EAST  2
 
-#define DISPLAY_WIDTH_METERS 1.10690093
-#define DISPLAY_HEIGHT_METERS 0.6226317743326399
+#define DISPLAY_WIDTH_METERS  1.1069
+#define DISPLAY_HEIGHT_METERS 0.6226
 
 #define DISPLAY_WIDTH_PIXELS 1440
 #define DISPLAY_HEIGHT_PIXELS 900
 #define DISPLAY_FULLSCREEN true
+
+#define TARGET_FRAME_DURATION (1.0/120.0)
 
 // Struct to keep track of the user's real position and virtual position
 struct Pose3D{
@@ -83,7 +85,7 @@ public:
 	void renderOneFrame(void);
 
     bool setup(void);
-    bool configure(void);
+    void configure(void);
 	bool createWindows(void);
 
     void chooseSceneManager(void);

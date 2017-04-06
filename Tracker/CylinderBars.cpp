@@ -99,6 +99,7 @@ void CylinderBars::CreateScene(void){
 		panelNode->roll(Ogre::Radian(roll));
 
 		// Attach the cube mesh to the panel
+		//Ogre::Entity* panelEnt = app.mSceneMgr->createEntity("C://lib//sinbad-ogre-108ab0bcc696//build//sdk//media//models//cube.mesh");
 		Ogre::Entity* panelEnt = app.mSceneMgr->createEntity("cube.mesh");
 		panelNode->attachObject(panelEnt);
 

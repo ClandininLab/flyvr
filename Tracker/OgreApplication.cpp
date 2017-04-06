@@ -4,11 +4,12 @@ Modified from tutorial Framework for Ogre 1.9 (http://www.ogre3d.org/wiki/)
 
 #include "stdafx.h"
 
+#include <chrono>
+#include <SimpleIni.h>
+
 #include "OgreApplication.h"
 #include "StimManager.h"
 #include "mutex.h"
-
-#include <SimpleIni.h>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -52,15 +53,16 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 	UNREFERENCED_PARAMETER(lpParam);
 
 	OgreApplication app;
-
+	
 	try {
 		app.go();
 		StimManager stim(app);
 
 		g_readyFor3D = true;
-		int iter = 0;
 
 		while (!g_kill3D){
+			// Record iteration start time
+			auto loopStart = std::chrono::high_resolution_clock::now();
 
 			// Read out real pose and virtual pose
 			Pose3D realPose, virtPose;
@@ -88,17 +90,21 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 
 			// Update the projection matrices based on eye position
 			app.updateProjMatrices(realPosition);
-			
-			// Print the framerate.
-			/*if (iter % 1000 == 0){
-				System::Console::WriteLine("FPS: {0:0.000}, {1:0.000}, {2:0.000}", 
-					app.mWindows[0]->getLastFPS(), app.mWindows[1]->getLastFPS(), app.mWindows[2]->getLastFPS());
-			}*/
 
 			// Render the frame
 			app.renderOneFrame();
 
-			iter++;
+			// Record iteration stop time
+			auto loopStop = std::chrono::high_resolution_clock::now();
+
+			// Aim for a target frame rate
+			auto loopDuration = std::chrono::duration<double>(loopStop - loopStart).count();
+			if (loopDuration >= TARGET_FRAME_DURATION){
+				std::cout << "Slow frame (" << loopDuration << " s)\n";
+			}
+			else {
+				Sleep(round(1000 * (TARGET_FRAME_DURATION - loopDuration)));
+			}
 		}
 	}
 	catch (Ogre::Exception& e) {
@@ -116,7 +122,7 @@ OgreApplication::OgreApplication(void)
     mPluginsCfg(Ogre::StringUtil::BLANK),
     mOverlaySystem(0)
 {
-    m_ResourcePath = "";
+    m_ResourcePath = "C:\\dev\\Tracker\\x64\\Release\\";
 }
 
 OgreApplication::~OgreApplication(void)
@@ -124,7 +130,7 @@ OgreApplication::~OgreApplication(void)
     delete mRoot;
 }
 
-bool OgreApplication::configure(void)
+void OgreApplication::configure(void)
 {
     // Show the configuration dialog and initialise the system.
     // You can skip this and use root.restoreConfig() to load configuration
@@ -133,12 +139,10 @@ bool OgreApplication::configure(void)
     {
        // Create multiple render windows
 		createWindows();
-
-        return true;
     }
     else
     {
-        return false;
+		throw std::exception("Could not restore Ogre3D config.");
     }
 }
 
@@ -350,8 +354,7 @@ bool OgreApplication::setup(void)
 
     setupResources();
 
-    bool carryOn = configure();
-    if (!carryOn) return false;
+    configure();
 
     chooseSceneManager();
     createCameras();
