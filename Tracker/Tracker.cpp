@@ -19,7 +19,7 @@ using namespace System;
 using namespace System::IO::Ports;
 using namespace System::Threading;
 
-#define DURATION 15
+#define DURATION 60
 #define MIN_MOVE 1
 #define MAX_MOVE 40
 
@@ -74,7 +74,10 @@ int main() {
 		deltaT = (GetTimeStamp() - startTime) * TIMER_SCALE_FACTOR;
 
 		LOCK(g_ogreMutex);
-		g_ogreSceneParams.value = deltaT / DURATION;
+		//g_realPose.yaw = M_PI/2 - M_PI*(deltaT / DURATION);
+		//g_realPose.z = -(DISPLAY_WIDTH_METERS/2)*(deltaT / DURATION);
+		
+		g_virtPose = g_realPose; // simulate real motion
 		UNLOCK(g_ogreMutex);
 	}
 	

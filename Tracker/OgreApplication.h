@@ -15,31 +15,33 @@
 #include <OgreRenderWindow.h>
 #include <OgreConfigFile.h>
 #include <SdkTrays.h>
+#include <OgreNode.h>
 
 #include <OgreOverlaySystem.h>
+
+#include "timer.h"
 
 #define DISPLAY_COUNT 3
 #define DISPLAY_LIST  {1,2,3}
 
-#define PATTERN_RADIUS 222
-#define PANEL_THICKNESS 1
-#define PANEL_HEIGHT 200
-#define PANEL_COUNT 100
+#define NEAR_CLIP_DIST 0.01
+#define FAR_CLIP_DIST 10.0
 
-#define WEST  1
-#define NORTH 0
+#define WEST  0
+#define NORTH 1
 #define EAST  2
 
-#define DISPLAY_WIDTH_METERS 1.10690093 
+#define DISPLAY_WIDTH_METERS 1.10690093
 #define DISPLAY_HEIGHT_METERS 0.6226317743326399
 
-#define DISPLAY_WIDTH_PIXELS 1600
+#define DISPLAY_WIDTH_PIXELS 1440
 #define DISPLAY_HEIGHT_PIXELS 900
 #define DISPLAY_FULLSCREEN true
 
-// Struct for storing the parameters of the scene being displayed
-struct OgreSceneParameters{
-	double value;
+// Struct to keep track of the user's real position and virtual position
+struct Pose3D{
+	double x, y, z;
+	double pitch, yaw, roll;
 };
 
 // Used to keep track of monitors information
@@ -50,7 +52,7 @@ struct MonitorInfo{
 };
 
 // Storage of the OGRE scene configuration
-extern OgreSceneParameters g_ogreSceneParams;
+extern Pose3D g_realPose, g_virtPose;
 
 // Global variable used to signal when the Ogre3D window should close
 extern bool g_kill3D;
@@ -65,8 +67,8 @@ extern HANDLE g_ogreMutex;
 extern HANDLE g_graphicsThread;
 
 // High-level thread management for graphics operations
-void StartGraphicsThread();
-void StopGraphicsThread();
+void StartGraphicsThread(void);
+void StopGraphicsThread(void);
 
 // Thread used to handle graphics operations
 DWORD WINAPI GraphicsThread(LPVOID lpParam);
@@ -75,20 +77,24 @@ class OgreApplication
 {
 public:
     OgreApplication(void);
-    virtual ~OgreApplication(void);
+    ~OgreApplication(void);
 
-    virtual void go(void);
-	virtual void renderOneFrame(void);
+    void go(void);
+	void renderOneFrame(void);
 
-    virtual bool setup();
-    virtual bool configure(void);
-	virtual bool createWindows();
-	virtual void createScene();
-    virtual void chooseSceneManager(void);
-    virtual void createCameras(void);
-    virtual void createViewports(void);
-    virtual void setupResources(void);
-    virtual void loadResources(void);
+    bool setup(void);
+    bool configure(void);
+	bool createWindows(void);
+
+    void chooseSceneManager(void);
+    void createCameras(void);
+    void createViewports(void);
+    void setupResources(void);
+    void loadResources(void);
+
+	void defineMonitors(void);
+	void updateProjMatrices(const Ogre::Vector3 &pe);
+	void setBackground(double r, double g, double b);
 	
 	// Top-level scene management
     Ogre::Root* mRoot;
@@ -102,10 +108,8 @@ public:
 	// Per-display members
 	Ogre::RenderWindow* mWindows[DISPLAY_COUNT];
 	Ogre::Camera* mCameras[DISPLAY_COUNT];
+	Ogre::Viewport* mViewports[DISPLAY_COUNT];
 	MonitorInfo mMonitors[DISPLAY_COUNT];
-
-	// Scene-specific
-	Ogre::SceneNode* mPanelNodes[PANEL_COUNT];
 
     // Added for Mac compatibility
     Ogre::String m_ResourcePath;
