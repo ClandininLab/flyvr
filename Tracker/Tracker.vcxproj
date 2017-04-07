@@ -175,7 +175,6 @@
     <ClInclude Include="OgreApplication.h" />
     <ClInclude Include="StimManager.h" />
     <ClInclude Include="Stimulus.h" />
-    <ClInclude Include="timer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="arduino.cpp" />
@@ -183,7 +182,6 @@
     <ClCompile Include="CylinderBars.cpp" />
     <ClCompile Include="OgreApplication.cpp" />
     <ClCompile Include="StimManager.cpp" />
-    <ClCompile Include="timer.cpp" />
     <ClCompile Include="Tracker.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
     </ClCompile>

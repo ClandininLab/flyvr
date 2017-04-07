@@ -1,6 +1,9 @@
-/*
-Modified from tutorial Framework for Ogre 1.9 (http://www.ogre3d.org/wiki/)
-*/
+// FlyVR
+// http://flyvisionlab.weebly.com/
+// Contact: Steven Herbst <sherbst@stanford.edu>
+
+// OgreApplication is based on the OGRE3D tutorial framework
+// http://www.ogre3d.org/wiki/
 
 #include <chrono>
 #include <SimpleIni.h>
@@ -11,6 +14,8 @@ Modified from tutorial Framework for Ogre 1.9 (http://www.ogre3d.org/wiki/)
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+
+using namespace std::chrono;
 
 // Global variable instantiations
 bool g_kill3D = false;
@@ -60,7 +65,7 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 
 		while (!g_kill3D){
 			// Record iteration start time
-			auto loopStart = std::chrono::high_resolution_clock::now();
+			auto loopStart = high_resolution_clock::now();
 
 			// Read out real pose and virtual pose
 			Pose3D realPose, virtPose;
@@ -93,10 +98,10 @@ DWORD WINAPI GraphicsThread(LPVOID lpParam){
 			app.renderOneFrame();
 
 			// Record iteration stop time
-			auto loopStop = std::chrono::high_resolution_clock::now();
+			auto loopStop = high_resolution_clock::now();
 
 			// Aim for a target frame rate
-			auto loopDuration = std::chrono::duration<double>(loopStop - loopStart).count();
+			auto loopDuration = duration<double>(loopStop - loopStart).count();
 			if (loopDuration >= TARGET_FRAME_DURATION){
 				std::cout << "Slow frame (" << loopDuration << " s)\n";
 			}

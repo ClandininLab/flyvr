@@ -1,23 +1,29 @@
-// Tracker.cpp : main project file.
+// FlyVR
+// http://flyvisionlab.weebly.com/
+// Contact: Steven Herbst <sherbst@stanford.edu>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <chrono>
 
 #include <windows.h>
 
 #include "OgreApplication.h"
 #include "Camera.h"
 #include "arduino.h"
-#include "timer.h"
 #include "mutex.h"
 
 using namespace System;
 using namespace System::IO::Ports;
 using namespace System::Threading;
 
+using namespace std::chrono;
+
 #define DURATION 60
 #define MIN_MOVE 1
 #define MAX_MOVE 40
+
+#define TRACKER_LOOP_DURATION 10e-3
 
 // Function to clamp a value between minimum and maximum bounds
 double clamp(double value, double min, double max){
@@ -40,11 +46,12 @@ int main() {
 	//StartSerialThread();
 	//StartCameraThread();
 	
-	__int64 startTime = GetTimeStamp();
-	double deltaT = 0.0;
+	auto trackerStart = high_resolution_clock::now();
+	double trackerDuration;
 
-	while (deltaT < DURATION){
-		
+	do {
+		auto loopStart = high_resolution_clock::now();
+
 		// Get fly pose
 		//CamPose camPose;
 		//LOCK(g_cameraMutex);
@@ -67,15 +74,23 @@ int main() {
 		//	grblStatus = g_grblStatus;
 		//UNLOCK(g_statusMutex);
 
-		deltaT = (GetTimeStamp() - startTime) * TIMER_SCALE_FACTOR;
-
 		LOCK(g_ogreMutex);
 		//g_realPose.yaw = M_PI/2 - M_PI*(deltaT / DURATION);
 		//g_realPose.z = -(DISPLAY_WIDTH_METERS/2)*(deltaT / DURATION);
 		
 		g_virtPose = g_realPose; // simulate real motion
 		UNLOCK(g_ogreMutex);
-	}
+
+		// Aim for a target loop rate
+		auto loopStop = high_resolution_clock::now();
+		auto loopDuration = duration<double>(loopStop - loopStart).count();
+		if (loopDuration < TRACKER_LOOP_DURATION){
+			Sleep(round(1000 * (TRACKER_LOOP_DURATION - loopDuration)));
+		}
+
+		// Compute cumulative duration
+		trackerDuration = duration<double>(loopStop - trackerStart).count();
+	} while (trackerDuration < DURATION);
 	
 	//StopCameraThread();
 	//StopSerialThread();

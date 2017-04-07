@@ -1,13 +1,19 @@
+// FlyVR
+// http://flyvisionlab.weebly.com/
+// Contact: Steven Herbst <sherbst@stanford.edu>
+
 #include <windows.h>
 #include <iostream>
+#include <chrono>
 
 using namespace System;
 using namespace System::IO;
 using namespace System::IO::Ports;
 using namespace System::Text::RegularExpressions;
 
+using namespace std::chrono;
+
 #include "arduino.h"
-#include "timer.h"
 #include "mutex.h"
 
 // Global variable instantiations
@@ -73,11 +79,11 @@ DWORD WINAPI SerialThread(LPVOID lpParam){
 
 		// Log position information
 		// Get the time stamp
-		__int64 tstamp = GetTimeStamp();
+		auto tstamp = duration<double>(high_resolution_clock::now().time_since_epoch()).count();
 
 		// Format the data output
 		String^ data = String::Format(
-			"{0:0.000},{1:0.000},{2}",
+			"{0:0.000},{1:0.000},{2:0.000}",
 			g_grblStatus.x,
 			g_grblStatus.y,
 			tstamp);

@@ -1,7 +1,8 @@
-// Steven Herbst
-// sherbst@stanford.edu
+// FlyVR
+// http://flyvisionlab.weebly.com/
+// Contact: Steven Herbst <sherbst@stanford.edu>
 
-// Modified from the OGRE3D tutorial framework
+// OgreApplication is based on the OGRE3D tutorial framework
 // http://www.ogre3d.org/wiki/
 
 #pragma once
@@ -18,8 +19,6 @@
 #include <OgreNode.h>
 
 #include <OgreOverlaySystem.h>
-
-#include "timer.h"
 
 #define DISPLAY_COUNT 3
 #define DISPLAY_LIST  {1,2,3}
