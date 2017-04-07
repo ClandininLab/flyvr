@@ -1,5 +1,3 @@
-#include "stdafx.h"
-
 #include <windows.h>
 #include "Camera.h"
 #include "timer.h"

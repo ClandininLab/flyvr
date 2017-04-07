@@ -1,4 +1,3 @@
-#include "stdafx.h"
 
 #include <chrono>
 #include <random>

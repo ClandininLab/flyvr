@@ -1,7 +1,5 @@
 // Tracker.cpp : main project file.
 
-#include "stdafx.h"
-
 #define _USE_MATH_DEFINES
 #include <math.h>
 
@@ -12,8 +10,6 @@
 #include "arduino.h"
 #include "timer.h"
 #include "mutex.h"
-
-#pragma comment(lib, "user32.lib")
 
 using namespace System;
 using namespace System::IO::Ports;

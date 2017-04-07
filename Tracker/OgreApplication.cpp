@@ -2,8 +2,6 @@
 Modified from tutorial Framework for Ogre 1.9 (http://www.ogre3d.org/wiki/)
 */
 
-#include "stdafx.h"
-
 #include <chrono>
 #include <SimpleIni.h>
 
