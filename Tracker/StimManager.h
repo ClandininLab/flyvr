@@ -15,19 +15,18 @@
 #include "Stimulus.h"
 #include "OgreApplication.h"
 
-// Name of the stimulus configuration file
-#define CONFIG_FILE_NAME "C:\\dev\\Tracker\\Tracker\\config.ini"
-
 enum class StimManagerStates { Init, Interleave, Stimulus };
 
-class StimManager{
+class StimManager
+{
 public:
 	StimManager(OgreApplication &app);
 	~StimManager(void);
 	void Update(void);
+
 private:
 	void PickNextStimulus(void);
-	void MakeNextStimulus(std::string name);
+	void MakeStimulus(std::string name);
 
 	OgreApplication &app;
 

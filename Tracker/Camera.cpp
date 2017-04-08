@@ -11,53 +11,55 @@ using namespace std::chrono;
 using namespace cv;
 using namespace CameraConstants;
 
-// Global variable declarations
-bool g_killCamera = false;
+// Global variables used to manage access to camera measurement
 std::mutex g_cameraMutex;
-std::thread g_cameraThread;
-
-Mat g_origFrame, g_procFrame;
-RotatedRect g_boundingBox;
-vector<vector<Point>> g_imContours;
-vector<Vec4i> g_imHierarchy;
 CamPose g_camPose;
+
+// Variables used to manage camera thread
+bool killCamera = false;
+std::thread cameraThread;
 
 // High-level management of the graphics thread
 void StartCameraThread(){
-	// Graphics setup
-	g_cameraThread = std::thread(CameraThread);
+	cameraThread = std::thread(CameraThread);
 }
 
+// High-level management of the graphics thread
 void StopCameraThread(){
 	// Kill the 3D graphics thread
-	g_killCamera = true;
+	killCamera = true;
 
 	// Wait for camera thread to terminate
-	g_cameraThread.join();
+	cameraThread.join();
 }
 
 // Thread used to handle graphics operations
 void CameraThread(void){
 	// Set up logging
-
 	std::ofstream ofs("CameraThread.txt");
-	ofs << "x (mm),y (mm),angle (deg),timestamp (s)";
+	ofs << "x (mm),";
+	ofs << "y (mm),";
+	ofs << "angle (deg),";
+	ofs << "timestamp (s)";
+	ofs << "\r\n";
 	ofs.precision(LogPrecision);
 
 	// Set up video capture
-	VideoCapture cap(CV_CAP_ANY); // This is sufficient for a single camera setup. Otherwise, it will need to be more specific.
+	VideoCapture cap(CV_CAP_ANY);
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, FrameWidth);
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, FrameHeight);
 
-	while (!g_killCamera){
+	while (!killCamera){
 		// Read image
-		cap.read(g_origFrame);
+		Mat inFrame;
+		cap.read(inFrame);
 
 		// Prepare image for contour search
-		prepFrame();
+		Mat outFrame;
+		processFrame(inFrame, outFrame);
 
 		// Locate the fly in the frame
-		bool flyFound = locateFly();
+		bool flyFound = locateFly(outFrame);
 
 		// Log the fly position
 		if (flyFound){
@@ -65,23 +67,27 @@ void CameraThread(void){
 			auto tstamp = duration<double>(high_resolution_clock::now().time_since_epoch()).count();
 
 			// Write data to file
-			ofs << g_camPose.x << "," << g_camPose.y << "," << g_camPose.angle << "," << tstamp << "\r\n";
+			ofs << std::fixed << g_camPose.x << ",";
+			ofs << std::fixed << g_camPose.y << ",";
+			ofs << std::fixed << g_camPose.angle << ",";
+			ofs << std::fixed << tstamp;
+			ofs << "\r\n";
 		}
 	}
 }
 
-void prepFrame(){
+void processFrame(const Mat &inFrame, Mat &outFrame){
 	// Convert to grayscale
-	cvtColor(g_origFrame, g_procFrame, CV_BGR2GRAY);
+	cvtColor(inFrame, outFrame, CV_BGR2GRAY);
 
 	// Blur the image to reduce noise
-	blur(g_procFrame, g_procFrame, Size(BlurSize, BlurSize));
+	blur(outFrame, outFrame, Size(BlurSize, BlurSize));
 
 	// Crop the image to remove edge effects of blurring
-	g_procFrame = g_procFrame(Rect(CropAmount, CropAmount, CroppedWidth, CroppedHeight));
+	outFrame = outFrame(Rect(CropAmount, CropAmount, CroppedWidth, CroppedHeight));
 
 	// Threshold image to produce black-and-white result
-	threshold(g_procFrame, g_procFrame, LowThresh, HighThresh, THRESH_BINARY_INV);
+	threshold(outFrame, outFrame, LowThresh, HighThresh, THRESH_BINARY_INV);
 }
 
 // Comparison function for contour sizes
@@ -89,22 +95,28 @@ bool contourCompare(vector<Point> a, vector<Point> b) {
 	return a.size() < b.size();
 }
 
-//
-bool locateFly(){
-	findContours(g_procFrame, g_imContours, g_imHierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
+// Locate the fly as the biggest contour in the image
+bool locateFly(const Mat &inFrame){
+	// Variables related to contour search
+	RotatedRect boundingBox;
+	vector<std::vector<cv::Point>> imContours;
+	vector<cv::Vec4i> imHierarchy;
 
-	// Find biggest contour
-	auto maxElem = std::max_element(g_imContours.begin(), g_imContours.end(), contourCompare);
+	// Find all contours in image
+	findContours(inFrame, imContours, imHierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
+
+	// Find the biggest contour
+	auto maxElem = std::max_element(imContours.begin(), imContours.end(), contourCompare);
 
 	// Check if the biggest contour is large enough
 	auto sizeMax = (*maxElem).size();
 	if (sizeMax > MinContour){
-		g_boundingBox = fitEllipse(Mat(*maxElem));
+		boundingBox = fitEllipse(Mat(*maxElem));
 
 		// Compute fly position
-		double x = (g_boundingBox.center.x - CroppedWidth / 2.0) / PixelPerMM;
-		double y = (g_boundingBox.center.y - CroppedHeight / 2.0) / PixelPerMM;
-		double angle = g_boundingBox.angle;
+		double x = (boundingBox.center.x - CroppedWidth / 2.0) / PixelPerMM;
+		double y = (boundingBox.center.y - CroppedHeight / 2.0) / PixelPerMM;
+		double angle = boundingBox.angle;
 
 		{
 			// Acquire lock for image processing information

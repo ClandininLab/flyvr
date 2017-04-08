@@ -6,21 +6,26 @@
 #include <random>
 #include <algorithm>
 
+#include "Utility.h"
 #include "StimManager.h"
 #include "CylinderBars.h"
+
+// Name of the stimulus configuration file
+// TODO: determine this automatically
+auto ConfigFileName = "C:\\dev\\Tracker\\Tracker\\config.ini";
 
 StimManager::StimManager(OgreApplication &app)
 	: app(app){
 
 	// Load the INI file
 	iniFile.SetUnicode();
-	iniFile.LoadFile(CONFIG_FILE_NAME);
+	iniFile.LoadFile(ConfigFileName);
 
 	// Read the global configuration parameters
-	// TODO: allow for RGB hex specific of interleave color
-	iColorR = iniFile.GetDoubleValue("", "interleave-color", 0.5);
-	iColorG = iniFile.GetDoubleValue("", "interleave-color", 0.5);
-	iColorB = iniFile.GetDoubleValue("", "interleave-color", 0.5);
+	std::string iColor(iniFile.GetValue("", "interleave-color", "0.5"));
+	iColorR = getColor(iColor, ColorType::Red);
+	iColorG = getColor(iColor, ColorType::Green);
+	iColorB = getColor(iColor, ColorType::Blue);
 	iDuration = iniFile.GetDoubleValue("", "interleave-duration", 1.0);
 	randomSeed = iniFile.GetLongValue("", "random-seed", 0);
 
@@ -34,7 +39,7 @@ StimManager::StimManager(OgreApplication &app)
 		std::string stimName = std::string(iSection->pItem);
 		if (stimName != ""){
 			stimNames.push_back(stimName);
-			std::cout << "Found section: " << stimName << "\n";
+			std::cout << "Found stimulus: " << stimName << "\r\n";
 		}
 	}
 
@@ -52,6 +57,8 @@ StimManager::StimManager(OgreApplication &app)
 StimManager::~StimManager(){
 }
 
+// Main state machine for the stimulus manager
+// Sets up the interleave background and runs each stimulus to completion
 void StimManager::Update(void){
 	if (state == StimManagerStates::Init){
 		app.setBackground(iColorR, iColorG, iColorB);
@@ -63,7 +70,6 @@ void StimManager::Update(void){
 		auto duration = std::chrono::duration<double>(thisTime - lastTime).count();
 		if (duration >= iDuration){
 			PickNextStimulus();
-			currentStimulus->Setup();
 			state = StimManagerStates::Stimulus;
 		}
 	}
@@ -74,7 +80,7 @@ void StimManager::Update(void){
 		// Check if stimulus is done
 		if (currentStimulus->isDone){
 			// If it is, tear down the scene and enter interleave
-			currentStimulus->Destroy();
+			currentStimulus.reset();
 			state = StimManagerStates::Init;
 		}
 	}
@@ -83,24 +89,28 @@ void StimManager::Update(void){
 	}
 }
 
+// Picks the next stimulus name from the configuration file
+// If we've reached the end of the list, shuffle first
 void StimManager::PickNextStimulus(void){
+	// Shuffle list if we've reached the end
 	if (currentStimName == stimNames.end()){
-		// Shuffle list if we've reached the end
 		std::shuffle(stimNames.begin(), stimNames.end(), randomGenerator);
 		currentStimName = stimNames.begin();
 	}
 
-	// instantiate the next stimulus
-	MakeNextStimulus(*currentStimName);
+	// Instantiate the next stimulus
+	MakeStimulus(*currentStimName);
 
 	// increment the pointer
 	currentStimName++;
 }
 
-void StimManager::MakeNextStimulus(std::string name){
+// Creates a new stimulus object based on the specifications in the given section
+void StimManager::MakeStimulus(std::string name){
 	// Load the type from configuration file
 	std::string type = iniFile.GetValue(name.c_str(), "type");
 
+	// Create a new stimulus based on the specified type
 	if (type == "CylinderBars"){
 		currentStimulus = std::make_unique<CylinderBars>(name, app, iniFile);
 	}

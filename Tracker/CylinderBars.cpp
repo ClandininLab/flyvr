@@ -2,6 +2,7 @@
 // http://flyvisionlab.weebly.com/
 // Contact: Steven Herbst <sherbst@stanford.edu>
 
+#include "Utility.h"
 #include "CylinderBars.h"
 
 #define _USE_MATH_DEFINES
@@ -12,26 +13,28 @@ using namespace CylinderConstants;
 CylinderBars::CylinderBars(std::string name, OgreApplication &app, CSimpleIniA &iniFile)
 	: name(name), app(app), iniFile(iniFile)
 {
-
+	Setup();
 }
 
 CylinderBars::~CylinderBars(){
-
+	app.clear();
 }
 
 void CylinderBars::Setup(){
 	numSpatialPeriod = iniFile.GetLongValue(name.c_str(), "number-of-periods", 50);
 	dutyCycle = iniFile.GetDoubleValue(name.c_str(), "duty-cycle", 0.5);
 
-	// TODO: allow interpretation of foreground color as monochrome double or RGB hex
-	foreColorR = iniFile.GetDoubleValue(name.c_str(), "foreground-color", 1.0);
-	foreColorG = iniFile.GetDoubleValue(name.c_str(), "foreground-color", 1.0);
-	foreColorB = iniFile.GetDoubleValue(name.c_str(), "foreground-color", 1.0);
+	// Foreground color definition
+	std::string foreColor(iniFile.GetValue(name.c_str(), "foreground-color", "1"));
+	foreColorR = getColor(foreColor, ColorType::Red);
+	foreColorG = getColor(foreColor, ColorType::Green);
+	foreColorB = getColor(foreColor, ColorType::Blue);
 
-	// TODO: allow interpretation of foreground color as monochrome double or RGB hex
-	backColorR = iniFile.GetDoubleValue(name.c_str(), "background-color", 0.0);
-	backColorG = iniFile.GetDoubleValue(name.c_str(), "background-color", 0.0);
-	backColorB = iniFile.GetDoubleValue(name.c_str(), "background-color", 0.0);
+	// Background color definition
+	std::string backColor(iniFile.GetValue(name.c_str(), "background-color", "0"));
+	backColorR = getColor(backColor, ColorType::Red);
+	backColorG = getColor(backColor, ColorType::Green);
+	backColorB = getColor(backColor, ColorType::Blue);
 
 	waitBefore = iniFile.GetDoubleValue(name.c_str(), "wait-before", 0.55);
 	activeDuration = iniFile.GetDoubleValue(name.c_str(), "active-duration", 5.0);
@@ -45,10 +48,11 @@ void CylinderBars::Setup(){
 	panelHeight = iniFile.GetDoubleValue(name.c_str(), "panel-height", 1.25);
 	panelThickness = iniFile.GetDoubleValue(name.c_str(), "panel-thickness", 0.001);
 
-	// TODO: allow for RGB interpretation of background light
-	backLightR = iniFile.GetDoubleValue(name.c_str(), "background-light", 0);
-	backLightG = iniFile.GetDoubleValue(name.c_str(), "background-light", 0);
-	backLightB = iniFile.GetDoubleValue(name.c_str(), "background-light", 0);
+	// Background light definition
+	std::string backLight(iniFile.GetValue(name.c_str(), "background-light", "0"));
+	backLightR = getColor(backLight, ColorType::Red);
+	backLightG = getColor(backLight, ColorType::Green);
+	backLightB = getColor(backLight, ColorType::Blue);
 
 	// Create the scene
 	CreateScene();
@@ -58,17 +62,11 @@ void CylinderBars::Setup(){
 }
 
 void CylinderBars::CreateScene(void){
-	// Create nodes for the whole scene and stimulus part
-	Ogre::SceneNode *rootNode = app.mSceneMgr->getRootSceneNode();
-	stimNode = rootNode->createChildSceneNode();
-
 	// Turn on background lighting
-	app.mSceneMgr->setAmbientLight(Ogre::ColourValue(backLightR, backLightG, backLightB));
+	app.setAmbientLight(backLightR, backLightG, backLightB);
 
 	// Create main light
-	Ogre::Light *light = app.mSceneMgr->createLight("MainLight");
-	light->setPosition(0.0, Ogre::Real(lightHeight), 0);
-	rootNode->attachObject(light);
+	app.createLight(0, lightHeight, 0);
 
 	// Derived scene parameters
 	double dtheta = (2.0 * M_PI) / numSpatialPeriod;
@@ -77,9 +75,13 @@ void CylinderBars::CreateScene(void){
 	double ydim = panelHeight;
 	double zdim = panelThickness;
 
+	// Create node for all stimulus objects
+	stimNode = app.createRootChild();
+
+	// Create and attach all stimulus objects
 	for (int i = 0; i < numSpatialPeriod; i++){
 		// Create node for the panel
-		Ogre::SceneNode* panelNode = stimNode->createChildSceneNode();
+		Ogre::SceneNode *panelNode = stimNode->createChildSceneNode();
 
 		// Apply scaling to panel
 		double n = 1.0 / CubeSideLength;
@@ -103,13 +105,12 @@ void CylinderBars::CreateScene(void){
 		panelNode->roll(Ogre::Radian(roll));
 
 		// Attach the cube mesh to the panel
-		Ogre::Entity* panelEnt = app.mSceneMgr->createEntity("cube.mesh");
+		Ogre::Entity *panelEnt = app.createEntity("cube.mesh");
 		panelNode->attachObject(panelEnt);
 
 		// Set the panel color to the desired value
-		Ogre::ColourValue panelColor = Ogre::ColourValue(foreColorR, foreColorG, foreColorB);
-
 		// TODO: is there a better way to set the color of a panel?
+		Ogre::ColourValue panelColor = Ogre::ColourValue(foreColorR, foreColorG, foreColorB);
 		panelEnt->getSubEntity(0)->getMaterial().getPointer()->getTechnique(0)->getPass(0)->setDiffuse(panelColor);
 	}
 }
@@ -151,8 +152,4 @@ void CylinderBars::Update(){
 	else {
 		throw std::exception("Invalid CylinderBar state.");
 	}
-}
-
-void CylinderBars::Destroy(){
-	app.mSceneMgr->clearScene();
 }

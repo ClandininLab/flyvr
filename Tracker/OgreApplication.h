@@ -58,21 +58,9 @@ struct MonitorInfo{
 	Ogre::Vector3 pc;
 };
 
-// Storage of the OGRE scene configuration
+// Global variables used to manage access to real and virtual viewer position
+extern std::mutex g_ogreMutex;
 extern Pose3D g_realPose, g_virtPose;
-
-// Global variable used to signal when the Ogre3D window should close
-extern bool g_kill3D;
-
-// Global variable used to indicate when the Ogre3D engine is running
-extern bool g_readyFor3D;
-extern std::condition_variable g_gfxCV;
-
-// Mutex to manage access to 3D graphics variables
-extern std::mutex g_ogreMutex, g_gfxReadyMutex;
-
-// Handle to manage the graphics thread
-extern std::thread g_graphicsThread;
 
 // High-level thread management for graphics operations
 void StartGraphicsThread(void);
@@ -88,7 +76,22 @@ public:
 	~OgreApplication(void);
 
 	void go(void);
+	
+	void setRootPos(double x, double y, double z);
+	void setRootRot(double pitch, double yaw, double roll);
+	void updateProjMatrices(double x, double y, double z);
+
+	void createLight(double x, double y, double z);
+	void setAmbientLight(double r, double g, double b);
+	void setBackground(double r, double g, double b);
+
 	void renderOneFrame(void);
+	void clear(void);
+
+	Ogre::SceneNode* createRootChild(void);
+	Ogre::Entity* createEntity(std::string meshName);
+
+private:
 
 	bool setup(void);
 	void configure(void);
@@ -101,24 +104,22 @@ public:
 	void loadResources(void);
 
 	void defineMonitors(void);
-	void updateProjMatrices(const Ogre::Vector3 &pe);
-	void setBackground(double r, double g, double b);
 
 	// Top-level scene management
-	Ogre::Root* mRoot;
-	Ogre::SceneManager* mSceneMgr;
+	Ogre::Root *mRoot;
+	Ogre::SceneManager *mSceneMgr;
 
 	// Initialization variables
 	Ogre::String mResourcesCfg;
 	Ogre::String mPluginsCfg;
-	Ogre::OverlaySystem* mOverlaySystem;
+	Ogre::OverlaySystem *mOverlaySystem;
 
 	// Per-display members
-	Ogre::RenderWindow* mWindows[OgreConstants::DisplayCount];
-	Ogre::Camera* mCameras[OgreConstants::DisplayCount];
-	Ogre::Viewport* mViewports[OgreConstants::DisplayCount];
+	Ogre::RenderWindow *mWindows[OgreConstants::DisplayCount];
+	Ogre::Camera *mCameras[OgreConstants::DisplayCount];
+	Ogre::Viewport *mViewports[OgreConstants::DisplayCount];
 	MonitorInfo mMonitors[OgreConstants::DisplayCount];
 
 	// Added for Mac compatibility
-	Ogre::String m_ResourcePath;
+	Ogre::String mResourcePath;
 };

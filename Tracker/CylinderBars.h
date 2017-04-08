@@ -22,10 +22,9 @@ class CylinderBars : public Stimulus{
 public:
 	CylinderBars(std::string name, OgreApplication &app, CSimpleIniA &iniFile);
 	~CylinderBars();
-	void Setup();
 	void Update();
-	void Destroy();
 private:
+	void Setup(void);
 	void CreateScene(void);
 
 	std::string name;

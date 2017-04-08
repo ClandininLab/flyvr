@@ -18,33 +18,40 @@
 using namespace std::chrono;
 using namespace OgreConstants;
 
-// Global variable instantiations
-bool g_kill3D = false;
-bool g_readyFor3D = false;
-std::mutex g_ogreMutex, g_gfxReadyMutex;
-std::thread g_graphicsThread;
-std::condition_variable g_gfxCV;
+// Path to folder containing CFG files
+// TODO: determine this automatically
+auto ResourcePath = "C:\\dev\\Tracker\\x64\\Release\\";
 
-// Initialize poses
+// Global variables used to manage access to real and virtual viewer position
+std::mutex g_ogreMutex;
 Pose3D g_realPose = { 0, 0, 0, 0, 0, 0 };
 Pose3D g_virtPose = { 0, 0, 0, 0, 0, 0 };
+
+// Variables used to manage graphics thread
+bool kill3D = false;
+std::thread graphicsThread;
+
+// Variables used to signal when the graphics thread has started up
+bool readyFor3D = false;
+std::mutex gfxReadyMutex;
+std::condition_variable gfxCV;
 
 // High-level management of the graphics thread
 void StartGraphicsThread(void){
 	// Graphics setup;
-	g_graphicsThread = std::thread(GraphicsThread);
+	graphicsThread = std::thread(GraphicsThread);
 
 	// Wait for 3D engine to be up and running
-	std::unique_lock<std::mutex> lck(g_gfxReadyMutex);
-	g_gfxCV.wait(lck, []{return g_readyFor3D; });
+	std::unique_lock<std::mutex> lck(gfxReadyMutex);
+	gfxCV.wait(lck, []{return readyFor3D; });
 }
 
 void StopGraphicsThread(void){
 	// Kill the 3D graphics thread
-	g_kill3D = true;
+	kill3D = true;
 
 	// Wait for graphics thread to terminate
-	g_graphicsThread.join();
+	graphicsThread.join();
 }
 
 // Thread used to handle graphics operations
@@ -57,12 +64,12 @@ void GraphicsThread(void){
 
 	// Let the main thread know that the 3D application is up and running
 	{
-		std::lock_guard<std::mutex> lck(g_gfxReadyMutex);
-		g_readyFor3D = true;
+		std::lock_guard<std::mutex> lck(gfxReadyMutex);
+		readyFor3D = true;
 	}
-	g_gfxCV.notify_one();
+	gfxCV.notify_one();
 
-	while (!g_kill3D){
+	while (!kill3D){
 		// Record iteration start time
 		auto loopStart = high_resolution_clock::now();
 
@@ -78,22 +85,18 @@ void GraphicsThread(void){
 		// Update the stimulus
 		stim.Update();
 
-		// Create the top node
-		Ogre::SceneNode *rootNode = app.mSceneMgr->getRootSceneNode();
-
 		// Move scene based on difference between real position and virtual position
-		Ogre::Vector3 realPosition = Ogre::Vector3(realPose.x, realPose.y, realPose.z);
-		Ogre::Vector3 virtPosition = Ogre::Vector3(virtPose.x, virtPose.y, virtPose.z);
-		rootNode->setPosition(realPosition - virtPosition);
+		app.setRootPos(realPose.x - virtPose.x, 
+			           realPose.y - virtPose.y, 
+					   realPose.z - virtPose.z);
 
 		// Rotate scene based on difference between real orientation and virtual orientation
-		rootNode->setOrientation(rootNode->getInitialOrientation());
-		rootNode->pitch(Ogre::Radian(realPose.pitch - virtPose.pitch));
-		rootNode->yaw(Ogre::Radian(realPose.yaw - virtPose.yaw));
-		rootNode->roll(Ogre::Radian(realPose.roll - virtPose.roll));
+		app.setRootRot(realPose.pitch - virtPose.pitch, 
+			           realPose.yaw - virtPose.yaw, 
+					   realPose.roll - virtPose.roll);
 
 		// Update the projection matrices based on eye position
-		app.updateProjMatrices(realPosition);
+		app.updateProjMatrices(realPose.x, realPose.y, realPose.z);
 
 		// Render the frame
 		app.renderOneFrame();
@@ -114,18 +117,54 @@ void GraphicsThread(void){
 }
 
 OgreApplication::OgreApplication(void)
-	: mRoot(0),
-	mSceneMgr(0),
+	: mRoot(nullptr),
+	mSceneMgr(nullptr),
 	mResourcesCfg(Ogre::StringUtil::BLANK),
 	mPluginsCfg(Ogre::StringUtil::BLANK),
-	mOverlaySystem(0)
+	mOverlaySystem(nullptr),
+	mResourcePath(ResourcePath)
 {
-	m_ResourcePath = "C:\\dev\\Tracker\\x64\\Release\\";
 }
 
 OgreApplication::~OgreApplication(void)
 {
 	delete mRoot;
+}
+
+void OgreApplication::clear(void){
+	mSceneMgr->clearScene();
+}
+
+void OgreApplication::createLight(double x, double y, double z){
+	Ogre::Light *light = mSceneMgr->createLight();
+	light->setPosition(Ogre::Real(x), Ogre::Real(y), Ogre::Real(z));
+	mSceneMgr->getRootSceneNode()->attachObject(light);
+}
+
+void OgreApplication::setAmbientLight(double r, double g, double b){
+	Ogre::SceneNode *rootNode = mSceneMgr->getRootSceneNode();
+	mSceneMgr->setAmbientLight(Ogre::ColourValue(r, g, b));
+}
+
+void OgreApplication::setRootPos(double x, double y, double z){
+	Ogre::SceneNode *rootNode = mSceneMgr->getRootSceneNode();
+	rootNode->setPosition(Ogre::Vector3(x, y, z));
+}
+
+void OgreApplication::setRootRot(double pitch, double yaw, double roll){
+	Ogre::SceneNode *rootNode = mSceneMgr->getRootSceneNode();
+	rootNode->setOrientation(rootNode->getInitialOrientation());
+	rootNode->pitch(Ogre::Radian(pitch));
+	rootNode->yaw(Ogre::Radian(yaw));
+	rootNode->roll(Ogre::Radian(roll));
+}
+
+Ogre::SceneNode* OgreApplication::createRootChild(void){
+	return mSceneMgr->getRootSceneNode()->createChildSceneNode();
+}
+
+Ogre::Entity* OgreApplication::createEntity(std::string meshName){
+	return mSceneMgr->createEntity(meshName);
 }
 
 void OgreApplication::configure(void)
@@ -162,8 +201,7 @@ bool OgreApplication::createWindows(void)
 		Ogre::NameValuePairList nvList;
 		nvList["monitorIndex"] = Ogre::StringConverter::toString(monitorIndex);
 
-		// Create the render window, copying the width, height, and full screen setting from the
-		// first monitor
+		// Create the new render window and set it up
 		mWindows[i] = mRoot->createRenderWindow(strWindowName,
 			DisplayWidthPixels, DisplayHeightPixels, DisplayFullscreen, &nvList);
 		mWindows[i]->setDeactivateOnFocusChange(false);
@@ -216,18 +254,22 @@ void OgreApplication::createCameras(void)
 	// Create all cameras
 	for (unsigned i = 0; i < DisplayCount; i++){
 		Ogre::String strCameraName = "Camera" + Ogre::StringConverter::toString(i);
+
 		mCameras[i] = mSceneMgr->createCamera(strCameraName);
 	}
 
 	// Update the projection matrices assuming the eye is at the origin
-	Ogre::Vector3 pe = Ogre::Vector3(0, 0, 0);
-	updateProjMatrices(pe);
+	updateProjMatrices(0, 0, 0);
 }
 
-void OgreApplication::updateProjMatrices(const Ogre::Vector3 &pe){
+void OgreApplication::updateProjMatrices(double x, double y, double z){
 	// Update project matrix used for each display
 	// Reference: http://csc.lsu.edu/~kooima/articles/genperspective/
 
+	// Vector corresponding to eye position
+	Ogre::Vector3 pe(x, y, z);
+
+	// Update projection matrix for each display
 	for (unsigned i = 0; i < DisplayCount; i++){
 		// Determine monitor coordinates
 		Ogre::Vector3 pa = mMonitors[i].pa;
@@ -337,8 +379,8 @@ void OgreApplication::loadResources(void)
 
 void OgreApplication::go(void)
 {
-	mResourcesCfg = m_ResourcePath + "resources.cfg";
-	mPluginsCfg = m_ResourcePath + "plugins.cfg";
+	mResourcesCfg = mResourcePath + "resources.cfg";
+	mPluginsCfg = mResourcePath + "plugins.cfg";
 
 	setup();
 }
