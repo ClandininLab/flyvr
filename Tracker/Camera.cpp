@@ -3,19 +3,19 @@
 // Contact: Steven Herbst <sherbst@stanford.edu>
 
 #include <chrono>
-#include <windows.h>
-#include "Camera.h"
-#include "mutex.h"
+#include <fstream>
 
-using namespace System;
-using namespace System::IO;
+#include "Camera.h"
 
 using namespace std::chrono;
+using namespace cv;
+using namespace CameraConstants;
 
 // Global variable declarations
 bool g_killCamera = false;
-HANDLE g_cameraMutex;
-HANDLE g_cameraThread;
+std::mutex g_cameraMutex;
+std::thread g_cameraThread;
+
 Mat g_origFrame, g_procFrame;
 RotatedRect g_boundingBox;
 vector<vector<Point>> g_imContours;
@@ -25,33 +25,29 @@ CamPose g_camPose;
 // High-level management of the graphics thread
 void StartCameraThread(){
 	// Graphics setup
-	g_cameraMutex = CreateMutex(NULL, FALSE, NULL);
-	DWORD cameraThreadID;
-	g_cameraThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CameraThread, NULL, 0, &cameraThreadID);
+	g_cameraThread = std::thread(CameraThread);
 }
 
 void StopCameraThread(){
 	// Kill the 3D graphics thread
 	g_killCamera = true;
 
-	// Wait for serial thread to terminate
-	WaitForSingleObject(g_cameraThread, INFINITE);
-
-	// Close the handles to the mutexes and graphics thread
-	CloseHandle(g_cameraThread);
-	CloseHandle(g_cameraMutex);
+	// Wait for camera thread to terminate
+	g_cameraThread.join();
 }
 
 // Thread used to handle graphics operations
-DWORD WINAPI CameraThread(LPVOID lpParam){
+void CameraThread(void){
 	// Set up logging
-	StreamWriter^ logger = gcnew StreamWriter("CameraThread.txt");
-	logger->WriteLine("x (mm),y (mm),angle (deg),timestamp (100ns)");
+
+	std::ofstream ofs("CameraThread.txt");
+	ofs << "x (mm),y (mm),angle (deg),timestamp (s)";
+	ofs.precision(LogPrecision);
 
 	// Set up video capture
 	VideoCapture cap(CV_CAP_ANY); // This is sufficient for a single camera setup. Otherwise, it will need to be more specific.
-	cap.set(CV_CAP_PROP_FRAME_WIDTH, CV_FRAME_WIDTH);
-	cap.set(CV_CAP_PROP_FRAME_HEIGHT, CV_FRAME_HEIGHT);
+	cap.set(CV_CAP_PROP_FRAME_WIDTH, FrameWidth);
+	cap.set(CV_CAP_PROP_FRAME_HEIGHT, FrameHeight);
 
 	while (!g_killCamera){
 		// Read image
@@ -68,22 +64,10 @@ DWORD WINAPI CameraThread(LPVOID lpParam){
 			// Get the time stamp
 			auto tstamp = duration<double>(high_resolution_clock::now().time_since_epoch()).count();
 
-			// Format the data output
-			System::String^ data = System::String::Format(
-				"{0:0.000},{1:0.000},{2:0.000},{3:0.000}",
-				g_camPose.x,
-				g_camPose.y,
-				g_camPose.angle,
-				tstamp);
-
-			logger->WriteLine(data);
+			// Write data to file
+			ofs << g_camPose.x << "," << g_camPose.y << "," << g_camPose.angle << "," << tstamp << "\r\n";
 		}
 	}
-
-	// Close the log file
-	logger->Close();
-
-	return TRUE;
 }
 
 void prepFrame(){
@@ -91,13 +75,13 @@ void prepFrame(){
 	cvtColor(g_origFrame, g_procFrame, CV_BGR2GRAY);
 
 	// Blur the image to reduce noise
-	blur(g_procFrame, g_procFrame, Size(CV_BLUR_SIZE, CV_BLUR_SIZE));
+	blur(g_procFrame, g_procFrame, Size(BlurSize, BlurSize));
 
 	// Crop the image to remove edge effects of blurring
-	g_procFrame = g_procFrame(Rect(CV_CROP_AMOUNT, CV_CROP_AMOUNT, CV_CROPPED_WIDTH, CV_CROPPED_HEIGHT));
+	g_procFrame = g_procFrame(Rect(CropAmount, CropAmount, CroppedWidth, CroppedHeight));
 
 	// Threshold image to produce black-and-white result
-	threshold(g_procFrame, g_procFrame, CV_LOW_THRESH, CV_HIGH_THRESH, THRESH_BINARY_INV);
+	threshold(g_procFrame, g_procFrame, LowThresh, HighThresh, THRESH_BINARY_INV);
 }
 
 // Comparison function for contour sizes
@@ -114,20 +98,23 @@ bool locateFly(){
 
 	// Check if the biggest contour is large enough
 	auto sizeMax = (*maxElem).size();
-	if (sizeMax > CV_MIN_CONTOUR){
+	if (sizeMax > MinContour){
 		g_boundingBox = fitEllipse(Mat(*maxElem));
 
 		// Compute fly position
-		double x = (g_boundingBox.center.x - CV_CROPPED_WIDTH / 2.0) / CV_PIXEL_PER_MM;
-		double y = (g_boundingBox.center.y - CV_CROPPED_HEIGHT / 2.0) / CV_PIXEL_PER_MM;
+		double x = (g_boundingBox.center.x - CroppedWidth / 2.0) / PixelPerMM;
+		double y = (g_boundingBox.center.y - CroppedHeight / 2.0) / PixelPerMM;
 		double angle = g_boundingBox.angle;
 
-		// Update shared position
-		LOCK(g_cameraMutex);
+		{
+			// Acquire lock for image processing information
+			std::unique_lock<std::mutex> lck{ g_cameraMutex };
+
+			// Update shared position
 			g_camPose.x = x;
 			g_camPose.y = y;
 			g_camPose.angle = angle;
-		UNLOCK(g_cameraMutex);
+		}
 
 		return true;
 	}

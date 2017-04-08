@@ -4,8 +4,10 @@
 
 #pragma once
 
-using namespace System;
-using namespace System::IO::Ports;
+#include <mutex>
+#include <thread>
+
+#include "SimpleSerial.h"
 
 #define GRBL_MAX_VEL 10000
 #define GRBL_MAX_ACC 200
@@ -20,7 +22,7 @@ struct GrblCommand{
 };
 
 // Struct for storing the results of a GRBL status query
-public value struct GrblStatus
+struct GrblStatus
 {
 	bool isMoving;
 
@@ -40,28 +42,49 @@ extern GrblStatus g_grblStatus;
 extern bool g_killSerial;
 
 // Mutex to manage access to move command and CNC status
-extern HANDLE g_moveMutex, g_statusMutex;
+std::mutex g_moveMutex, g_statusMutex;
 
 // Handle used to run SerialThread
-extern HANDLE g_serialThread;
+std::thread g_serialThread;
 
 // High-level thread management
 void StartSerialThread();
 void StopSerialThread();
 
 // Thread used to manage serial operations
-DWORD WINAPI SerialThread(LPVOID lpParam);
+void SerialThread(void);
 
-public ref class GrblBoard
+class GrblBoard
 {
 public:
-	SerialPort^ arduino;
-	GrblBoard();
-	void Init();
+	// Constructor, requires that the serial port has already been opened
+	GrblBoard(SimpleSerial *arduino);
+
+	// Reads out the GRBL status (position and moving/idle condition)
+	void ReadStatus();
+
+	// General move command
+	void Move(double X, double Y);
+
+	// Convenience commands for jogging
+	void North() { Move(-1, 0); }
+	void South() { Move(1, 0); }
+	void East() { Move(0, 1); }
+	void West() { Move(0, -1); }
+
+	// Resets the GRBL board
 	void Reset();
-	void Close();
+
+private:
+	// Serial port used for communication with GRBL board
+	SimpleSerial *arduino;
+
+	// Low-level communication routines
 	void GrblCommand(int key, int value);
-	void RawCommand(System::String^ cmdString);
+	void RawCommand(std::string cmdString);
+
+	// Commands used in the initialization of GRBL
+	void Init();
 	void StepIdleDelay(int value){ GrblCommand(1, value); }
 	void StatusReportMask(int value){ GrblCommand(10, value); }
 	void StepsPerMM_X(int value){ GrblCommand(100, value); }
@@ -73,10 +96,4 @@ public:
 	void SetUnitMM(){ RawCommand("G21"); }
 	void MoveRelative(){ RawCommand("G91"); }
 	void MaxFeedRate(int value);
-	void Move(double X, double Y);
-	void North() { Move(-1, 0); }
-	void South() { Move(1, 0); }
-	void East() { Move(0, 1); }
-	void West() { Move(0, -1); }
-	void ReadStatus();
 };

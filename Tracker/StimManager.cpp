@@ -5,10 +5,11 @@
 #include <chrono>
 #include <random>
 #include <algorithm>
+
 #include "StimManager.h"
 #include "CylinderBars.h"
 
-StimManager::StimManager(OgreApplication &app) 
+StimManager::StimManager(OgreApplication &app)
 	: app(app){
 
 	// Load the INI file
@@ -29,7 +30,7 @@ StimManager::StimManager(OgreApplication &app)
 
 	// Copy section names into a vector so they can be shuffled
 	stimNames = std::vector<std::string>();
-	for (auto iSection=sections.begin(); iSection != sections.end(); ++iSection) {
+	for (auto iSection = sections.begin(); iSection != sections.end(); ++iSection) {
 		std::string stimName = std::string(iSection->pItem);
 		if (stimName != ""){
 			stimNames.push_back(stimName);
@@ -49,7 +50,6 @@ StimManager::StimManager(OgreApplication &app)
 }
 
 StimManager::~StimManager(){
-
 }
 
 void StimManager::Update(void){

@@ -4,53 +4,59 @@
 
 #pragma once
 
+#include <mutex>
+#include <thread>
+
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
-using namespace cv;
+namespace CameraConstants{
+	// Frame parameters
+	const unsigned FrameWidth = 200;
+	const unsigned FrameHeight = 200;
 
-// Camera configuration
-#define CV_FRAME_WIDTH 200
-#define CV_FRAME_HEIGHT 200
+	// Image processing parameterse
+	const unsigned LowThresh = 110;
+	const unsigned HighThresh = 255;
+	const unsigned BlurSize = 10;
+	const unsigned MinContour = 5;
 
-// Image processing parameters
-#define CV_LOW_THRESH 110
-#define CV_HIGH_THRESH 255
-#define CV_BLUR_SIZE 10
-#define CV_MIN_CONTOUR 5
+	// Scale factors to convert pixels to mm
+	const double PixelPerMM = 9.1051;
 
-// Scale factors to convert pixels to mm
-#define CV_PIXEL_PER_MM (9.1051)
+	// Define post-blur cropping
+	const unsigned CropAmount = BlurSize;
+	const unsigned CroppedWidth = FrameWidth - 2 * CropAmount;
+	const unsigned CroppedHeight = FrameHeight - 2 * CropAmount;
 
-// Define post-blur cropping
-#define CV_CROP_AMOUNT (CV_BLUR_SIZE)
-#define CV_CROPPED_WIDTH (CV_FRAME_WIDTH - 2 * CV_CROP_AMOUNT)
-#define CV_CROPPED_HEIGHT (CV_FRAME_HEIGHT - 2 * CV_CROP_AMOUNT)
+	// Precision of log file
+	const unsigned LogPrecision = 8;
+}
 
 // Global variable used to signal when the camera thread should close
 extern bool g_killCamera;
 
 // Mutex to manage access to 3D graphics variables
-extern HANDLE g_cameraMutex;
+extern std::mutex g_cameraMutex;
 
 // Handle to manage the graphics thread
-extern HANDLE g_cameraThread;
+extern std::thread g_cameraThread;
 
 // High-level thread management for graphics operations
 void StartCameraThread();
 void StopCameraThread();
 
 // Thread used to handle graphics operations
-DWORD WINAPI CameraThread(LPVOID lpParam);
+void CameraThread(void);
 
 // Variable to hold original and processed frames
-extern Mat g_origFrame, g_procFrame;
+extern cv::Mat g_origFrame, g_procFrame;
 
 // Variables related to contour search
-extern RotatedRect g_boundingBox;
-extern vector<vector<Point>> g_imContours;
-extern vector<Vec4i> g_imHierarchy;
+extern cv::RotatedRect g_boundingBox;
+extern std::vector<std::vector<cv::Point>> g_imContours;
+extern std::vector<cv::Vec4i> g_imHierarchy;
 
 // Struct used to keep track of fly pose
 struct CamPose{
@@ -64,4 +70,4 @@ extern CamPose g_camPose;
 // Image processing routines
 void prepFrame();
 bool locateFly();
-bool contourCompare(vector<Point> a, vector<Point> b);
+bool contourCompare(std::vector<cv::Point> a, std::vector<cv::Point> b);

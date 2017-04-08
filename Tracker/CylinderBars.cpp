@@ -7,6 +7,8 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+using namespace CylinderConstants;
+
 CylinderBars::CylinderBars(std::string name, OgreApplication &app, CSimpleIniA &iniFile)
 	: name(name), app(app), iniFile(iniFile)
 {
@@ -80,7 +82,7 @@ void CylinderBars::CreateScene(void){
 		Ogre::SceneNode* panelNode = stimNode->createChildSceneNode();
 
 		// Apply scaling to panel
-		double n = 1.0/CUBE_SIDE_LENGTH;
+		double n = 1.0 / CubeSideLength;
 		panelNode->setScale(Ogre::Real(xdim*n), Ogre::Real(ydim*n), Ogre::Real(zdim*n));
 
 		// Calculate angular position of this panel
@@ -101,7 +103,6 @@ void CylinderBars::CreateScene(void){
 		panelNode->roll(Ogre::Radian(roll));
 
 		// Attach the cube mesh to the panel
-		//Ogre::Entity* panelEnt = app.mSceneMgr->createEntity("C://lib//sinbad-ogre-108ab0bcc696//build//sdk//media//models//cube.mesh");
 		Ogre::Entity* panelEnt = app.mSceneMgr->createEntity("cube.mesh");
 		panelNode->attachObject(panelEnt);
 
