@@ -1,4 +1,7 @@
 build/
 
+*.dll
+*.exe
+
 # For macOS
 *.DS_Store

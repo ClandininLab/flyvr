@@ -39,21 +39,17 @@ target_link_libraries(tracker ${PROJECT_LINK_LIBS})
 set(OGRE_DLL_DIR "${OGRE_TOP}/bin/release")
 
 # Define configuration file locations
-set(CONF_DIR "${PROJECT_SOURCE_DIR}/conf")
+set(BIN_DIR "${PROJECT_SOURCE_DIR}/bin")
+
+# Define binary output file path
+set(OUT_PATH $<TARGET_FILE_DIR:tracker>)
 
 # Set up post-build copying of config files and DLLs
 # http://stackoverflow.com/questions/10671916/how-to-copy-dll-files-into-the-same-folder-as-the-executable-using-cmake
-list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/config.ini") 
-list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/camera.ini") 
-list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/tracker.ini") 
-list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/tv.ini") 
-list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/ogre.cfg")
-list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/plugins.cfg")
-list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/resources.cfg")
 list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR}/OgreMain.dll")
 list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR}/OgreOverlay.dll")
+list(APPEND POST_BUILD_COPY_LIST "${OUT_PATH}/tracker.exe")
 add_custom_command(TARGET tracker POST_BUILD       # Adds a post-build event to MyTest
     COMMAND ${CMAKE_COMMAND} -E copy_if_different  # which executes "cmake - E copy_if_different..."
         ${POST_BUILD_COPY_LIST}                    # <--this is in-file
-        $<TARGET_FILE_DIR:tracker>)                # <--this is out-file path
-
+        ${BIN_DIR})                                # <--this is out-file path
