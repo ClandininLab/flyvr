@@ -20,7 +20,7 @@ using namespace OgreConstants;
 
 // Path to folder containing CFG files
 // TODO: determine this automatically
-auto ResourcePath = "C:\\dev\\Tracker\\x64\\Release\\";
+auto ResourcePath = "";
 
 // Global variables used to manage access to real and virtual viewer position
 std::mutex g_ogreMutex;

@@ -12,7 +12,7 @@
 
 // Name of the stimulus configuration file
 // TODO: determine this automatically
-auto ConfigFileName = "C:\\dev\\Tracker\\Tracker\\config.ini";
+auto ConfigFileName = "config.ini";
 
 StimManager::StimManager(OgreApplication &app)
 	: app(app){
