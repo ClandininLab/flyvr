@@ -16,7 +16,9 @@
 #include "StimManager.h"
 
 using namespace std::chrono;
-using namespace OgreConstants;
+
+// Name of configuration file
+auto GraphicsConfigFile = "tv.ini";
 
 // Path to folder containing CFG files
 // TODO: determine this automatically
@@ -57,9 +59,23 @@ void StopGraphicsThread(void){
 // Thread used to handle graphics operations
 void GraphicsThread(void){
 
+	// Create OGRE application
 	OgreApplication app;
 
+	// Read in configuration information
+	app.readGraphicsConfig(GraphicsConfigFile);
+
+	// Read the target loop duration
+	// TODO: clean this up, doesn't make sense to read INI file twice...
+	CSimpleIniA iniFile;
+	iniFile.SetUnicode();
+	iniFile.LoadFile(GraphicsConfigFile);
+	double TargetLoopDuration = iniFile.GetDoubleValue("", "target-loop-duration", 8e-3);
+
+	// Launch application
 	app.go();
+
+	// Attach application to stimulus manager
 	StimManager stim(app);
 
 	// Let the main thread know that the 3D application is up and running
@@ -131,6 +147,56 @@ OgreApplication::~OgreApplication(void)
 	delete mRoot;
 }
 
+void OgreApplication::readGraphicsConfig(const char* loc){
+	// Load the INI file
+	CSimpleIniA iniFile;
+	iniFile.SetUnicode();
+	iniFile.LoadFile(loc);
+
+	// Read global parameters
+	mNearClipDist = iniFile.GetDoubleValue("", "near-clip-dist", 0.01);
+	mFarClipDist = iniFile.GetDoubleValue("", "far-clip-dist", 10.0);
+
+	// Read all section names
+	CSimpleIniA::TNamesDepend sections;
+	iniFile.GetAllSections(sections);
+
+	// Iterate from section names
+	for (auto iSection = sections.begin(); iSection != sections.end(); ++iSection) {
+		std::string sectionName = std::string(iSection->pItem);
+		if (sectionName != ""){
+			MonitorInfo monitor;
+
+			// Configuration information
+			monitor.id = iniFile.GetLongValue(sectionName.c_str(), "id", 1);
+			monitor.pixelWidth = iniFile.GetLongValue(sectionName.c_str(), "width-pixels", 1440);
+			monitor.pixelHeight = iniFile.GetLongValue(sectionName.c_str(), "height-pixels", 900);
+			monitor.displayFullscreen = iniFile.GetBoolValue(sectionName.c_str(), "display-fullscreen", true);
+
+			// Read vector "pa"
+			double pax = iniFile.GetDoubleValue(sectionName.c_str(), "pax", 0.0);
+			double pay = iniFile.GetDoubleValue(sectionName.c_str(), "pay", 0.0);
+			double paz = iniFile.GetDoubleValue(sectionName.c_str(), "paz", 0.0);
+			monitor.pa = Ogre::Vector3(pax, pay, paz);
+
+			// Read vector "pb"
+			double pbx = iniFile.GetDoubleValue(sectionName.c_str(), "pbx", 0.0);
+			double pby = iniFile.GetDoubleValue(sectionName.c_str(), "pby", 0.0);
+			double pbz = iniFile.GetDoubleValue(sectionName.c_str(), "pbz", 0.0);
+			monitor.pb = Ogre::Vector3(pbx, pby, pbz);
+
+			// Read vector "pc"
+			double pcx = iniFile.GetDoubleValue(sectionName.c_str(), "pcx", 0.0);
+			double pcy = iniFile.GetDoubleValue(sectionName.c_str(), "pcy", 0.0);
+			double pcz = iniFile.GetDoubleValue(sectionName.c_str(), "pcz", 0.0);
+			monitor.pc = Ogre::Vector3(pcx, pcy, pcz);
+
+			// Add monitor information to vector
+			mMonitors.push_back(monitor);
+		}
+	}
+}
+
 void OgreApplication::clear(void){
 	mSceneMgr->clearScene();
 }
@@ -191,20 +257,21 @@ bool OgreApplication::createWindows(void)
 	mRoot->initialise(false);
 
 	// Create all render windows
-	for (unsigned i = 0; i < DisplayCount; i++)
+	for (auto monitor: mMonitors)
 	{
-		unsigned monitorIndex = DisplayList[i];
-
-		Ogre::String strWindowName = "Window" + Ogre::StringConverter::toString(monitorIndex);
+		Ogre::String strWindowName = "Window" + Ogre::StringConverter::toString(monitor.id);
 
 		// Select the desired monitor for this render window
 		Ogre::NameValuePairList nvList;
-		nvList["monitorIndex"] = Ogre::StringConverter::toString(monitorIndex);
+		nvList["monitorIndex"] = Ogre::StringConverter::toString(monitor.id);
 
 		// Create the new render window and set it up
-		mWindows[i] = mRoot->createRenderWindow(strWindowName,
-			DisplayWidthPixels, DisplayHeightPixels, DisplayFullscreen, &nvList);
-		mWindows[i]->setDeactivateOnFocusChange(false);
+		Ogre::RenderWindow *window = mRoot->createRenderWindow(strWindowName,
+			monitor.pixelWidth, monitor.pixelHeight, monitor.displayFullscreen, &nvList);
+		window->setDeactivateOnFocusChange(false);
+
+		// Add to window list
+		mWindows.push_back(window);
 	}
 
 	return true;
@@ -225,37 +292,13 @@ void OgreApplication::renderOneFrame(void)
 	mRoot->renderOneFrame();
 }
 
-void OgreApplication::defineMonitors(void){
-	// Width and height of each monitor
-	double W = DisplayWidthMeters;
-	double H = DisplayHeightMeters;
-
-	// North monitor
-	mMonitors[North].pa = Ogre::Vector3(-W / 2., -H / 2., -W / 2.);
-	mMonitors[North].pb = mMonitors[North].pa + Ogre::Vector3(W, 0, 0);
-	mMonitors[North].pc = mMonitors[North].pa + Ogre::Vector3(0, H, 0);
-
-	// West monitor
-	mMonitors[West].pa = Ogre::Vector3(-W / 2., -H / 2., W / 2.);
-	mMonitors[West].pb = mMonitors[West].pa + Ogre::Vector3(0, 0, -W);
-	mMonitors[West].pc = mMonitors[West].pa + Ogre::Vector3(0, H, 0);
-
-	// East monitor
-	mMonitors[East].pa = Ogre::Vector3(W / 2., -H / 2., -W / 2.);
-	mMonitors[East].pb = mMonitors[East].pa + Ogre::Vector3(0, 0, W);
-	mMonitors[East].pc = mMonitors[East].pa + Ogre::Vector3(0, H, 0);
-}
-
 void OgreApplication::createCameras(void)
 {
-	// Define the monitor geometry
-	defineMonitors();
-
 	// Create all cameras
-	for (unsigned i = 0; i < DisplayCount; i++){
+	for (unsigned i = 0; i < mMonitors.size(); i++){
 		Ogre::String strCameraName = "Camera" + Ogre::StringConverter::toString(i);
 
-		mCameras[i] = mSceneMgr->createCamera(strCameraName);
+		mCameras.push_back(mSceneMgr->createCamera(strCameraName));
 	}
 
 	// Update the projection matrices assuming the eye is at the origin
@@ -270,11 +313,13 @@ void OgreApplication::updateProjMatrices(double x, double y, double z){
 	Ogre::Vector3 pe(x, y, z);
 
 	// Update projection matrix for each display
-	for (unsigned i = 0; i < DisplayCount; i++){
+	for (unsigned i = 0; i < mMonitors.size(); i++){
+		MonitorInfo monitor = mMonitors[i];
+
 		// Determine monitor coordinates
-		Ogre::Vector3 pa = mMonitors[i].pa;
-		Ogre::Vector3 pb = mMonitors[i].pb;
-		Ogre::Vector3 pc = mMonitors[i].pc;
+		Ogre::Vector3 pa = monitor.pa;
+		Ogre::Vector3 pb = monitor.pb;
+		Ogre::Vector3 pc = monitor.pc;
 
 		// Determine monitor unit vectors
 		Ogre::Vector3 vr = pb - pa;
@@ -293,8 +338,8 @@ void OgreApplication::updateProjMatrices(double x, double y, double z){
 		Ogre::Real d = -vn.dotProduct(va);
 
 		// Set clipping distance to screen distance
-		Ogre::Real n = Ogre::Real(NearClipDist);
-		Ogre::Real f = Ogre::Real(FarClipDist);
+		Ogre::Real n = Ogre::Real(mNearClipDist);
+		Ogre::Real f = Ogre::Real(mFarClipDist);
 
 		// Compute screen coordinates
 		Ogre::Real l = vr.dotProduct(va)*n / d;
@@ -334,15 +379,15 @@ void OgreApplication::updateProjMatrices(double x, double y, double z){
 void OgreApplication::createViewports(void)
 {
 	// Attach each camera to each respective window
-	for (unsigned int i = 0; i < DisplayCount; i++){
-		mViewports[i] = mWindows[i]->addViewport(mCameras[i]);
+	for (unsigned int i = 0; i < mMonitors.size(); i++){
+		mViewports.push_back(mWindows[i]->addViewport(mCameras[i]));
 	}
 }
 
 void OgreApplication::setBackground(double r, double g, double b){
 	// Configure the viewport
-	for (unsigned int i = 0; i < DisplayCount; i++){
-		mViewports[i]->setBackgroundColour(Ogre::ColourValue(r, g, b));
+	for (auto viewport : mViewports){
+		viewport->setBackgroundColour(Ogre::ColourValue(r, g, b));
 	}
 }
 

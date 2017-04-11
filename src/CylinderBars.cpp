@@ -8,7 +8,8 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-using namespace CylinderConstants;
+// Side length of cube.mesh
+const double CubeSideLength = 100.0;
 
 CylinderBars::CylinderBars(std::string name, OgreApplication &app, CSimpleIniA &iniFile)
 	: name(name), app(app), iniFile(iniFile)

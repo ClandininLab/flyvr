@@ -3,6 +3,7 @@
 // Contact: Steven Herbst <sherbst@stanford.edu>
 
 #include <chrono>
+#include <SimpleIni.h>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -13,7 +14,28 @@
 //#include "Arduino.h"
 
 using namespace std::chrono;
-using namespace TrackerConstants;
+
+// Name of configuration file for tracker
+auto TrackerConfigFile = "tracker.ini";
+
+// Configuration parameters to be read from INI file
+double Duration = 25; // seconds
+double TargetLoopDuration = 10e-3; // seconds
+double MinMove = 1; // millimeters
+double MaxMove = 40; // millimeters
+
+void ReadTrackerConfig(){
+	// Load the INI file
+	CSimpleIniA iniFile;
+	iniFile.SetUnicode();
+	iniFile.LoadFile(TrackerConfigFile);
+
+	// Read in values from INI file
+	Duration = iniFile.GetDoubleValue("", "duration", 25);
+	TargetLoopDuration = iniFile.GetDoubleValue("", "target-loop-duration", 10e-3);
+	MinMove = iniFile.GetDoubleValue("", "min-move", 1);
+	MaxMove = iniFile.GetDoubleValue("", "duration", 40);
+}
 
 // Function to clamp a value between minimum and maximum bounds
 double clamp(double value, double min, double max){
@@ -32,6 +54,8 @@ double clamp(double value, double min, double max){
 }
 
 int main() {
+	ReadTrackerConfig();
+
 	StartGraphicsThread();
 	//StartSerialThread();
 	//StartCameraThread();
@@ -84,7 +108,7 @@ int main() {
 		// Compute cumulative duration
 		trackerDuration = duration<double>(loopStop - trackerStart).count();
 
-	} while (trackerDuration < TrackerConstants::Duration);
+	} while (trackerDuration < Duration);
 
 	//StopCameraThread();
 	//StopSerialThread();

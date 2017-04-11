@@ -22,11 +22,17 @@ set(OGRE_LIB_DIR "${OGRE_TOP}/lib/release")
 link_directories(${CV_LIB_DIR} ${OGRE_LIB_DIR})
 
 # Define all source files
-set(SOURCES "src/CylinderBars.cpp" "src/Tracker.cpp" "src/Camera.cpp" "src/OgreApplication.cpp" "src/StimManager.cpp" "src/Utility.cpp")
+list(APPEND SOURCES "src/CylinderBars.cpp" "src/Tracker.cpp" "src/Camera.cpp")
+list(APPEND SOURCES "src/OgreApplication.cpp" "src/StimManager.cpp" "src/Utility.cpp")
+list(APPEND SOURCES "include/Camera.h" "include/CylinderBars.h" "include/OgreApplication.h")
+list(APPEND SOURCES "include/StimManager.h" "include/Stimulus.h" "include/Stimulus.h")
+list(APPEND SOURCES "include/Tracker.h" "include/Utility.h")
 add_executable(tracker ${SOURCES})
 
 # Link library files
-set(PROJECT_LINK_LIBS "opencv_core2410.lib" "opencv_imgproc2410.lib" "opencv_highgui2410.lib" "opencv_features2d2410.lib" "OgreMain.lib" "OIS.lib" "OgreOverlay.lib")
+list(APPEND PROJECT_LINK_LIBS "opencv_core2410.lib" "opencv_imgproc2410.lib")
+list(APPEND PROJECT_LINK_LIBS "opencv_highgui2410.lib" "opencv_features2d2410.lib")
+list(APPEND PROJECT_LINK_LIBS "OgreMain.lib" "OIS.lib" "OgreOverlay.lib")
 target_link_libraries(tracker ${PROJECT_LINK_LIBS})
 
 # Define DLL locations
@@ -38,6 +44,9 @@ set(CONF_DIR "${PROJECT_SOURCE_DIR}/conf")
 # Set up post-build copying of config files and DLLs
 # http://stackoverflow.com/questions/10671916/how-to-copy-dll-files-into-the-same-folder-as-the-executable-using-cmake
 list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/config.ini") 
+list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/camera.ini") 
+list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/tracker.ini") 
+list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/tv.ini") 
 list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/ogre.cfg")
 list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/plugins.cfg")
 list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/resources.cfg")

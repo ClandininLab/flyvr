@@ -12,10 +12,6 @@
 #include "OgreApplication.h"
 #include "Stimulus.h"
 
-namespace CylinderConstants{
-	const double CubeSideLength = 100.0;
-}
-
 enum class CylinderBarStates { Init, WaitBefore, Active, WaitAfter };
 
 class CylinderBars : public Stimulus{

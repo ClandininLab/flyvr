@@ -10,16 +10,14 @@
 #include "StimManager.h"
 #include "CylinderBars.h"
 
-// Name of the stimulus configuration file
-// TODO: determine this automatically
-auto ConfigFileName = "config.ini";
+auto StimConfigFile = "config.ini";
 
 StimManager::StimManager(OgreApplication &app)
 	: app(app){
 
 	// Load the INI file
 	iniFile.SetUnicode();
-	iniFile.LoadFile(ConfigFileName);
+	iniFile.LoadFile(StimConfigFile);
 
 	// Read the global configuration parameters
 	std::string iColor(iniFile.GetValue("", "interleave-color", "0.5"));

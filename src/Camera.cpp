@@ -4,12 +4,34 @@
 
 #include <chrono>
 #include <fstream>
+#include <SimpleIni.h>
 
 #include "Camera.h"
 
 using namespace std::chrono;
 using namespace cv;
-using namespace CameraConstants;
+
+// File name with configuration parameters
+auto CameraConfigFile = "camera.ini";
+
+// Frame parameters
+unsigned FrameWidth;
+unsigned FrameHeight;
+
+// Image processing parameterse
+unsigned LowThresh;
+unsigned HighThresh;
+unsigned BlurSize;
+unsigned MinContour;
+
+// Scale factors to convert pixels to mm
+double PixelPerMM;
+
+// Precision of log file
+unsigned LogPrecision;
+
+// Derived parameters
+unsigned CropAmount, CroppedWidth, CroppedHeight;
 
 // Global variables used to manage access to camera measurement
 std::mutex g_cameraMutex;
@@ -21,7 +43,37 @@ std::thread cameraThread;
 
 // High-level management of the graphics thread
 void StartCameraThread(){
+	ReadCameraConfig();
 	cameraThread = std::thread(CameraThread);
+}
+
+// Read in the constants for the camera
+void ReadCameraConfig(){
+	// Load the INI file
+	CSimpleIniA iniFile;
+	iniFile.SetUnicode();
+	iniFile.LoadFile(CameraConfigFile);
+
+	// Frame parameters
+	FrameWidth = iniFile.GetLongValue("", "frame-width", 200);
+	FrameHeight = iniFile.GetLongValue("", "frame-height", 200);
+
+	// Image processing parameterse
+	LowThresh = iniFile.GetLongValue("", "low-thresh", 110);
+	HighThresh = iniFile.GetLongValue("", "high-thresh", 255);
+	BlurSize = iniFile.GetLongValue("", "blur-size", 10);
+	MinContour = iniFile.GetLongValue("", "min-contour", 5);
+
+	// Scale factors to convert pixels to mm
+	PixelPerMM = iniFile.GetDoubleValue("", "pixel-per-mm", 9.1051);
+
+	// Precision of log file
+	LogPrecision = iniFile.GetLongValue("", "log-precision", 8);
+
+	// Compute derived constants
+	CropAmount = BlurSize;
+	CroppedWidth = FrameWidth - 2 * CropAmount;
+	CroppedHeight = FrameHeight - 2 * CropAmount;
 }
 
 // High-level management of the graphics thread

@@ -24,27 +24,6 @@
 
 #include <OgreOverlaySystem.h>
 
-namespace OgreConstants{
-	const unsigned DisplayCount = 3;
-	const unsigned DisplayList[] = { 1, 2, 3 };
-
-	const unsigned West = 0;
-	const unsigned North = 1;
-	const unsigned East = 2;
-	
-	const double DisplayWidthMeters = 1.1069;
-	const double DisplayHeightMeters = 0.6226;
-
-	const double NearClipDist = 0.01; // meters
-	const double FarClipDist = 10.0; // meters
-
-	const unsigned DisplayWidthPixels = 1440;
-	const unsigned DisplayHeightPixels = 900;
-	const bool DisplayFullscreen = true;
-
-	const double TargetLoopDuration = 1.0 / 120.0;
-}
-
 // Struct to keep track of the user's real position and virtual position
 struct Pose3D{
 	double x, y, z;
@@ -53,6 +32,13 @@ struct Pose3D{
 
 // Used to keep track of monitors information
 struct MonitorInfo{
+	// Configuration information
+	unsigned id;
+	unsigned pixelWidth;
+	unsigned pixelHeight;
+	bool displayFullscreen;
+
+	// Position information
 	Ogre::Vector3 pa;
 	Ogre::Vector3 pb;
 	Ogre::Vector3 pc;
@@ -64,6 +50,7 @@ extern Pose3D g_realPose, g_virtPose;
 
 // High-level thread management for graphics operations
 void StartGraphicsThread(void);
+void ReadGraphicsConfig(void);
 void StopGraphicsThread(void);
 
 // Thread used to handle graphics operations
@@ -76,7 +63,8 @@ public:
 	~OgreApplication(void);
 
 	void go(void);
-	
+	void readGraphicsConfig(const char* loc);
+
 	void setRootPos(double x, double y, double z);
 	void setRootRot(double pitch, double yaw, double roll);
 	void updateProjMatrices(double x, double y, double z);
@@ -105,6 +93,10 @@ private:
 
 	void defineMonitors(void);
 
+	// Rendering options
+	double mNearClipDist;
+	double mFarClipDist;
+
 	// Top-level scene management
 	Ogre::Root *mRoot;
 	Ogre::SceneManager *mSceneMgr;
@@ -115,10 +107,10 @@ private:
 	Ogre::OverlaySystem *mOverlaySystem;
 
 	// Per-display members
-	Ogre::RenderWindow *mWindows[OgreConstants::DisplayCount];
-	Ogre::Camera *mCameras[OgreConstants::DisplayCount];
-	Ogre::Viewport *mViewports[OgreConstants::DisplayCount];
-	MonitorInfo mMonitors[OgreConstants::DisplayCount];
+	std::vector<Ogre::RenderWindow*> mWindows;
+	std::vector<Ogre::Camera*> mCameras;
+	std::vector<Ogre::Viewport*> mViewports;
+	std::vector<MonitorInfo> mMonitors;
 
 	// Added for Mac compatibility
 	Ogre::String mResourcePath;
