@@ -5,11 +5,6 @@
 cmake_minimum_required(VERSION 3.6)
 project (Tracker)
 
-# Use C++11
-set(CMAKE_CXX_STANDARD 11) # C++11...
-set(CMAKE_CXX_STANDARD_REQUIRED ON) #...is required...
-set(CMAKE_CXX_EXTENSIONS OFF) #...without compiler extensions like gnu++11
-
 # Library locations
 set(INI_TOP "C:/lib/simpleini-master")
 set(CV_TOP "C:/lib/opencv/build")
@@ -34,4 +29,22 @@ add_executable(tracker ${SOURCES})
 set(PROJECT_LINK_LIBS "opencv_core2410.lib" "opencv_imgproc2410.lib" "opencv_highgui2410.lib" "opencv_features2d2410.lib" "OgreMain.lib" "OIS.lib" "OgreOverlay.lib")
 target_link_libraries(tracker ${PROJECT_LINK_LIBS})
 
+# Define DLL locations
+set(OGRE_DLL_DIR "${OGRE_TOP}/bin/release")
+
+# Define configuration file locations
+set(CONF_DIR "${PROJECT_SOURCE_DIR}/conf")
+
+# Set up post-build copying of config files and DLLs
+# http://stackoverflow.com/questions/10671916/how-to-copy-dll-files-into-the-same-folder-as-the-executable-using-cmake
+list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/config.ini") 
+list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/ogre.cfg")
+list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/plugins.cfg")
+list(APPEND POST_BUILD_COPY_LIST "${CONF_DIR}/resources.cfg")
+list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR}/OgreMain.dll")
+list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR}/OgreOverlay.dll")
+add_custom_command(TARGET tracker POST_BUILD       # Adds a post-build event to MyTest
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different  # which executes "cmake - E copy_if_different..."
+        ${POST_BUILD_COPY_LIST}                    # <--this is in-file
+        $<TARGET_FILE_DIR:tracker>)                # <--this is out-file path
 
