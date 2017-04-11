@@ -43,5 +43,5 @@ private:
 	std::vector<std::string>::iterator currentStimName;
 	std::vector<std::string> stimNames;
 
-	std::chrono::system_clock::time_point lastTime;
+	std::chrono::high_resolution_clock::time_point lastTime;
 };

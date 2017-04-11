@@ -179,7 +179,7 @@ void OgreApplication::configure(void)
 	}
 	else
 	{
-		throw std::exception("Could not restore Ogre3D config.");
+		throw std::runtime_error("Could not restore Ogre3D config.");
 	}
 }
 

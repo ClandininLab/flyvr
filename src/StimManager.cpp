@@ -85,7 +85,7 @@ void StimManager::Update(void){
 		}
 	}
 	else{
-		throw std::exception("Invalid StimManager state.");
+		throw std::runtime_error("Invalid StimManager state.");
 	}
 }
 
@@ -112,9 +112,9 @@ void StimManager::MakeStimulus(std::string name){
 
 	// Create a new stimulus based on the specified type
 	if (type == "CylinderBars"){
-		currentStimulus = std::make_unique<CylinderBars>(name, app, iniFile);
+                currentStimulus = std::unique_ptr<CylinderBars>(new CylinderBars(name, app, iniFile));
 	}
 	else {
-		throw std::exception("Invalid stimulus type.");
+		throw std::runtime_error("Invalid stimulus type.");
 	}
 }

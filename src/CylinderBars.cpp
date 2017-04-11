@@ -150,6 +150,6 @@ void CylinderBars::Update(){
 		}
 	}
 	else {
-		throw std::exception("Invalid CylinderBar state.");
+		throw std::runtime_error("Invalid CylinderBar state.");
 	}
 }

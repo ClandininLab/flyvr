@@ -142,7 +142,7 @@ void GrblBoard::ReadStatus(){
 	std::smatch match;
 
 	if (!std::regex_search(resp, match, pat)){
-		throw std::exception("GRBL returned bad status format.");
+		throw std::runtime_error("GRBL returned bad status format.");
 	}
 
 	bool isMoving = (match.str(1) == "Run");

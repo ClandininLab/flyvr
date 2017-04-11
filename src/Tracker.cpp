@@ -17,7 +17,7 @@ using namespace TrackerConstants;
 
 // Function to clamp a value between minimum and maximum bounds
 double clamp(double value, double min, double max){
-	if (abs(value) < min){
+	if (std::abs(value) < min){
 		return 0.0;
 	}
 	else if (value < -max) {
@@ -84,7 +84,7 @@ int main() {
 		// Compute cumulative duration
 		trackerDuration = duration<double>(loopStop - trackerStart).count();
 
-	} while (trackerDuration < Duration);
+	} while (trackerDuration < TrackerConstants::Duration);
 
 	//StopCameraThread();
 	//StopSerialThread();

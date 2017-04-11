@@ -35,7 +35,7 @@ private:
 
 	CylinderBarStates currentState;
 
-	std::chrono::system_clock::time_point lastTime;
+	std::chrono::high_resolution_clock::time_point lastTime;
 
 	long numSpatialPeriod;
 	double dutyCycle;
