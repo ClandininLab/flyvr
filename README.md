@@ -9,7 +9,7 @@ Program to track flies with an overhead camera mounted on a CNC rig.  TVs surrou
 These instructions assume a Windows build platform.
 
 ```
-> git clone tracker
+> git clone https://github.com/ClandininLab/tracker.git
 > cd tracker
 > mkdir build
 > cd build
