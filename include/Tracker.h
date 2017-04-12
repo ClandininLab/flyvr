@@ -3,4 +3,3 @@
 // Contact: Steven Herbst <sherbst@stanford.edu>
 
 #pragma once
-

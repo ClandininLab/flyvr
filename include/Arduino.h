@@ -6,14 +6,14 @@
 
 #include <mutex>
 #include <thread>
+#include <memory>
 
-#include "SimpleSerial.h"
+#include "Serial.h"
 
-#define GRBL_MAX_VEL 10000
-#define GRBL_MAX_ACC 200
+enum class GrblAxis {X, Y};
 
-#define GRBL_COM_PORT "COM4"
-#define GRBL_BAUD_RATE 400000
+// Mutex to manage access to move command and CNC status
+extern std::mutex g_moveMutex, g_statusMutex;
 
 // Struct for storing the move command to GRBL
 struct GrblCommand{
@@ -21,10 +21,16 @@ struct GrblCommand{
 	double y;
 };
 
+// GRBL states
+enum class GrblStates {Idle, Run, Home, Alarm};
+
+// Global variable containing the CNC move command
+extern GrblCommand g_moveCommand;
+
 // Struct for storing the results of a GRBL status query
 struct GrblStatus
 {
-	bool isMoving;
+	GrblStates state;
 
 	// Positions in millimeters
 	double x;
@@ -32,20 +38,8 @@ struct GrblStatus
 	double z;
 };
 
-// Global variable containing the CNC move command
-extern GrblCommand g_moveCommand;
-
 // Global variable containing the most recent GRBL status
 extern GrblStatus g_grblStatus;
-
-// Global variable used to signal when serial port should close
-extern bool g_killSerial;
-
-// Mutex to manage access to move command and CNC status
-std::mutex g_moveMutex, g_statusMutex;
-
-// Handle used to run SerialThread
-std::thread g_serialThread;
 
 // High-level thread management
 void StartSerialThread();
@@ -58,7 +52,7 @@ class GrblBoard
 {
 public:
 	// Constructor, requires that the serial port has already been opened
-	GrblBoard(SimpleSerial *arduino);
+	GrblBoard();
 
 	// Reads out the GRBL status (position and moving/idle condition)
 	void ReadStatus();
@@ -66,18 +60,27 @@ public:
 	// General move command
 	void Move(double X, double Y);
 
-	// Convenience commands for jogging
-	void North() { Move(-1, 0); }
-	void South() { Move(1, 0); }
-	void East() { Move(0, 1); }
-	void West() { Move(0, -1); }
+	// Home to origin
+	void Home();
+
+	// Waits until rig stops moving
+	void WaitToStop();
 
 	// Resets the GRBL board
 	void Reset();
 
 private:
 	// Serial port used for communication with GRBL board
-	SimpleSerial *arduino;
+	std::unique_ptr<Serial> arduino{};
+
+	// Read from configuration file
+	void ReadSerialConfig(const char* loc);
+
+	// Read a single line from serial terminal
+	std::string ReadSerialLine(void);
+
+	// Read the status string from GRBL
+	std::string GrblBoard::GetStatusString();
 
 	// Low-level communication routines
 	void GrblCommand(int key, int value);
@@ -85,15 +88,33 @@ private:
 
 	// Commands used in the initialization of GRBL
 	void Init();
-	void StepIdleDelay(int value){ GrblCommand(1, value); }
-	void StatusReportMask(int value){ GrblCommand(10, value); }
-	void StepsPerMM_X(int value){ GrblCommand(100, value); }
-	void StepsPerMM_Y(int value){ GrblCommand(101, value); }
-	void MaxVelocityX(int value){ GrblCommand(110, value); }
-	void MaxVelocityY(int value){ GrblCommand(111, value); }
-	void MaxAccelerationX(int value){ GrblCommand(120, value); }
-	void MaxAccelerationY(int value){ GrblCommand(121, value); }
+	void Config();
+	void StepsPerMM(int value, GrblAxis axis);
+	void MaxVelocity(int value, GrblAxis axis);
+	void MaxAcceleration(int value, GrblAxis axis);
+	void MaxFeedRate(int value);
+
+	// One-liner commandss
+	void EnableHardLimits(void){ GrblCommand(21, 1); }
+	void EnableHoming(void){ GrblCommand(22, 1); }
+	void SetHomingPullOff(int mm){ GrblCommand(27, mm);  }
+	void SetHomingDebounce(int ms){ GrblCommand(26, ms); }
+	void SetHomingFeedRate(int mm_per_min){ GrblCommand(24, mm_per_min); }
+	void SetHomingSeekRate(int mm_per_min){ GrblCommand(25, mm_per_min); }
+	void BrakeAfterMovement(void){ GrblCommand(1, 255); }
+	void SetupStatusReport(void){ GrblCommand(10, 1); }
 	void SetUnitMM(){ RawCommand("G21"); }
 	void MoveRelative(){ RawCommand("G91"); }
-	void MaxFeedRate(int value);
+
+	// Configuration variables
+	double JogAmount;
+	unsigned MaxVel;
+	unsigned MaxAcc;
+	unsigned StepsPerMM_X;
+	unsigned StepsPerMM_Y;
+	int HomingPullOff, HomingDebounce, HomingFeedRate, HomingSeekRate;
+
+	// COM port configuration
+	std::string ComPort;
+	unsigned BaudRate;
 };

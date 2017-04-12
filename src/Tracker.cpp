@@ -3,7 +3,11 @@
 // Contact: Steven Herbst <sherbst@stanford.edu>
 
 #include <chrono>
+#include <iostream>
+#include <future>
 #include <SimpleIni.h>
+
+#include <conio.h>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -11,18 +15,22 @@
 #include "Tracker.h"
 #include "OgreApplication.h"
 #include "Camera.h"
-//#include "Arduino.h"
+#include "Arduino.h"
 
 using namespace std::chrono;
+
+// Actions for key presses
+enum class KeyPressAction { Quit, Up, Down, Left, Right, None };
 
 // Name of configuration file for tracker
 auto TrackerConfigFile = "tracker.ini";
 
 // Configuration parameters to be read from INI file
-double Duration = 25; // seconds
-double TargetLoopDuration = 10e-3; // seconds
-double MinMove = 1; // millimeters
-double MaxMove = 40; // millimeters
+double MaxDuration; // seconds
+double TargetLoopDuration; // seconds
+double MinMove; // millimeters
+double MaxMove; // millimeters
+double JogAmount; // millimeters
 
 void ReadTrackerConfig(){
 	// Load the INI file
@@ -31,10 +39,11 @@ void ReadTrackerConfig(){
 	iniFile.LoadFile(TrackerConfigFile);
 
 	// Read in values from INI file
-	Duration = iniFile.GetDoubleValue("", "duration", 25);
+	MaxDuration = iniFile.GetDoubleValue("", "max-duration", 25);
 	TargetLoopDuration = iniFile.GetDoubleValue("", "target-loop-duration", 10e-3);
 	MinMove = iniFile.GetDoubleValue("", "min-move", 1);
-	MaxMove = iniFile.GetDoubleValue("", "duration", 40);
+	MaxMove = iniFile.GetDoubleValue("", "max-move", 40);
+	JogAmount = iniFile.GetDoubleValue("", "jog-amount", 1);
 }
 
 // Function to clamp a value between minimum and maximum bounds
@@ -53,11 +62,46 @@ double clamp(double value, double min, double max){
 	}
 }
 
+KeyPressAction GetKeyPress(){
+	if (_kbhit()){
+		int key = _getch();
+		if (key == 0 || key == 224){
+			key = _getch();
+			if (key == 72){
+				return KeyPressAction::Up;
+			}
+			else if (key == 80){
+				return KeyPressAction::Down;
+			}
+			else if (key == 75){
+				return KeyPressAction::Left;
+			}
+			else if (key == 77){
+				return KeyPressAction::Right;
+			}
+		}
+		else if (key == 27){
+			return KeyPressAction::Quit;
+		}
+	}
+
+	// Otherwise just return no action
+	return KeyPressAction::None;
+}
+
+void SendMoveCommand(double x, double y){
+	// Send move command
+	{
+		std::unique_lock<std::mutex> lck{ g_moveMutex };
+		g_moveCommand = { x, y };
+	}
+}
+
 int main() {
 	ReadTrackerConfig();
 
 	StartGraphicsThread();
-	//StartSerialThread();
+	StartSerialThread();
 	//StartCameraThread();
 
 	auto trackerStart = high_resolution_clock::now();
@@ -76,11 +120,6 @@ int main() {
 		//GrblCommand moveCommand;
 		//moveCommand.x = clamp(-camPose.x, MIN_MOVE, MAX_MOVE);
 		//moveCommand.y = clamp(camPose.y, MIN_MOVE, MAX_MOVE);
-
-		// Send move command
-		//LOCK(g_moveMutex);
-		//	g_moveCommand = moveCommand;
-		//UNLOCK(g_moveMutex);
 
 		// Get CNC position
 		//GrblStatus grblStatus;
@@ -108,10 +147,28 @@ int main() {
 		// Compute cumulative duration
 		trackerDuration = duration<double>(loopStop - trackerStart).count();
 
-	} while (trackerDuration < Duration);
+		// Handle key presses
+		auto action = GetKeyPress();
+		if (action == KeyPressAction::Up){
+			SendMoveCommand(-JogAmount, 0);
+		}
+		else if (action == KeyPressAction::Down){
+			SendMoveCommand(JogAmount, 0);
+		}
+		else if (action == KeyPressAction::Left){
+			SendMoveCommand(0, -JogAmount);
+		}
+		else if (action == KeyPressAction::Right){
+			SendMoveCommand(0, JogAmount);
+		}
+		else if (action == KeyPressAction::Quit){
+			break;
+		}
+		
+	} while (trackerDuration < MaxDuration);
 
 	//StopCameraThread();
-	//StopSerialThread();
+	StopSerialThread();
 	StopGraphicsThread();
 
 	return 0;

@@ -24,9 +24,10 @@ link_directories(${CV_LIB_DIR} ${OGRE_LIB_DIR})
 # Define all source files
 list(APPEND SOURCES "src/CylinderBars.cpp" "src/Tracker.cpp" "src/Camera.cpp")
 list(APPEND SOURCES "src/OgreApplication.cpp" "src/StimManager.cpp" "src/Utility.cpp")
+list(APPEND SOURCES "src/Arduino.cpp" "src/Serial.cpp")
 list(APPEND SOURCES "include/Camera.h" "include/CylinderBars.h" "include/OgreApplication.h")
 list(APPEND SOURCES "include/StimManager.h" "include/Stimulus.h" "include/Stimulus.h")
-list(APPEND SOURCES "include/Tracker.h" "include/Utility.h")
+list(APPEND SOURCES "include/Tracker.h" "include/Utility.h" "include/Arduino.h" "include/Serial.h")
 add_executable(tracker ${SOURCES})
 
 # Link library files
