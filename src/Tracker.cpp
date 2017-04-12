@@ -7,10 +7,10 @@
 #include <future>
 #include <SimpleIni.h>
 
-#include <conio.h>
-
 #define _USE_MATH_DEFINES
 #include <math.h>
+
+#include <conio.h>
 
 #include "Tracker.h"
 #include "OgreApplication.h"

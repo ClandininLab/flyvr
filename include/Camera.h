@@ -2,7 +2,8 @@
 // http://flyvisionlab.weebly.com/
 // Contact: Steven Herbst <sherbst@stanford.edu>
 
-#pragma once
+#ifndef CAMERA_H
+#define CAMERA_H
 
 #include <mutex>
 #include <thread>
@@ -34,3 +35,5 @@ void CameraThread(void);
 void processFrame(const cv::Mat &inFrame, cv::Mat &outFrame);
 bool locateFly(const cv::Mat &inFrame);
 bool contourCompare(std::vector<cv::Point> a, std::vector<cv::Point> b);
+
+#endif

@@ -2,7 +2,8 @@
 // http://flyvisionlab.weebly.com/
 // Contact: Steven Herbst <sherbst@stanford.edu>
 
-#pragma once
+#ifndef STIMMANAGER_H
+#define STIMMANAGER_H
 
 #include <random>
 #include <vector>
@@ -45,3 +46,5 @@ private:
 
 	std::chrono::high_resolution_clock::time_point lastTime;
 };
+
+#endif

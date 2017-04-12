@@ -1,67 +1,28 @@
-/** Serial.h
- *
- * A very simple serial port control class that does NOT require MFC/AFX.
- *
- * License: This source code can be used and/or modified without restrictions.
- * It is provided as is and the author disclaims all warranties, expressed 
- * or implied, including, without limitation, the warranties of
- * merchantability and of fitness for any purpose. The user must assume the
- * entire risk of using the Software.
- *
- * @author Hans de Ruiter
- *
- * @version 0.1 -- 28 October 2008
- */
+// Reference: http://www.webalice.it/fede.tft/serial_port/serial_port.html
 
 // Modified by Steven Herbst (sherbst@stanford.edu)
 
-#pragma once
+#ifndef SERIAL_H
+#define SERIAL_H
 
+#include <asio.hpp>
 #include <string>
-#include <windows.h>
-
-typedef std::basic_string<TCHAR> tstring;
 
 class Serial
 {
-private:
-	HANDLE commHandle;
-	COMSTAT status;
-	DWORD errors;
-
 public:
-	Serial(tstring &commPortName, int bitRate);
+	// Constructor accepts port name (e.g., "COM4") and baud rate (e.g., 400000)
+	Serial(std::string portName, unsigned baudRate);
 
-	virtual ~Serial();
+	// Writes string to serial terminal, returns true if successful, false otherwise
+	void Write(std::string buffer);
 
-	/** Writes a NULL terminated string.
-	 *
-	 * @param buffer the string to send
-	 *
-	 * @return bool if successful
-	 */
-	bool write(const char *buffer);
+	// Reads a single line from serial terminal
+	std::string ReadLine();
 
-	/** Writes a string of bytes to the serial port.
-	 *
-	 * @param buffer pointer to the buffer containing the bytes
-	 * @param buffLen the number of bytes in the buffer
-	 *
-	 * @return bool if successful
-	 */
-	bool write(const char *buffer, size_t buffLen);
-
-	/** Reads a string of bytes from the serial port.
-	 *
-	 * @param buffer pointer to the buffer to be written to
-	 * @param buffLen the size of the buffer
-	 * @param nullTerminate if set to true it will null terminate the string
-	 *
-	 * @return long the number of bytes read
-	 */
-	size_t read(char *buffer, size_t buffLen);
-
-	/** Flushes everything from the serial port's read buffer
-	 */
-	void flush();
+private:
+	asio::io_service io;
+	asio::serial_port serial;
 };
+
+#endif

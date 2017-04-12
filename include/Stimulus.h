@@ -2,7 +2,8 @@
 // http://flyvisionlab.weebly.com/
 // Contact: Steven Herbst <sherbst@stanford.edu>
 
-#pragma once
+#ifndef STIMULUS_H
+#define STIMULUS_H
 
 class Stimulus{
 public:
@@ -10,3 +11,5 @@ public:
 	virtual void Update() = 0;
 	bool isDone = false;
 };
+
+#endif

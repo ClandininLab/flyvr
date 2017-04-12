@@ -217,8 +217,7 @@ void GrblBoard::Home(){
 }
 
 void GrblBoard::Reset(){
-	std::string cmd = "\x18";
-	arduino->write(cmd.c_str());
+	arduino->Write("\x18");
 }
 
 void GrblBoard::GrblCommand(int key, int value){
@@ -227,9 +226,8 @@ void GrblBoard::GrblCommand(int key, int value){
 	RawCommand(oss.str());
 }
 
-void GrblBoard::RawCommand(std::string cmdString){
-	std::string cmd = cmdString + "\r\n";
-	arduino->write(cmd.c_str());
+void GrblBoard::RawCommand(std::string cmd){
+	arduino->Write(cmd + "\r\n");
 }
 
 void GrblBoard::MaxFeedRate(int value){
@@ -245,39 +243,21 @@ void GrblBoard::Move(double X, double Y){
 	RawCommand(oss.str());
 }
 
-std::string GrblBoard::ReadSerialLine(void){
-	char buf[1];
-
-	std::string line = "";
-
-	size_t numRead = arduino->read(buf, 1);
-	while (numRead == 0 || (buf[0] != '\n' && buf[0] != '\r')){
-		if (numRead == 1){
-			line += buf[0];
-		}
-		numRead = arduino->read(buf, 1);
-	}
-
-	return line;
-}
-
 void GrblBoard::WaitToStop(){
-	ReadStatus();
-	while (g_grblStatus.state != GrblStates::Idle){
+	do {
 		ReadStatus();
-	}
+	} while (g_grblStatus.state != GrblStates::Idle);
 }
 
 std::string GrblBoard::GetStatusString(){
 	// Query status.
-	arduino->flush();
 	RawCommand("?");
 
 	// Read response from GRBL	
-	std::string resp = ReadSerialLine();
-	while (resp.find("<") != 0){
-		resp = ReadSerialLine();
-	}
+	std::string resp;
+	do {
+		resp = arduino->ReadLine();
+	} while (resp.find("<") != 0);
 
 	return resp;
 }

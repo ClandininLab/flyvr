@@ -5,7 +5,8 @@
 // OgreApplication is based on the OGRE3D tutorial framework
 // http://www.ogre3d.org/wiki/
 
-#pragma once
+#ifndef OGREAPPLICATION_H
+#define OGREAPPLICATION_H
 
 #include <mutex>
 #include <thread>
@@ -115,3 +116,5 @@ private:
 	// Added for Mac compatibility
 	Ogre::String mResourcePath;
 };
+
+#endif

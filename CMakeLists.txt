@@ -9,12 +9,16 @@ project (Tracker)
 set(INI_TOP "C:/lib/simpleini-master")
 set(CV_TOP "C:/lib/opencv/build")
 set(OGRE_TOP "C:/lib/sinbad-ogre-108ab0bcc696/build/sdk")
+set(ASIO_TOP "C:/lib/asio-master/asio")
 
 # Bring in headers
 set(INI_INC_DIR ${INI_TOP})
 set(CV_INC_DIR "${CV_TOP}/include")
+set(ASIO_INC_DIR "${ASIO_TOP}/include")
 set(OGRE_INC_DIR "${OGRE_TOP}/include")
-include_directories(include ${INI_INC_DIR} ${CV_INC_DIR} "${OGRE_INC_DIR}/OGRE" "${OGRE_INC_DIR}/OGRE/Overlay" "${OGRE_INC_DIR}/OIS")
+list(APPEND INCLUDE_DIRS ${INI_INC_DIR} ${CV_INC_DIR} ${ASIO_INC_DIR})
+list(APPEND INCLUDE_DIRS "${OGRE_INC_DIR}/OGRE" "${OGRE_INC_DIR}/OGRE/Overlay" "${OGRE_INC_DIR}/OIS")
+include_directories(include ${INCLUDE_DIRS})
 
 # Bring in library directories
 set(CV_LIB_DIR "${CV_TOP}/x64/vc12/lib")
@@ -54,3 +58,7 @@ add_custom_command(TARGET tracker POST_BUILD       # Adds a post-build event to 
     COMMAND ${CMAKE_COMMAND} -E copy_if_different  # which executes "cmake - E copy_if_different..."
         ${POST_BUILD_COPY_LIST}                    # <--this is in-file
         ${BIN_DIR})                                # <--this is out-file path
+
+# Use ASIO without Boost
+add_definitions(-DASIO_STANDALONE)
+add_definitions(-DWIN32_LEAN_AND_MEAN)

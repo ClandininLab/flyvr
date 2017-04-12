@@ -2,7 +2,8 @@
 // http://flyvisionlab.weebly.com/
 // Contact: Steven Herbst <sherbst@stanford.edu>
 
-#pragma once
+#ifndef CYLINDERBARS_H
+#define CYLINDERBARS_H
 
 #include <string>
 #include <chrono>
@@ -60,3 +61,5 @@ private:
 	double panelHeight;
 	double panelThickness;
 };
+
+#endif

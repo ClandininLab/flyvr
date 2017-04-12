@@ -2,7 +2,8 @@
 // http://flyvisionlab.weebly.com/
 // Contact: Steven Herbst <sherbst@stanford.edu>
 
-#pragma once
+#ifndef ARDUINO_H
+#define ARDUINO_H
 
 #include <mutex>
 #include <thread>
@@ -76,9 +77,6 @@ private:
 	// Read from configuration file
 	void ReadSerialConfig(const char* loc);
 
-	// Read a single line from serial terminal
-	std::string ReadSerialLine(void);
-
 	// Read the status string from GRBL
 	std::string GrblBoard::GetStatusString();
 
@@ -118,3 +116,5 @@ private:
 	std::string ComPort;
 	unsigned BaudRate;
 };
+
+#endif
