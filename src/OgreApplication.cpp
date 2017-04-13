@@ -14,6 +14,7 @@
 
 #include "OgreApplication.h"
 #include "StimManager.h"
+#include "Utility.h"
 
 using namespace std::chrono;
 
@@ -25,9 +26,8 @@ auto GraphicsConfigFile = "tv.ini";
 auto ResourcePath = "";
 
 // Global variables used to manage access to real and virtual viewer position
-std::mutex g_ogreMutex;
-Pose3D g_realPose = { 0, 0, 0, 0, 0, 0 };
-Pose3D g_virtPose = { 0, 0, 0, 0, 0, 0 };
+std::mutex ogreMutex;
+Pose3D g_flyPose3D;
 
 // Variables used to manage graphics thread
 bool kill3D = false;
@@ -40,6 +40,8 @@ std::condition_variable gfxCV;
 
 // High-level management of the graphics thread
 void StartGraphicsThread(void){
+	std::cout << "Starting graphics thread.\n";
+
 	// Graphics setup;
 	graphicsThread = std::thread(GraphicsThread);
 
@@ -49,11 +51,18 @@ void StartGraphicsThread(void){
 }
 
 void StopGraphicsThread(void){
+	std::cout << "Stopping graphics thread.\n";
+
 	// Kill the 3D graphics thread
 	kill3D = true;
 
 	// Wait for graphics thread to terminate
 	graphicsThread.join();
+}
+
+void SetFlyPose3D(Pose3D flyPose3D){
+	std::unique_lock<std::mutex> lck{ ogreMutex };
+	g_flyPose3D = flyPose3D;
 }
 
 // Thread used to handle graphics operations
@@ -90,29 +99,18 @@ void GraphicsThread(void){
 		auto loopStart = high_resolution_clock::now();
 
 		// Read out real pose and virtual pose
-		Pose3D realPose, virtPose;
+		Pose3D flyPose3D;
 
 		{
-			std::unique_lock<std::mutex> lck{ g_ogreMutex };
-			realPose = g_realPose;
-			virtPose = g_virtPose;
+			std::unique_lock<std::mutex> lck{ ogreMutex };
+			flyPose3D = g_flyPose3D;
 		}
 
 		// Update the stimulus
-		stim.Update();
-
-		// Move scene based on difference between real position and virtual position
-		app.setRootPos(realPose.x - virtPose.x, 
-			           realPose.y - virtPose.y, 
-					   realPose.z - virtPose.z);
-
-		// Rotate scene based on difference between real orientation and virtual orientation
-		app.setRootRot(realPose.pitch - virtPose.pitch, 
-			           realPose.yaw - virtPose.yaw, 
-					   realPose.roll - virtPose.roll);
+		stim.Update(flyPose3D);
 
 		// Update the projection matrices based on eye position
-		app.updateProjMatrices(realPose.x, realPose.y, realPose.z);
+		app.updateProjMatrices(flyPose3D.x, flyPose3D.y, flyPose3D.z);
 
 		// Render the frame
 		app.renderOneFrame();
@@ -126,8 +124,7 @@ void GraphicsThread(void){
 			std::cout << "Slow frame (" << loopDuration << " s)\n";
 		}
 		else {
-			auto stopTime = loopStart + duration<double>(TargetLoopDuration);
-			std::this_thread::sleep_until(stopTime);
+			DelaySeconds(TargetLoopDuration - loopDuration);
 		}
 	}
 }
@@ -199,38 +196,6 @@ void OgreApplication::readGraphicsConfig(const char* loc){
 
 void OgreApplication::clear(void){
 	mSceneMgr->clearScene();
-}
-
-void OgreApplication::createLight(double x, double y, double z){
-	Ogre::Light *light = mSceneMgr->createLight();
-	light->setPosition(Ogre::Real(x), Ogre::Real(y), Ogre::Real(z));
-	mSceneMgr->getRootSceneNode()->attachObject(light);
-}
-
-void OgreApplication::setAmbientLight(double r, double g, double b){
-	Ogre::SceneNode *rootNode = mSceneMgr->getRootSceneNode();
-	mSceneMgr->setAmbientLight(Ogre::ColourValue(r, g, b));
-}
-
-void OgreApplication::setRootPos(double x, double y, double z){
-	Ogre::SceneNode *rootNode = mSceneMgr->getRootSceneNode();
-	rootNode->setPosition(Ogre::Vector3(x, y, z));
-}
-
-void OgreApplication::setRootRot(double pitch, double yaw, double roll){
-	Ogre::SceneNode *rootNode = mSceneMgr->getRootSceneNode();
-	rootNode->setOrientation(rootNode->getInitialOrientation());
-	rootNode->pitch(Ogre::Radian(pitch));
-	rootNode->yaw(Ogre::Radian(yaw));
-	rootNode->roll(Ogre::Radian(roll));
-}
-
-Ogre::SceneNode* OgreApplication::createRootChild(void){
-	return mSceneMgr->getRootSceneNode()->createChildSceneNode();
-}
-
-Ogre::Entity* OgreApplication::createEntity(std::string meshName){
-	return mSceneMgr->createEntity(meshName);
 }
 
 void OgreApplication::configure(void)
@@ -382,6 +347,10 @@ void OgreApplication::createViewports(void)
 	for (unsigned int i = 0; i < mMonitors.size(); i++){
 		mViewports.push_back(mWindows[i]->addViewport(mCameras[i]));
 	}
+}
+
+Ogre::SceneManager* OgreApplication::getSceneManager(void){
+	return mSceneMgr;
 }
 
 void OgreApplication::setBackground(double r, double g, double b){

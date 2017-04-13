@@ -8,25 +8,22 @@
 #include <mutex>
 #include <thread>
 #include <memory>
+#include <regex>
+#include <condition_variable>
 
 #include "Serial.h"
 
 enum class GrblAxis {X, Y};
 
-// Mutex to manage access to move command and CNC status
-extern std::mutex g_moveMutex, g_statusMutex;
-
 // Struct for storing the move command to GRBL
 struct GrblCommand{
 	double x;
 	double y;
+	bool fresh;
 };
 
 // GRBL states
 enum class GrblStates {Idle, Run, Home, Alarm};
-
-// Global variable containing the CNC move command
-extern GrblCommand g_moveCommand;
 
 // Struct for storing the results of a GRBL status query
 struct GrblStatus
@@ -37,14 +34,18 @@ struct GrblStatus
 	double x;
 	double y;
 	double z;
-};
 
-// Global variable containing the most recent GRBL status
-extern GrblStatus g_grblStatus;
+	double tstamp;
+};
 
 // High-level thread management
 void StartSerialThread();
 void StopSerialThread();
+
+// Interface functions for other threads
+void GrblMoveCommand(double x, double y);
+GrblStatus GetGrblStatus(void);
+void WaitForIdle(void);
 
 // Thread used to manage serial operations
 void SerialThread(void);
@@ -77,9 +78,6 @@ private:
 	// Read from configuration file
 	void ReadSerialConfig(const char* loc);
 
-	// Read the status string from GRBL
-	std::string GrblBoard::GetStatusString();
-
 	// Low-level communication routines
 	void GrblCommand(int key, int value);
 	void RawCommand(std::string cmdString);
@@ -102,10 +100,10 @@ private:
 	void BrakeAfterMovement(void){ GrblCommand(1, 255); }
 	void SetupStatusReport(void){ GrblCommand(10, 1); }
 	void SetUnitMM(){ RawCommand("G21"); }
-	void MoveRelative(){ RawCommand("G91"); }
+	void MoveAbsolute(){ RawCommand("G90"); }
 
 	// Configuration variables
-	double JogAmount;
+	double MaxTravelX, MaxTravelY;
 	unsigned MaxVel;
 	unsigned MaxAcc;
 	unsigned StepsPerMM_X;

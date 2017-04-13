@@ -57,7 +57,7 @@ StimManager::~StimManager(){
 
 // Main state machine for the stimulus manager
 // Sets up the interleave background and runs each stimulus to completion
-void StimManager::Update(void){
+void StimManager::Update(Pose3D flyPose){
 	if (state == StimManagerStates::Init){
 		app.setBackground(iColorR, iColorG, iColorB);
 		lastTime = std::chrono::high_resolution_clock::now();
@@ -73,7 +73,7 @@ void StimManager::Update(void){
 	}
 	else if (state == StimManagerStates::Stimulus){
 		// Update stimulus
-		currentStimulus->Update();
+		currentStimulus->Update(flyPose);
 
 		// Check if stimulus is done
 		if (currentStimulus->isDone){

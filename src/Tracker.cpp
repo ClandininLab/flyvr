@@ -5,6 +5,7 @@
 #include <chrono>
 #include <iostream>
 #include <future>
+#include <numeric>
 #include <SimpleIni.h>
 
 #define _USE_MATH_DEFINES
@@ -16,11 +17,12 @@
 #include "OgreApplication.h"
 #include "Camera.h"
 #include "Arduino.h"
+#include "Utility.h"
 
 using namespace std::chrono;
 
 // Actions for key presses
-enum class KeyPressAction { Quit, Up, Down, Left, Right, None };
+enum class KeyPressAction { Quit, Up, Down, Left, Right, Status, None };
 
 // Name of configuration file for tracker
 auto TrackerConfigFile = "tracker.ini";
@@ -31,6 +33,11 @@ double TargetLoopDuration; // seconds
 double MinMove; // millimeters
 double MaxMove; // millimeters
 double JogAmount; // millimeters
+double CenterX; // millimeters
+double CenterY; // millimeters
+double FlyY; // meters
+long AngleFilterLength;
+std::vector<double> angleList;
 
 void ReadTrackerConfig(){
 	// Load the INI file
@@ -44,6 +51,14 @@ void ReadTrackerConfig(){
 	MinMove = iniFile.GetDoubleValue("", "min-move", 1);
 	MaxMove = iniFile.GetDoubleValue("", "max-move", 40);
 	JogAmount = iniFile.GetDoubleValue("", "jog-amount", 1);
+
+	// Center position
+	CenterX = iniFile.GetDoubleValue("", "center-x", -315);
+	CenterY = iniFile.GetDoubleValue("", "center-y", -351);
+	FlyY = iniFile.GetDoubleValue("", "fly-y", -0.3113);
+
+	AngleFilterLength = iniFile.GetLongValue("", "angle-filter-length", 10);
+	angleList = std::vector<double>(AngleFilterLength, 0.0);
 }
 
 // Function to clamp a value between minimum and maximum bounds
@@ -80,6 +95,9 @@ KeyPressAction GetKeyPress(){
 				return KeyPressAction::Right;
 			}
 		}
+		else if (char(key) == 's'){
+			return KeyPressAction::Status;
+		}
 		else if (key == 27){
 			return KeyPressAction::Quit;
 		}
@@ -89,21 +107,30 @@ KeyPressAction GetKeyPress(){
 	return KeyPressAction::None;
 }
 
-void SendMoveCommand(double x, double y){
-	// Send move command
-	{
-		std::unique_lock<std::mutex> lck{ g_moveMutex };
-		g_moveCommand = { x, y };
+double filterAngle(double angle){
+	for (unsigned i = AngleFilterLength - 1; i >= 1; i--){
+		angleList[i] = angleList[i - 1];
 	}
-}
+	angleList[0] = angle;
+
+	double average = std::accumulate(angleList.begin(), angleList.end(), 0.0) / angleList.size();
+
+	return average;
+ }
 
 int main() {
 	ReadTrackerConfig();
 
-	StartGraphicsThread();
 	StartSerialThread();
-	//StartCameraThread();
 
+	std::cout << "Moving to start location\n";
+	GrblMoveCommand(CenterX, CenterY);
+	WaitForIdle();
+	std::cout << "Done\n";
+
+	StartGraphicsThread();
+	StartCameraThread();
+	
 	auto trackerStart = high_resolution_clock::now();
 	double trackerDuration;
 
@@ -111,65 +138,71 @@ int main() {
 		auto loopStart = high_resolution_clock::now();
 
 		// Get fly pose
-		//CamPose camPose;
-		//LOCK(g_cameraMutex);
-		//	camPose = g_camPose;
-		//UNLOCK(g_cameraMutex);
-
-		// Calculate move command
-		//GrblCommand moveCommand;
-		//moveCommand.x = clamp(-camPose.x, MIN_MOVE, MAX_MOVE);
-		//moveCommand.y = clamp(camPose.y, MIN_MOVE, MAX_MOVE);
+		FlyPose fly;
+		bool flyPresent = GetFlyPose(fly);
 
 		// Get CNC position
-		//GrblStatus grblStatus;
-		//LOCK(g_statusMutex);
-		//	grblStatus = g_grblStatus;
-		//UNLOCK(g_statusMutex);
+		GrblStatus grbl = GetGrblStatus();
 
-		{
-			std::unique_lock<std::mutex> lck{ g_ogreMutex };
-			//g_realPose.yaw = M_PI/2 - M_PI*(deltaT / DURATION);
-			//g_realPose.z = -(DISPLAY_WIDTH_METERS/2)*(deltaT / DURATION);
+		// Update graphics with fly position, if a fly is present
+		if (flyPresent){
+			Pose3D flyPose;
+			flyPose.x = (grbl.y + fly.y - CenterY) * 1e-3;  // + X graphics is +Y GRBL, +Y Camera
+			flyPose.y = FlyY;
+			flyPose.z = (grbl.x - fly.x - CenterX) * 1e-3; // + Z graphics is +X GRBL, -X Camera
+			flyPose.pitch = 0;
+			flyPose.yaw = filterAngle(-fly.angle) * M_PI/180.0; // TODO: check the sign
+			flyPose.roll = 0;
 
-			g_virtPose = g_realPose; // simulate real motion
+			SetFlyPose3D(flyPose);
+		}
+
+		// Handle key presses
+		auto action = GetKeyPress();
+		if (action == KeyPressAction::Up){
+			GrblMoveCommand(grbl.x - JogAmount, grbl.y);
+		}
+		else if (action == KeyPressAction::Down){
+			GrblMoveCommand(grbl.x + JogAmount, grbl.y);
+		}
+		else if (action == KeyPressAction::Left){
+			GrblMoveCommand(grbl.x, grbl.y - JogAmount);
+		}
+		else if (action == KeyPressAction::Right){
+			GrblMoveCommand(grbl.x, grbl.y + JogAmount);
+		}
+		else if (action == KeyPressAction::Status){
+			std::cout << "GRBL: <" << grbl.x << ", " << grbl.y << ">\n";
+			if (flyPresent){
+				std::cout << "Fly: <" << fly.x << ", " << fly.y << ">\n";
+			}
+		}
+		else if (action == KeyPressAction::Quit){
+			break;
+		}
+		else {
+			if (flyPresent){
+				double dx = clamp(-fly.x, MinMove, MaxMove);
+				double dy = clamp(fly.y, MinMove, MaxMove);
+				GrblMoveCommand(grbl.x + dx, grbl.y + dy);
+			}
 		}
 
 		// Aim for a target loop rate
-
 		auto loopStop = high_resolution_clock::now();
 		auto loopDuration = duration<double>(loopStop - loopStart).count();
 		if (loopDuration < TargetLoopDuration){
-			auto stopTime = loopStart + duration<double>(TargetLoopDuration);
-			std::this_thread::sleep_until(stopTime);
+			DelaySeconds(TargetLoopDuration - loopDuration);
 		}
 
 		// Compute cumulative duration
 		trackerDuration = duration<double>(loopStop - trackerStart).count();
 
-		// Handle key presses
-		auto action = GetKeyPress();
-		if (action == KeyPressAction::Up){
-			SendMoveCommand(-JogAmount, 0);
-		}
-		else if (action == KeyPressAction::Down){
-			SendMoveCommand(JogAmount, 0);
-		}
-		else if (action == KeyPressAction::Left){
-			SendMoveCommand(0, -JogAmount);
-		}
-		else if (action == KeyPressAction::Right){
-			SendMoveCommand(0, JogAmount);
-		}
-		else if (action == KeyPressAction::Quit){
-			break;
-		}
-		
 	} while (trackerDuration < MaxDuration);
 
-	//StopCameraThread();
-	StopSerialThread();
+	StopCameraThread();
 	StopGraphicsThread();
+	StopSerialThread();
 
 	return 0;
 }

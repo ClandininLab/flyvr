@@ -22,8 +22,9 @@ include_directories(include ${INCLUDE_DIRS})
 
 # Bring in library directories
 set(CV_LIB_DIR "${CV_TOP}/x64/vc12/lib")
-set(OGRE_LIB_DIR "${OGRE_TOP}/lib/release")
-link_directories(${CV_LIB_DIR} ${OGRE_LIB_DIR})
+set(OGRE_LIB_DIR_OPTIMIZED "${OGRE_TOP}/lib/release")
+set(OGRE_LIB_DIR_DEBUG "${OGRE_TOP}/lib/debug")
+link_directories(${CV_LIB_DIR} ${OGRE_LIB_DIR_OPTIMIZED} ${OGRE_LIB_DIR_DEBUG})
 
 # Define all source files
 list(APPEND SOURCES "src/CylinderBars.cpp" "src/Tracker.cpp" "src/Camera.cpp")
@@ -34,14 +35,19 @@ list(APPEND SOURCES "include/StimManager.h" "include/Stimulus.h" "include/Stimul
 list(APPEND SOURCES "include/Tracker.h" "include/Utility.h" "include/Arduino.h" "include/Serial.h")
 add_executable(tracker ${SOURCES})
 
-# Link library files
-list(APPEND PROJECT_LINK_LIBS "opencv_core2410.lib" "opencv_imgproc2410.lib")
-list(APPEND PROJECT_LINK_LIBS "opencv_highgui2410.lib" "opencv_features2d2410.lib")
-list(APPEND PROJECT_LINK_LIBS "OgreMain.lib" "OIS.lib" "OgreOverlay.lib")
-target_link_libraries(tracker ${PROJECT_LINK_LIBS})
+# Set up linking
+target_link_libraries(tracker 
+            debug opencv_core2410d.lib optimized opencv_core2410.lib
+            debug opencv_imgproc2410d.lib optimized opencv_imgproc2410.lib
+            debug opencv_highgui2410d.lib optimized opencv_highgui2410.lib
+            debug opencv_features2d2410d.lib optimized opencv_features2d2410.lib
+            debug OgreMain_d.lib optimized OgreMain.lib
+            debug OIS_d.lib optimized OIS.lib
+            debug OgreOverlay_d.lib optimized OgreOverlay.lib)
 
 # Define DLL locations
-set(OGRE_DLL_DIR "${OGRE_TOP}/bin/release")
+set(OGRE_DLL_DIR_OPTIMIZED "${OGRE_TOP}/bin/release")
+set(OGRE_DLL_DIR_DEBUG "${OGRE_TOP}/bin/debug")
 
 # Define configuration file locations
 set(BIN_DIR "${PROJECT_SOURCE_DIR}/bin")
@@ -51,8 +57,10 @@ set(OUT_PATH $<TARGET_FILE_DIR:tracker>)
 
 # Set up post-build copying of config files and DLLs
 # http://stackoverflow.com/questions/10671916/how-to-copy-dll-files-into-the-same-folder-as-the-executable-using-cmake
-list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR}/OgreMain.dll")
-list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR}/OgreOverlay.dll")
+list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR_OPTIMIZED}/OgreMain.dll")
+list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR_OPTIMIZED}/OgreOverlay.dll")
+list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR_DEBUG}/OgreMain_d.dll")
+list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR_DEBUG}/OgreOverlay_d.dll")
 list(APPEND POST_BUILD_COPY_LIST "${OUT_PATH}/tracker.exe")
 add_custom_command(TARGET tracker POST_BUILD       # Adds a post-build event to MyTest
     COMMAND ${CMAKE_COMMAND} -E copy_if_different  # which executes "cmake - E copy_if_different..."

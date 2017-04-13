@@ -22,6 +22,8 @@ CylinderBars::~CylinderBars(){
 }
 
 void CylinderBars::Setup(){
+	closedLoop = iniFile.GetBoolValue(name.c_str(), "closed-loop", true);
+
 	numSpatialPeriod = iniFile.GetLongValue(name.c_str(), "number-of-periods", 50);
 	dutyCycle = iniFile.GetDoubleValue(name.c_str(), "duty-cycle", 0.5);
 
@@ -46,7 +48,7 @@ void CylinderBars::Setup(){
 	// Less commonly used parameters
 	lightHeight = iniFile.GetDoubleValue(name.c_str(), "light-height", 1.25);
 	patternRadius = iniFile.GetDoubleValue(name.c_str(), "pattern-radius", 0.8);
-	panelHeight = iniFile.GetDoubleValue(name.c_str(), "panel-height", 1.25);
+	panelHeight = iniFile.GetDoubleValue(name.c_str(), "panel-height", 5);
 	panelThickness = iniFile.GetDoubleValue(name.c_str(), "panel-thickness", 0.001);
 
 	// Background light definition
@@ -63,60 +65,66 @@ void CylinderBars::Setup(){
 }
 
 void CylinderBars::CreateScene(void){
-	// Turn on background lighting
-	app.setAmbientLight(backLightR, backLightG, backLightB);
-
-	// Create main light
-	app.createLight(0, lightHeight, 0);
-
-	// Derived scene parameters
-	double dtheta = (2.0 * M_PI) / numSpatialPeriod;
-	double awidth = dutyCycle * dtheta;
-	double xdim = 2 * patternRadius * sin(awidth / 2.0);
-	double ydim = panelHeight;
-	double zdim = panelThickness;
+	// Get scene manager and root node
+	auto sceneMgr = app.getSceneManager();
+	auto rootNode = sceneMgr->getRootSceneNode();
 
 	// Create node for all stimulus objects
-	stimNode = app.createRootChild();
+	stimNode = rootNode->createChildSceneNode();
+
+	// Turn on background lighting
+	sceneMgr->setAmbientLight(Ogre::ColourValue(backLightR, backLightG, backLightB));
+
+	// Create main light
+	auto light = sceneMgr->createLight();
+	light->setPosition(Ogre::Real(0), Ogre::Real(lightHeight), Ogre::Real(0));
+	stimNode->attachObject(light);
+
+	// Derived scene parameters
+	auto dtheta = (2.0 * M_PI) / numSpatialPeriod;
+	auto awidth = dutyCycle * dtheta;
+	auto xdim = 2 * patternRadius * sin(awidth / 2.0);
+	auto ydim = panelHeight;
+	auto zdim = panelThickness;
 
 	// Create and attach all stimulus objects
 	for (int i = 0; i < numSpatialPeriod; i++){
 		// Create node for the panel
-		Ogre::SceneNode *panelNode = stimNode->createChildSceneNode();
+		auto panelNode = stimNode->createChildSceneNode();
 
 		// Apply scaling to panel
-		double n = 1.0 / CubeSideLength;
+		auto n = 1.0 / CubeSideLength;
 		panelNode->setScale(Ogre::Real(xdim*n), Ogre::Real(ydim*n), Ogre::Real(zdim*n));
 
 		// Calculate angular position of this panel
-		double theta = i*dtheta;
+		auto theta = i*dtheta;
 
 		// Apply position to panel
-		double xpos = patternRadius * sin(theta);
-		double ypos = 0.0;
-		double zpos = -patternRadius * cos(theta);
+		auto xpos = patternRadius * sin(theta);
+		auto ypos = 0.0;
+		auto zpos = -patternRadius * cos(theta);
 		panelNode->setPosition(Ogre::Vector3(xpos, ypos, zpos));
 
 		// Apply rotation to panel
-		double pitch = 0.0;
-		double yaw = -theta;
-		double roll = 0.0;
+		auto pitch = 0.0;
+		auto yaw = -theta;
+		auto roll = 0.0;
 		panelNode->pitch(Ogre::Radian(pitch));
 		panelNode->yaw(Ogre::Radian(yaw));
 		panelNode->roll(Ogre::Radian(roll));
 
 		// Attach the cube mesh to the panel
-		Ogre::Entity *panelEnt = app.createEntity("cube.mesh");
+		auto panelEnt = sceneMgr->createEntity("cube.mesh");
 		panelNode->attachObject(panelEnt);
 
 		// Set the panel color to the desired value
 		// TODO: is there a better way to set the color of a panel?
-		Ogre::ColourValue panelColor = Ogre::ColourValue(foreColorR, foreColorG, foreColorB);
+		auto panelColor = Ogre::ColourValue(foreColorR, foreColorG, foreColorB);
 		panelEnt->getSubEntity(0)->getMaterial().getPointer()->getTechnique(0)->getPass(0)->setDiffuse(panelColor);
 	}
 }
 
-void CylinderBars::Update(){
+void CylinderBars::Update(Pose3D flyPose){
 	if (currentState == CylinderBarStates::Init){
 		lastTime = std::chrono::high_resolution_clock::now();
 		app.setBackground(backColorR, backColorG, backColorB);
@@ -134,8 +142,18 @@ void CylinderBars::Update(){
 		auto thisTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration<double>(thisTime - lastTime).count();
 
-		double rot = duration * rotationSpeed;
-		stimNode->setOrientation(Ogre::Quaternion(Ogre::Radian(rot), Ogre::Vector3(0, 1, 0)));
+		// Rotate stimulus
+		auto rot = duration * rotationSpeed;
+		stimNode->setOrientation(stimNode->getInitialOrientation());
+		stimNode->yaw(Ogre::Radian(rot));
+
+		// In closed loop, "move the world" so the fly appears to be in the same position
+		if (closedLoop){
+			auto rootNode = app.getSceneManager()->getRootSceneNode();
+			rootNode->setPosition(Ogre::Vector3(flyPose.x, flyPose.y, flyPose.z));
+			rootNode->setOrientation(rootNode->getInitialOrientation());
+			rootNode->yaw(Ogre::Radian(flyPose.yaw));
+		}
 
 		if (duration >= activeDuration){
 			lastTime = std::chrono::high_resolution_clock::now();

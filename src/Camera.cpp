@@ -4,8 +4,10 @@
 
 #include <chrono>
 #include <fstream>
+#include <iostream>
 #include <SimpleIni.h>
 
+#include "Utility.h"
 #include "Camera.h"
 
 using namespace std::chrono;
@@ -33,18 +35,42 @@ unsigned LogPrecision;
 // Derived parameters
 unsigned CropAmount, CroppedWidth, CroppedHeight;
 
+// Amount of time between debug frames
+double TargetDebugFrameTime;
+
 // Global variables used to manage access to camera measurement
-std::mutex g_cameraMutex;
-CamPose g_camPose;
+std::mutex cameraMutex;
+FlyPose g_flyPose;
+bool g_flyPresent = false;
 
 // Variables used to manage camera thread
 bool killCamera = false;
 std::thread cameraThread;
 
+// Variables used to signal when the camera thread has started up
+bool readyForCamera = false;
+std::mutex camReadyMutex;
+std::condition_variable camCV;
+
 // High-level management of the graphics thread
 void StartCameraThread(){
+	std::cout << "Starting camera thread.\n";
+
 	ReadCameraConfig();
 	cameraThread = std::thread(CameraThread);
+
+	// Wait for serial thread to be up and running
+	std::unique_lock<std::mutex> lck(camReadyMutex);
+	camCV.wait(lck, []{return readyForCamera; });
+}
+
+// Function to get the fly position within the frame
+bool GetFlyPose(FlyPose &flyPose){
+	// Acquire lock for image processing information
+	std::unique_lock<std::mutex> lck{ cameraMutex };
+	flyPose = g_flyPose;
+
+	return g_flyPresent;
 }
 
 // Read in the constants for the camera
@@ -70,6 +96,9 @@ void ReadCameraConfig(){
 	// Precision of log file
 	LogPrecision = iniFile.GetLongValue("", "log-precision", 8);
 
+	// Precision of log file
+	TargetDebugFrameTime = iniFile.GetDoubleValue("", "target-debug-frame-time", 50e-3);
+
 	// Compute derived constants
 	CropAmount = BlurSize;
 	CroppedWidth = FrameWidth - 2 * CropAmount;
@@ -78,6 +107,8 @@ void ReadCameraConfig(){
 
 // High-level management of the graphics thread
 void StopCameraThread(){
+	std::cout << "Stopping camera thread.\n";
+
 	// Kill the 3D graphics thread
 	killCamera = true;
 
@@ -89,17 +120,30 @@ void StopCameraThread(){
 void CameraThread(void){
 	// Set up logging
 	std::ofstream ofs("CameraThread.txt");
+	ofs << "flyPresent,";
 	ofs << "x (mm),";
 	ofs << "y (mm),";
 	ofs << "angle (deg),";
 	ofs << "timestamp (s)";
-	ofs << "\r\n";
+	ofs << "\n";
 	ofs.precision(LogPrecision);
 
 	// Set up video capture
+	std::cout << "Setting up video capture.\n";
 	VideoCapture cap(CV_CAP_ANY);
 	cap.set(CV_CAP_PROP_FRAME_WIDTH, FrameWidth);
 	cap.set(CV_CAP_PROP_FRAME_HEIGHT, FrameHeight);
+
+	// Signal to main thread that camera setup is complete
+	std::cout << "Notifying main thread that video capture is set up.\n";
+	{
+		std::lock_guard<std::mutex> lck(camReadyMutex);
+		readyForCamera = true;
+	}
+	camCV.notify_one();
+
+	// Record iteration start time
+	auto lastDebugFrame = high_resolution_clock::now();
 
 	while (!killCamera){
 		// Read image
@@ -111,20 +155,30 @@ void CameraThread(void){
 		processFrame(inFrame, outFrame);
 
 		// Locate the fly in the frame
-		bool flyFound = locateFly(outFrame);
+		FlyPose flyPose;
+		bool flyPresent = locateFly(outFrame, flyPose);
+
+		// Update fly position
+		{
+			// Acquire lock for image processing information
+			std::unique_lock<std::mutex> lck{ cameraMutex };
+
+			g_flyPose = flyPose;
+			g_flyPresent = flyPresent;
+		}
 
 		// Log the fly position
-		if (flyFound){
-			// Get the time stamp
-			auto tstamp = duration<double>(high_resolution_clock::now().time_since_epoch()).count();
+		// Format output data
+		std::ostringstream oss;
+		oss << flyPresent << ",";
+		oss << std::fixed << g_flyPose.x << ",";
+		oss << std::fixed << g_flyPose.y << ",";
+		oss << std::fixed << g_flyPose.angle << ",";
+		oss << std::fixed << g_flyPose.tstamp;
+		oss << "\n";
 
-			// Write data to file
-			ofs << std::fixed << g_camPose.x << ",";
-			ofs << std::fixed << g_camPose.y << ",";
-			ofs << std::fixed << g_camPose.angle << ",";
-			ofs << std::fixed << tstamp;
-			ofs << "\r\n";
-		}
+		// Write data to file
+		ofs << oss.str();
 	}
 }
 
@@ -148,41 +202,46 @@ bool contourCompare(vector<Point> a, vector<Point> b) {
 }
 
 // Locate the fly as the biggest contour in the image
-bool locateFly(const Mat &inFrame){
+bool locateFly(const Mat &inFrame, FlyPose &flyPose){
 	// Variables related to contour search
 	RotatedRect boundingBox;
 	vector<std::vector<cv::Point>> imContours;
 	vector<cv::Vec4i> imHierarchy;
 
+	imshow("test", inFrame);
+	waitKey(1);
+
 	// Find all contours in image
 	findContours(inFrame, imContours, imHierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
+
+	// If there are no contours, return
+	if (imContours.size() == 0){
+		return false;
+	}
 
 	// Find the biggest contour
 	auto maxElem = std::max_element(imContours.begin(), imContours.end(), contourCompare);
 
-	// Check if the biggest contour is large enough
-	auto sizeMax = (*maxElem).size();
-	if (sizeMax > MinContour){
-		boundingBox = fitEllipse(Mat(*maxElem));
-
-		// Compute fly position
-		double x = (boundingBox.center.x - CroppedWidth / 2.0) / PixelPerMM;
-		double y = (boundingBox.center.y - CroppedHeight / 2.0) / PixelPerMM;
-		double angle = boundingBox.angle;
-
-		{
-			// Acquire lock for image processing information
-			std::unique_lock<std::mutex> lck{ g_cameraMutex };
-
-			// Update shared position
-			g_camPose.x = x;
-			g_camPose.y = y;
-			g_camPose.angle = angle;
-		}
-
-		return true;
-	}
-	else {
+	// If there is no maximum contours, return
+	if (maxElem == imContours.end()){
 		return false;
 	}
+
+	// Check if the biggest contour is large enough
+	auto sizeMax = (*maxElem).size();
+
+	if (sizeMax <= MinContour){
+		return false;
+	}
+
+	// If we reach here, there is a contour large enough for fitEllipse
+	boundingBox = fitEllipse(Mat(*maxElem));
+
+	// Compute fly position
+	flyPose.x = (boundingBox.center.x - CroppedWidth / 2.0) / PixelPerMM;
+	flyPose.y = (boundingBox.center.y - CroppedHeight / 2.0) / PixelPerMM;
+	flyPose.angle = boundingBox.angle;
+	flyPose.tstamp = GetTimeStamp();
+
+	return true;
 }

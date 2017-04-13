@@ -5,10 +5,14 @@
 #ifndef STIMULUS_H
 #define STIMULUS_H
 
+#include "OgreApplication.h"
+
 class Stimulus{
 public:
 	virtual ~Stimulus(){};
-	virtual void Update() = 0;
+	// TODO: accept position of fly 
+	virtual void Update(Pose3D flyPose) = 0;
+	// TODO: add method to output per-frame information from stimulus
 	bool isDone = false;
 };
 

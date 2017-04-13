@@ -23,7 +23,7 @@ class StimManager
 public:
 	StimManager(OgreApplication &app);
 	~StimManager(void);
-	void Update(void);
+	void Update(Pose3D flyPose);
 
 private:
 	void PickNextStimulus(void);

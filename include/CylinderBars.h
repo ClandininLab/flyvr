@@ -19,7 +19,7 @@ class CylinderBars : public Stimulus{
 public:
 	CylinderBars(std::string name, OgreApplication &app, CSimpleIniA &iniFile);
 	~CylinderBars();
-	void Update();
+	void Update(Pose3D flyPose);
 private:
 	void Setup(void);
 	void CreateScene(void);
@@ -60,6 +60,8 @@ private:
 	double patternRadius;
 	double panelHeight;
 	double panelThickness;
+
+	bool closedLoop;
 };
 
 #endif

@@ -6,21 +6,30 @@
 #include <fstream>
 #include <iostream>
 #include <chrono>
-#include <regex>
 #include <SimpleIni.h>
 
 using namespace std::chrono;
 
 #include "Arduino.h"
+#include "Utility.h"
 
-// Global variable containing the CNC move command
-GrblCommand g_moveCommand = { 0, 0 };
+// Delay when waiting for GRBL to react to a move command
+const double GRBL_DELAY = 100e-3;
 
-// Global variable containing the most recent GRBL status
+// Delay when waiting for Arduino to start up
+const double ARDUINO_DELAY = 2.0;
+
+// Variable containing the CNC move command
+GrblCommand g_moveCommand = { 0, 0, false };
+
+// Variable containing the most recent GRBL status
 GrblStatus g_grblStatus;
 
-// Mutex to manage access to move command and CNC status
-std::mutex g_moveMutex, g_statusMutex;
+// Mutex to manage access to move command
+std::mutex moveMutex;
+
+// Mutex to manage access to status
+std::mutex statusMutex;
 
 // Global variable used to signal when serial port should close
 bool killSerial = false;
@@ -28,16 +37,57 @@ bool killSerial = false;
 // Handle used to run SerialThread
 std::thread serialThread;
 
+// Variables used to signal when the serial thread has started up
+bool readyForSerial = false;
+std::mutex serReadyMutex;
+std::condition_variable serCV;
+
+// Variables used to signal when the rig has stopped moving
+bool isIdle = false;
+std::mutex idleMutex;
+std::condition_variable idleCV;
+
 void StartSerialThread(){
+	std::cout << "Starting serial thread.\n";
+
 	serialThread = std::thread(SerialThread);
+
+	// Wait for serial thread to be up and running
+	std::unique_lock<std::mutex> lck(serReadyMutex);
+	serCV.wait(lck, []{return readyForSerial; });
 }
 
 void StopSerialThread(){
+	std::cout << "Stopping serial thread.\n";
+
 	// Kill the serial thread
 	killSerial = true;
 
 	// Wait for serial thread to finish
 	serialThread.join();
+}
+
+void GrblMoveCommand(double x, double y){
+	std::unique_lock<std::mutex> lck{ moveMutex };
+
+	g_moveCommand.x = x;
+	g_moveCommand.y = y;
+	g_moveCommand.fresh = true;
+}
+
+GrblStatus GetGrblStatus(void){
+	std::unique_lock<std::mutex> lck{ statusMutex };
+
+	return g_grblStatus;
+}
+
+void WaitForIdle(void){
+	// Wait for previous command to take effect
+	DelaySeconds(GRBL_DELAY);
+
+	// Wait for rig to stop moving
+	std::unique_lock<std::mutex> lck(idleMutex);
+	idleCV.wait(lck, []{return isIdle; });
 }
 
 void SerialThread(void){
@@ -52,34 +102,53 @@ void SerialThread(void){
 	// Local variables to hold the status and move commands for GRBL
 	GrblCommand moveCommand;
 
+	// Let the main thread know that the serial thread
+	std::cout << "Notifying main thread that serial communication is set up.\n";
+	{
+		std::lock_guard<std::mutex> lck(serReadyMutex);
+		readyForSerial = true;
+	}
+	serCV.notify_one();
+
 	// Continually poll GRBL status and move if desired
 	while (!killSerial){
 		// Read the current status
 		grbl.ReadStatus();
 
+		// If no longer idle, signal to a waiting thread
+		{
+			std::lock_guard<std::mutex> lck(idleMutex);
+			isIdle = (g_grblStatus.state == GrblStates::Idle);
+		}
+		if (isIdle){
+			idleCV.notify_one();
+		}
+
 		// Acquire lock to move command
 		{
-			std::unique_lock<std::mutex> lck{ g_moveMutex };
+			std::unique_lock<std::mutex> lck{ moveMutex };
 
 			// Copy move command to local variable
 			moveCommand = g_moveCommand;
 
 			// Reset move command to zero
-			g_moveCommand.x = 0.0;
-			g_moveCommand.y = 0.0;
+			g_moveCommand.fresh = false;
 		}
 
 		// Run the move command if applicable
-		if ((moveCommand.x != 0.0 || moveCommand.y != 0.0) && g_grblStatus.state == GrblStates::Idle){
+		if (moveCommand.fresh && g_grblStatus.state == GrblStates::Idle){
 			grbl.Move(moveCommand.x, moveCommand.y);
 		}
 
-		// Log position information
-		// Get the time stamp
-		auto tstamp = duration<double>(high_resolution_clock::now().time_since_epoch()).count();
+		// Format output data
+		std::ostringstream oss;
+		oss << std::fixed << g_grblStatus.x << ",";
+		oss << std::fixed << g_grblStatus.y << ",";
+		oss << std::fixed << g_grblStatus.tstamp;
+		oss << "\n";
 
-		// Write CNC position to file
-		ofs << std::fixed << g_grblStatus.x << "," << std::fixed << g_grblStatus.y << "," << std::fixed << tstamp << "\n";
+		// Write data to file
+		ofs << oss.str();
 	}
 }
 
@@ -93,16 +162,19 @@ GrblBoard::GrblBoard() {
 
 	// Wait for Arduino to restart
 	std::cout << "Waiting for Arduino to start.\n";
-	std::this_thread::sleep_for(std::chrono::seconds(2));
+	DelaySeconds(ARDUINO_DELAY);
 
 	// Send setup commands
+	std::cout << "Initializing GRBL variables.\n";
 	Init();
 
 	// Home to origin before issuing G-code commands
+	// This is a blocking command that returns after homing is complete
+	std::cout << "Homing GRBL.\n";
 	Home();
-	WaitToStop();
 
 	// Send G-code commands
+	std::cout << "Sending G-Code configuration.\n";
 	Config();
 }
 
@@ -113,7 +185,6 @@ void GrblBoard::ReadSerialConfig(const char* loc){
 	iniFile.LoadFile(loc);
 
 	// Read in values from INI file
-	JogAmount = iniFile.GetDoubleValue("", "jog-amount", 1);
 	MaxVel = iniFile.GetLongValue("", "max-velocity", 10000);
 	MaxAcc = iniFile.GetLongValue("", "max-acceleration", 200);
 	StepsPerMM_X = iniFile.GetLongValue("", "steps-per-mm-x", 40);
@@ -124,6 +195,10 @@ void GrblBoard::ReadSerialConfig(const char* loc){
 	HomingDebounce = iniFile.GetLongValue("", "homing-debounce", 250);
 	HomingFeedRate = iniFile.GetLongValue("", "homing-feed-rate", 1000);
 	HomingSeekRate = iniFile.GetLongValue("", "homing-seek-rate", 2000);
+
+	// Soft limits
+	MaxTravelX = iniFile.GetDoubleValue("", "max-travel-x", 600);
+	MaxTravelY = iniFile.GetDoubleValue("", "max-travel-y", 600);
 
 	// Get baud rate
 	BaudRate = iniFile.GetLongValue("", "baud-rate", 400000);
@@ -173,7 +248,7 @@ void GrblBoard::Config(){
 	MaxFeedRate(MaxVel);
 
 	// Use relative movement, rather than absolute
-	MoveRelative();
+	MoveAbsolute();
 }
 
 void GrblBoard::StepsPerMM(int value, GrblAxis axis){
@@ -214,6 +289,7 @@ void GrblBoard::MaxAcceleration(int value, GrblAxis axis){
 
 void GrblBoard::Home(){
 	RawCommand("$H");
+	WaitToStop();
 }
 
 void GrblBoard::Reset(){
@@ -237,44 +313,42 @@ void GrblBoard::MaxFeedRate(int value){
 }
 
 void GrblBoard::Move(double X, double Y){
-	std::ostringstream oss;
-	oss.precision(3);
-	oss << "G1X" << std::fixed << X << "Y" << std::fixed << Y << "Z" << std::fixed << 0.0;
-	RawCommand(oss.str());
+	if (-MaxTravelX <= X && X <= -HomingPullOff &&
+		-MaxTravelY <= Y && Y <= -HomingPullOff){
+
+		std::ostringstream oss;
+		oss.precision(3);
+		oss << "G1X" << std::fixed << X << "Y" << std::fixed << Y;
+		RawCommand(oss.str());
+	}
 }
 
 void GrblBoard::WaitToStop(){
+	// Wait for previous command to take effect
+
+	DelaySeconds(GRBL_DELAY);
 	do {
 		ReadStatus();
 	} while (g_grblStatus.state != GrblStates::Idle);
 }
 
-std::string GrblBoard::GetStatusString(){
+void GrblBoard::ReadStatus(){
 	// Query status.
 	RawCommand("?");
 
-	// Read response from GRBL	
-	std::string resp;
-	do {
-		resp = arduino->ReadLine();
-	} while (resp.find("<") != 0);
-
-	return resp;
-}
-
-void GrblBoard::ReadStatus(){
-	auto statusString = GetStatusString();
-	
-	// Parse response from GRBL
-	// The format changed a bit between 0.9 and 1.1
+	// Pattern to parse response from GRBL
+	// Example: 
 	// <Idle|MPos:0.000,0.000,0.000
 	std::string num = "(-?\\d+\\.\\d+)";
 	std::regex pat("<(Idle|Run|Home|Alarm)\\|MPos:" + num + "," + num + "," + num);
-	std::smatch match;
 
-	if (!std::regex_search(statusString, match, pat)){
-		throw std::runtime_error("GRBL returned bad status format.");
-	}
+	// Read lines from serial port until one matches
+	std::string resp;
+	std::smatch match;
+	do {
+		resp = arduino->ReadLine();
+		//std::cout << "resp: " << resp << "\n";
+	} while (!std::regex_search(resp, match, pat));
 
 	// Populate status
 	GrblStatus grblStatus;
@@ -302,9 +376,12 @@ void GrblBoard::ReadStatus(){
 	grblStatus.y = std::stod(match.str(3));
 	grblStatus.z = std::stod(match.str(4));
 
+	// Get timestamp
+	grblStatus.tstamp = GetTimeStamp();
+
 	{
 		// Acquire lock to status variable
-		std::unique_lock<std::mutex> lck{ g_statusMutex };
+		std::unique_lock<std::mutex> lck{ statusMutex };
 
 		// Write status information
 		g_grblStatus = grblStatus;

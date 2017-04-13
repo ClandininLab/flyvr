@@ -45,14 +45,11 @@ struct MonitorInfo{
 	Ogre::Vector3 pc;
 };
 
-// Global variables used to manage access to real and virtual viewer position
-extern std::mutex g_ogreMutex;
-extern Pose3D g_realPose, g_virtPose;
-
 // High-level thread management for graphics operations
 void StartGraphicsThread(void);
 void ReadGraphicsConfig(void);
 void StopGraphicsThread(void);
+void SetFlyPose3D(Pose3D flyPose3D);
 
 // Thread used to handle graphics operations
 void GraphicsThread(void);
@@ -66,19 +63,13 @@ public:
 	void go(void);
 	void readGraphicsConfig(const char* loc);
 
-	void setRootPos(double x, double y, double z);
-	void setRootRot(double pitch, double yaw, double roll);
 	void updateProjMatrices(double x, double y, double z);
-
-	void createLight(double x, double y, double z);
-	void setAmbientLight(double r, double g, double b);
 	void setBackground(double r, double g, double b);
 
 	void renderOneFrame(void);
 	void clear(void);
 
-	Ogre::SceneNode* createRootChild(void);
-	Ogre::Entity* createEntity(std::string meshName);
+	Ogre::SceneManager* getSceneManager(void);
 
 private:
 
