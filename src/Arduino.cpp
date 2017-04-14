@@ -20,16 +20,10 @@ const double GRBL_DELAY = 100e-3;
 const double ARDUINO_DELAY = 2.0;
 
 // Variable containing the CNC move command
-GrblCommand g_moveCommand = { 0, 0, false };
+std::atomic<GrblCommand> g_moveCommand;
 
 // Variable containing the most recent GRBL status
-GrblStatus g_grblStatus;
-
-// Mutex to manage access to move command
-std::mutex moveMutex;
-
-// Mutex to manage access to status
-std::mutex statusMutex;
+std::atomic<GrblStatus> g_grblStatus;
 
 // Global variable used to signal when serial port should close
 bool killSerial = false;
@@ -38,14 +32,10 @@ bool killSerial = false;
 std::thread serialThread;
 
 // Variables used to signal when the serial thread has started up
-bool readyForSerial = false;
-std::mutex serReadyMutex;
-std::condition_variable serCV;
+BoolSignal readyForSerial;
 
 // Variables used to signal when the rig has stopped moving
-bool isIdle = false;
-std::mutex idleMutex;
-std::condition_variable idleCV;
+BoolSignal isIdle;
 
 void StartSerialThread(){
 	std::cout << "Starting serial thread.\n";
@@ -53,8 +43,7 @@ void StartSerialThread(){
 	serialThread = std::thread(SerialThread);
 
 	// Wait for serial thread to be up and running
-	std::unique_lock<std::mutex> lck(serReadyMutex);
-	serCV.wait(lck, []{return readyForSerial; });
+	readyForSerial.wait();
 }
 
 void StopSerialThread(){
@@ -68,17 +57,15 @@ void StopSerialThread(){
 }
 
 void GrblMoveCommand(double x, double y){
-	std::unique_lock<std::mutex> lck{ moveMutex };
-
-	g_moveCommand.x = x;
-	g_moveCommand.y = y;
-	g_moveCommand.fresh = true;
+	GrblCommand moveCommand;
+	moveCommand.x = x;
+	moveCommand.y = y;
+	moveCommand.fresh = true;
+	g_moveCommand.store(moveCommand);
 }
 
 GrblStatus GetGrblStatus(void){
-	std::unique_lock<std::mutex> lck{ statusMutex };
-
-	return g_grblStatus;
+	return g_grblStatus.load();
 }
 
 void WaitForIdle(void){
@@ -86,8 +73,7 @@ void WaitForIdle(void){
 	DelaySeconds(GRBL_DELAY);
 
 	// Wait for rig to stop moving
-	std::unique_lock<std::mutex> lck(idleMutex);
-	idleCV.wait(lck, []{return isIdle; });
+	isIdle.wait();
 }
 
 void SerialThread(void){
@@ -100,51 +86,39 @@ void SerialThread(void){
 	GrblBoard grbl;
 
 	// Local variables to hold the status and move commands for GRBL
+	GrblStatus grblStatus;
 	GrblCommand moveCommand;
 
 	// Let the main thread know that the serial thread
 	std::cout << "Notifying main thread that serial communication is set up.\n";
-	{
-		std::lock_guard<std::mutex> lck(serReadyMutex);
-		readyForSerial = true;
-	}
-	serCV.notify_one();
+	readyForSerial.update(true);
 
 	// Continually poll GRBL status and move if desired
 	while (!killSerial){
 		// Read the current status
-		grbl.ReadStatus();
+		grblStatus = grbl.ReadStatus();
+
+		// Update shared GRBL status variable
+		g_grblStatus.store(grblStatus);
 
 		// If no longer idle, signal to a waiting thread
-		{
-			std::lock_guard<std::mutex> lck(idleMutex);
-			isIdle = (g_grblStatus.state == GrblStates::Idle);
-		}
-		if (isIdle){
-			idleCV.notify_one();
-		}
+		isIdle.update(grblStatus.state == GrblStates::Idle);
 
-		// Acquire lock to move command
-		{
-			std::unique_lock<std::mutex> lck{ moveMutex };
-
-			// Copy move command to local variable
-			moveCommand = g_moveCommand;
-
-			// Reset move command to zero
-			g_moveCommand.fresh = false;
-		}
+		// Load move command, reset fresh variable
+		GrblCommand stale;
+		stale.fresh = false;
+		moveCommand = g_moveCommand.exchange(stale);
 
 		// Run the move command if applicable
-		if (moveCommand.fresh && g_grblStatus.state == GrblStates::Idle){
+		if (moveCommand.fresh && grblStatus.state == GrblStates::Idle){
 			grbl.Move(moveCommand.x, moveCommand.y);
 		}
 
 		// Format output data
 		std::ostringstream oss;
-		oss << std::fixed << g_grblStatus.x << ",";
-		oss << std::fixed << g_grblStatus.y << ",";
-		oss << std::fixed << g_grblStatus.tstamp;
+		oss << std::fixed << grblStatus.x << ",";
+		oss << std::fixed << grblStatus.y << ",";
+		oss << std::fixed << grblStatus.tstamp;
 		oss << "\n";
 
 		// Write data to file
@@ -326,13 +300,15 @@ void GrblBoard::Move(double X, double Y){
 void GrblBoard::WaitToStop(){
 	// Wait for previous command to take effect
 
+	GrblStatus grblStatus;
+
 	DelaySeconds(GRBL_DELAY);
 	do {
-		ReadStatus();
-	} while (g_grblStatus.state != GrblStates::Idle);
+		grblStatus = ReadStatus();
+	} while (grblStatus.state != GrblStates::Idle);
 }
 
-void GrblBoard::ReadStatus(){
+GrblStatus GrblBoard::ReadStatus(){
 	// Query status.
 	RawCommand("?");
 
@@ -379,11 +355,5 @@ void GrblBoard::ReadStatus(){
 	// Get timestamp
 	grblStatus.tstamp = GetTimeStamp();
 
-	{
-		// Acquire lock to status variable
-		std::unique_lock<std::mutex> lck{ statusMutex };
-
-		// Write status information
-		g_grblStatus = grblStatus;
-	}
+	return grblStatus;
 }

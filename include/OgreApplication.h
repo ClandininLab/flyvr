@@ -29,6 +29,8 @@
 struct Pose3D{
 	double x, y, z;
 	double pitch, yaw, roll;
+
+	Pose3D() : x(0), y(0), z(0), pitch(0), yaw(0), roll(0) {}
 };
 
 // Used to keep track of monitors information
@@ -43,6 +45,9 @@ struct MonitorInfo{
 	Ogre::Vector3 pa;
 	Ogre::Vector3 pb;
 	Ogre::Vector3 pc;
+
+	MonitorInfo() : id(0), pixelWidth(0), pixelHeight(0), displayFullscreen(false),
+		pa(Ogre::Vector3::ZERO), pb(Ogre::Vector3::ZERO), pc(Ogre::Vector3::ZERO) {}
 };
 
 // High-level thread management for graphics operations

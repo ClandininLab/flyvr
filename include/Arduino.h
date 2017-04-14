@@ -5,11 +5,9 @@
 #ifndef ARDUINO_H
 #define ARDUINO_H
 
-#include <mutex>
 #include <thread>
 #include <memory>
 #include <regex>
-#include <condition_variable>
 
 #include "Serial.h"
 
@@ -20,6 +18,7 @@ struct GrblCommand{
 	double x;
 	double y;
 	bool fresh;
+	GrblCommand() : x(0), y(0), fresh(false) {}
 };
 
 // GRBL states
@@ -36,6 +35,8 @@ struct GrblStatus
 	double z;
 
 	double tstamp;
+
+	GrblStatus() : x(0), y(0), z(0), tstamp(0) {}
 };
 
 // High-level thread management
@@ -57,7 +58,7 @@ public:
 	GrblBoard();
 
 	// Reads out the GRBL status (position and moving/idle condition)
-	void ReadStatus();
+	GrblStatus ReadStatus();
 
 	// General move command
 	void Move(double X, double Y);

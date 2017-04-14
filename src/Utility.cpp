@@ -36,3 +36,18 @@ void DelaySeconds(double t){
 double GetTimeStamp(){
 	return std::chrono::duration<double>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 }
+
+void BoolSignal::update(bool value){
+	std::unique_lock<std::mutex> lck(statusMutex);
+	statusBool = value;
+	if (statusBool){
+		statusCV.notify_one();
+	}
+}
+
+void BoolSignal::wait(){
+	std::unique_lock<std::mutex> lck(statusMutex);
+	while (!statusBool){
+		statusCV.wait(lck);
+	}
+}

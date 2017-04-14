@@ -138,14 +138,13 @@ int main() {
 		auto loopStart = high_resolution_clock::now();
 
 		// Get fly pose
-		FlyPose fly;
-		bool flyPresent = GetFlyPose(fly);
+		FlyPose fly = GetFlyPose();
 
 		// Get CNC position
 		GrblStatus grbl = GetGrblStatus();
 
 		// Update graphics with fly position, if a fly is present
-		if (flyPresent){
+		if (fly.present){
 			Pose3D flyPose;
 			flyPose.x = (grbl.y + fly.y - CenterY) * 1e-3;  // + X graphics is +Y GRBL, +Y Camera
 			flyPose.y = FlyY;
@@ -173,7 +172,7 @@ int main() {
 		}
 		else if (action == KeyPressAction::Status){
 			std::cout << "GRBL: <" << grbl.x << ", " << grbl.y << ">\n";
-			if (flyPresent){
+			if (fly.present){
 				std::cout << "Fly: <" << fly.x << ", " << fly.y << ">\n";
 			}
 		}
@@ -181,7 +180,7 @@ int main() {
 			break;
 		}
 		else {
-			if (flyPresent){
+			if (fly.present){
 				double dx = clamp(-fly.x, MinMove, MaxMove);
 				double dy = clamp(fly.y, MinMove, MaxMove);
 				GrblMoveCommand(grbl.x + dx, grbl.y + dy);

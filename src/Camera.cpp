@@ -5,6 +5,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <atomic>
 #include <SimpleIni.h>
 
 #include "Utility.h"
@@ -39,18 +40,14 @@ unsigned CropAmount, CroppedWidth, CroppedHeight;
 double TargetDebugFrameTime;
 
 // Global variables used to manage access to camera measurement
-std::mutex cameraMutex;
-FlyPose g_flyPose;
-bool g_flyPresent = false;
+std::atomic<FlyPose> g_flyPose;
 
 // Variables used to manage camera thread
 bool killCamera = false;
 std::thread cameraThread;
 
 // Variables used to signal when the camera thread has started up
-bool readyForCamera = false;
-std::mutex camReadyMutex;
-std::condition_variable camCV;
+BoolSignal readyForCamera;
 
 // High-level management of the graphics thread
 void StartCameraThread(){
@@ -60,17 +57,12 @@ void StartCameraThread(){
 	cameraThread = std::thread(CameraThread);
 
 	// Wait for serial thread to be up and running
-	std::unique_lock<std::mutex> lck(camReadyMutex);
-	camCV.wait(lck, []{return readyForCamera; });
+	readyForCamera.update(true);
 }
 
 // Function to get the fly position within the frame
-bool GetFlyPose(FlyPose &flyPose){
-	// Acquire lock for image processing information
-	std::unique_lock<std::mutex> lck{ cameraMutex };
-	flyPose = g_flyPose;
-
-	return g_flyPresent;
+FlyPose GetFlyPose(void){
+	return g_flyPose.load();
 }
 
 // Read in the constants for the camera
@@ -136,11 +128,7 @@ void CameraThread(void){
 
 	// Signal to main thread that camera setup is complete
 	std::cout << "Notifying main thread that video capture is set up.\n";
-	{
-		std::lock_guard<std::mutex> lck(camReadyMutex);
-		readyForCamera = true;
-	}
-	camCV.notify_one();
+	readyForCamera.update(true);
 
 	// Record iteration start time
 	auto lastDebugFrame = high_resolution_clock::now();
@@ -155,26 +143,19 @@ void CameraThread(void){
 		processFrame(inFrame, outFrame);
 
 		// Locate the fly in the frame
-		FlyPose flyPose;
-		bool flyPresent = locateFly(outFrame, flyPose);
+		FlyPose flyPose = locateFly(outFrame);
 
 		// Update fly position
-		{
-			// Acquire lock for image processing information
-			std::unique_lock<std::mutex> lck{ cameraMutex };
-
-			g_flyPose = flyPose;
-			g_flyPresent = flyPresent;
-		}
+		g_flyPose.store(flyPose);
 
 		// Log the fly position
 		// Format output data
 		std::ostringstream oss;
-		oss << flyPresent << ",";
-		oss << std::fixed << g_flyPose.x << ",";
-		oss << std::fixed << g_flyPose.y << ",";
-		oss << std::fixed << g_flyPose.angle << ",";
-		oss << std::fixed << g_flyPose.tstamp;
+		oss << flyPose.present << ",";
+		oss << std::fixed << flyPose.x << ",";
+		oss << std::fixed << flyPose.y << ",";
+		oss << std::fixed << flyPose.angle << ",";
+		oss << std::fixed << flyPose.tstamp;
 		oss << "\n";
 
 		// Write data to file
@@ -202,7 +183,10 @@ bool contourCompare(vector<Point> a, vector<Point> b) {
 }
 
 // Locate the fly as the biggest contour in the image
-bool locateFly(const Mat &inFrame, FlyPose &flyPose){
+FlyPose locateFly(const Mat &inFrame){
+	// FlyPose to be returned
+	FlyPose flyPose;
+
 	// Variables related to contour search
 	RotatedRect boundingBox;
 	vector<std::vector<cv::Point>> imContours;
@@ -216,7 +200,8 @@ bool locateFly(const Mat &inFrame, FlyPose &flyPose){
 
 	// If there are no contours, return
 	if (imContours.size() == 0){
-		return false;
+		flyPose.tstamp = GetTimeStamp();
+		return flyPose;
 	}
 
 	// Find the biggest contour
@@ -224,14 +209,16 @@ bool locateFly(const Mat &inFrame, FlyPose &flyPose){
 
 	// If there is no maximum contours, return
 	if (maxElem == imContours.end()){
-		return false;
+		flyPose.tstamp = GetTimeStamp();
+		return flyPose;
 	}
 
 	// Check if the biggest contour is large enough
 	auto sizeMax = (*maxElem).size();
 
 	if (sizeMax <= MinContour){
-		return false;
+		flyPose.tstamp = GetTimeStamp();
+		return flyPose;
 	}
 
 	// If we reach here, there is a contour large enough for fitEllipse
@@ -243,5 +230,5 @@ bool locateFly(const Mat &inFrame, FlyPose &flyPose){
 	flyPose.angle = boundingBox.angle;
 	flyPose.tstamp = GetTimeStamp();
 
-	return true;
+	return flyPose;
 }

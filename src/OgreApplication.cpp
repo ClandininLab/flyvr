@@ -6,6 +6,7 @@
 // http://www.ogre3d.org/wiki/
 
 #include <chrono>
+#include <atomic>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -26,17 +27,14 @@ auto GraphicsConfigFile = "tv.ini";
 auto ResourcePath = "";
 
 // Global variables used to manage access to real and virtual viewer position
-std::mutex ogreMutex;
-Pose3D g_flyPose3D;
+std::atomic<Pose3D> g_flyPose3D;
 
 // Variables used to manage graphics thread
 bool kill3D = false;
 std::thread graphicsThread;
 
 // Variables used to signal when the graphics thread has started up
-bool readyFor3D = false;
-std::mutex gfxReadyMutex;
-std::condition_variable gfxCV;
+BoolSignal readyFor3D;
 
 // High-level management of the graphics thread
 void StartGraphicsThread(void){
@@ -46,8 +44,7 @@ void StartGraphicsThread(void){
 	graphicsThread = std::thread(GraphicsThread);
 
 	// Wait for 3D engine to be up and running
-	std::unique_lock<std::mutex> lck(gfxReadyMutex);
-	gfxCV.wait(lck, []{return readyFor3D; });
+	readyFor3D.wait();
 }
 
 void StopGraphicsThread(void){
@@ -61,8 +58,7 @@ void StopGraphicsThread(void){
 }
 
 void SetFlyPose3D(Pose3D flyPose3D){
-	std::unique_lock<std::mutex> lck{ ogreMutex };
-	g_flyPose3D = flyPose3D;
+	g_flyPose3D.store(flyPose3D);
 }
 
 // Thread used to handle graphics operations
@@ -88,23 +84,14 @@ void GraphicsThread(void){
 	StimManager stim(app);
 
 	// Let the main thread know that the 3D application is up and running
-	{
-		std::lock_guard<std::mutex> lck(gfxReadyMutex);
-		readyFor3D = true;
-	}
-	gfxCV.notify_one();
+	readyFor3D.update(true);
 
 	while (!kill3D){
 		// Record iteration start time
 		auto loopStart = high_resolution_clock::now();
 
 		// Read out real pose and virtual pose
-		Pose3D flyPose3D;
-
-		{
-			std::unique_lock<std::mutex> lck{ ogreMutex };
-			flyPose3D = g_flyPose3D;
-		}
+		Pose3D flyPose3D = g_flyPose3D.load();
 
 		// Update the stimulus
 		stim.Update(flyPose3D);

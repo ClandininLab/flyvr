@@ -5,9 +5,7 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include <mutex>
 #include <thread>
-#include <condition_variable>
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -19,6 +17,9 @@ struct FlyPose{
 	double y;
 	double angle;
 	double tstamp;
+	bool present;
+
+	FlyPose() : x(0), y(0), angle(0), tstamp(0), present(false) {}
 };
 
 // High-level thread management for graphics operations
@@ -28,14 +29,14 @@ void ReadCameraConfig();
 
 // Function to get the fly position within the frame
 // Value returned is true if there is a fly
-bool GetFlyPose(FlyPose &flyPose);
+FlyPose GetFlyPose(void);
 
 // Thread used to handle graphics operations
 void CameraThread(void);
 
 // Image processing routines
 void processFrame(const cv::Mat &inFrame, cv::Mat &outFrame);
-bool locateFly(const cv::Mat &inFrame, FlyPose &flyPose);
+FlyPose locateFly(const cv::Mat &inFrame);
 bool contourCompare(std::vector<cv::Point> a, std::vector<cv::Point> b);
 
 #endif
