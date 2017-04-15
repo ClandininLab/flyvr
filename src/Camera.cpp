@@ -162,9 +162,6 @@ void CameraThread(void){
 	TimeManager timeManager("CameraThread");
 	timeManager.start();
 
-	TimeManager debugManager("CameraDebug");
-	debugManager.start();
-
 	// Launch debug thread
 	auto debugThread = std::thread(DebugThread);
 
@@ -178,15 +175,15 @@ void CameraThread(void){
 		// Write image to file
 		ocap.write(inFrame);
 
-		// Copy the debug image over to the debug thread
-		{
-			std::unique_lock<std::mutex> lck(debugMutex);
-			g_imDebug = inFrame.clone();
-		}
-
 		// Prepare image for contour search
 		Mat outFrame;
 		processFrame(inFrame, outFrame);
+
+		// Copy the processed image over to the debug thread
+		{
+			std::unique_lock<std::mutex> lck(debugMutex);
+			g_imDebug = outFrame.clone();
+		}
 
 		// Locate the fly in the frame
 		FlyPose flyPose = locateFly(outFrame);
@@ -269,6 +266,7 @@ FlyPose locateFly(const Mat &inFrame){
 	// If there are no contours, return
 	if (imContours.size() == 0){
 		flyPose.tstamp = GetTimeStamp();
+		flyPose.present = false;
 		flyPose.valid = true;
 		return flyPose;
 	}
@@ -279,6 +277,7 @@ FlyPose locateFly(const Mat &inFrame){
 	// If there is no maximum contours, return
 	if (maxElem == imContours.end()){
 		flyPose.tstamp = GetTimeStamp();
+		flyPose.present = false;
 		flyPose.valid = true;
 		return flyPose;
 	}
@@ -288,6 +287,7 @@ FlyPose locateFly(const Mat &inFrame){
 
 	if (sizeMax <= MinContour){
 		flyPose.tstamp = GetTimeStamp();
+		flyPose.present = false;
 		flyPose.valid = true;
 		return flyPose;
 	}
@@ -300,6 +300,7 @@ FlyPose locateFly(const Mat &inFrame){
 	flyPose.y = (boundingBox.center.y - CroppedHeight / 2.0) / PixelPerMM;
 	flyPose.angle = boundingBox.angle;
 	flyPose.tstamp = GetTimeStamp();
+	flyPose.present = true;
 	flyPose.valid = true;
 
 	return flyPose;

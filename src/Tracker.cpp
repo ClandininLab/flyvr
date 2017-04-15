@@ -39,6 +39,7 @@ namespace TrackerNamespace{
 	double CenterY; // millimeters
 	double FlyY; // meters
 	long AngleFilterLength;
+	double UnwrapThresh; // degrees
 	std::vector<double> angleList;
 }
 
@@ -63,6 +64,7 @@ void ReadTrackerConfig(){
 	FlyY = iniFile.GetDoubleValue("", "fly-y", -0.3113);
 
 	AngleFilterLength = iniFile.GetLongValue("", "angle-filter-length", 10);
+	UnwrapThresh = iniFile.GetDoubleValue("", "unwrap-threshold", 150.0);
 	angleList = std::vector<double>(AngleFilterLength, 0.0);
 }
 
@@ -123,6 +125,16 @@ double filterAngle(double angle){
 	return average;
  }
 
+double unwrapAngle(double val, double old){
+	while (val - old > UnwrapThresh){
+		val -= 180.0;
+	}
+	while (old - val > UnwrapThresh){
+		val += 180.0;
+	}
+	return val;
+}
+
 int main(int argc, char* argv[]) {
 	std::string stimFile;
 	std::string outDir;
@@ -158,19 +170,24 @@ int main(int argc, char* argv[]) {
 	TimeManager timeManager("MainThread");
 	timeManager.start();
 
+	FlyPose fly, lastFly;
+
 	do {
 		// Log start of loop
 		timeManager.tick();
 
-		// Get fly pose
-		FlyPose fly = GetFlyPose();
+		// Get the new fly pose
+		fly = GetFlyPose();
 		bool flyPresent = fly.present && fly.valid;
+		bool lastFlyPresent = lastFly.present && lastFly.valid;
 
 		// Get CNC position
 		GrblStatus grbl = GetGrblStatus();
 
 		// Update graphics with fly position, if a fly is present
-		if (flyPresent && grbl.valid){
+		if (flyPresent && lastFlyPresent && grbl.valid){
+			fly.angle = unwrapAngle(fly.angle, lastFly.angle);
+
 			Pose3D flyPose;
 			flyPose.x = (grbl.y + fly.y - CenterY) * 1e-3;  // + X graphics is +Y GRBL, +Y Camera
 			flyPose.y = FlyY;
@@ -221,6 +238,11 @@ int main(int argc, char* argv[]) {
 				double dy = clamp(fly.y, MinMove, MaxMove);
 				GrblMoveCommand(grbl.x + dx, grbl.y + dy);
 			}
+		}
+
+		// Save fly pose if there was a fly present
+		if (flyPresent){
+			lastFly = fly;
 		}
 
 		// Wait if necessary to ensure a maximum loop rate

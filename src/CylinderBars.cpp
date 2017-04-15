@@ -129,14 +129,24 @@ void CylinderBars::CreateScene(void){
 }
 
 void CylinderBars::Update(Pose3D flyPose){
+	// In closed loop, "move the world" so the fly appears to be in the same position
+	if (closedLoop){
+		auto rootNode = app.getSceneManager()->getRootSceneNode();
+		rootNode->setPosition(Ogre::Vector3(flyPose.x, flyPose.y, flyPose.z));
+		rootNode->setOrientation(rootNode->getInitialOrientation());
+		rootNode->yaw(Ogre::Radian(flyPose.yaw));
+	}
+
 	if (currentState == CylinderBarStates::Init){
 		lastTime = std::chrono::high_resolution_clock::now();
 		app.setBackground(backColorR, backColorG, backColorB);
+
 		currentState = CylinderBarStates::WaitBefore;
 	}
 	else if (currentState == CylinderBarStates::WaitBefore){
 		auto thisTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration<double>(thisTime - lastTime).count();
+
 		if (duration >= waitBefore){
 			lastTime = std::chrono::high_resolution_clock::now();
 			currentState = CylinderBarStates::Active;
@@ -150,14 +160,6 @@ void CylinderBars::Update(Pose3D flyPose){
 		auto rot = duration * rotationSpeed;
 		stimNode->setOrientation(stimNode->getInitialOrientation());
 		stimNode->yaw(Ogre::Radian(rot));
-
-		// In closed loop, "move the world" so the fly appears to be in the same position
-		if (closedLoop){
-			auto rootNode = app.getSceneManager()->getRootSceneNode();
-			rootNode->setPosition(Ogre::Vector3(flyPose.x, flyPose.y, flyPose.z));
-			rootNode->setOrientation(rootNode->getInitialOrientation());
-			rootNode->yaw(Ogre::Radian(flyPose.yaw));
-		}
 
 		if (duration >= activeDuration){
 			lastTime = std::chrono::high_resolution_clock::now();
