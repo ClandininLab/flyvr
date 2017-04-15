@@ -20,9 +20,6 @@
 using namespace std::chrono;
 
 namespace OgreApplicationNamespace{
-	// Name of configuration file
-	auto GraphicsConfigFile = "tv.ini";
-
 	// Path to folder containing CFG files
 	// TODO: determine this automatically
 	auto ResourcePath = "";
@@ -36,13 +33,20 @@ namespace OgreApplicationNamespace{
 
 	// Variables used to signal when the graphics thread has started up
 	BoolSignal readyFor3D;
+
+	// String containing the name of the stimulus config file
+	const char * GraphicsConfigFile = "tv.ini";
+	std::string StimConfigFile = "config.ini";
 }
 
 using namespace OgreApplicationNamespace;
 
 // High-level management of the graphics thread
-void StartGraphicsThread(void){
+void StartGraphicsThread(std::string stimFile, std::string outDir){
 	std::cout << "Starting graphics thread.\n";
+
+	// Record the name of the stimulus file
+	StimConfigFile = stimFile;
 
 	// Graphics setup;
 	graphicsThread = std::thread(GraphicsThread);
@@ -78,7 +82,7 @@ void GraphicsThread(void){
 	app.setup();
 
 	// Attach application to stimulus manager
-	StimManager stim(app);
+	StimManager stim(app, StimConfigFile);
 
 	// Let the main thread know that the 3D application is up and running
 	readyFor3D.update(true);
@@ -120,7 +124,7 @@ OgreApplication::~OgreApplication(void)
 	delete mRoot;
 }
 
-void OgreApplication::readGraphicsConfig(const char* loc){
+void OgreApplication::readGraphicsConfig(const char *loc){
 	// Load the INI file
 	CSimpleIniA iniFile;
 	iniFile.SetUnicode();

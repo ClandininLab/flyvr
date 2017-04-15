@@ -6,6 +6,7 @@
 #include <iostream>
 #include <future>
 #include <numeric>
+#include <direct.h>  
 #include <SimpleIni.h>
 
 #define _USE_MATH_DEFINES
@@ -122,18 +123,36 @@ double filterAngle(double angle){
 	return average;
  }
 
-int main() {
+int main(int argc, char* argv[]) {
+	std::string stimFile;
+	std::string outDir;
+
+	if (argc == 1){
+		stimFile = "config.ini";
+		outDir = "out";
+	}
+	else if (argc == 3){
+		stimFile = argv[1];
+		outDir = argv[2];
+	}
+	else {
+		throw std::runtime_error("Invalid number of arguments.");
+	}
+
+	// Make the output directory if necessary
+	_mkdir(outDir.c_str());
+
 	ReadTrackerConfig();
 
-	StartSerialThread();
+	StartSerialThread(outDir);
 
 	std::cout << "Moving to start location\n";
 	GrblMoveCommand(CenterX, CenterY);
 	WaitForIdle();
 	std::cout << "Done\n";
 
-	StartGraphicsThread();
-	StartCameraThread();
+	StartGraphicsThread(stimFile, outDir);
+	StartCameraThread(outDir);
 	
 	// Create timing manager for the loop
 	TimeManager timeManager("MainThread");

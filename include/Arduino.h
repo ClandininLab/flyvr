@@ -43,7 +43,7 @@ struct GrblStatus
 };
 
 // High-level thread management
-void StartSerialThread();
+void StartSerialThread(std::string outDir);
 void StopSerialThread();
 
 // Interface functions for other threads

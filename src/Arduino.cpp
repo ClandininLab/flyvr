@@ -37,12 +37,18 @@ namespace ArduinoNamespace{
 
 	// Variables used to signal when the rig has stopped moving
 	BoolSignal isIdle;
+
+	// Variable used to hold the name of the output file for serial thread
+	std::string SerialOutputFile;
 }
 
 using namespace ArduinoNamespace;
 
-void StartSerialThread(){
+void StartSerialThread(std::string outDir){
 	std::cout << "Starting serial thread.\n";
+
+	// Record name of file for serial output
+	SerialOutputFile = outDir + "/" + "SerialThread.txt";
 
 	serialThread = std::thread(SerialThread);
 
@@ -82,7 +88,7 @@ void WaitForIdle(void){
 
 void SerialThread(void){
 	// Create the log file
-	std::ofstream ofs("SerialThread.txt");
+	std::ofstream ofs(SerialOutputFile);
 	ofs << "x (mm),y (mm),timestamp (s)\n";
 	ofs.precision(8);
 

@@ -10,18 +10,12 @@
 #include "StimManager.h"
 #include "CylinderBars.h"
 
-namespace StimManagerNamespace{
-	auto StimConfigFile = "config.ini";
-}
-
-using namespace StimManagerNamespace;
-
-StimManager::StimManager(OgreApplication &app)
-	: app(app){
+StimManager::StimManager(OgreApplication &app, std::string stimConfigFile)
+	: app(app), stimConfigFile(stimConfigFile){
 
 	// Load the INI file
 	iniFile.SetUnicode();
-	iniFile.LoadFile(StimConfigFile);
+	iniFile.LoadFile(stimConfigFile.c_str());
 
 	// Read the global configuration parameters
 	std::string iColor(iniFile.GetValue("", "interleave-color", "0.5"));

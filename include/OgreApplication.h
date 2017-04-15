@@ -51,7 +51,7 @@ struct MonitorInfo{
 };
 
 // High-level thread management for graphics operations
-void StartGraphicsThread(void);
+void StartGraphicsThread(std::string stimFile, std::string outDir);
 void ReadGraphicsConfig(void);
 void StopGraphicsThread(void);
 void SetFlyPose3D(Pose3D flyPose3D);
@@ -62,11 +62,11 @@ void GraphicsThread(void);
 class OgreApplication
 {
 public:
-	OgreApplication(void);
+	OgreApplication();
 	~OgreApplication(void);
 
 	void setup(void);
-	void readGraphicsConfig(const char* loc);
+	void readGraphicsConfig(const char *loc);
 
 	void updateProjMatrices(double x, double y, double z);
 	void setBackground(double r, double g, double b);

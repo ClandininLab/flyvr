@@ -57,13 +57,21 @@ namespace CameraNamespace{
 
 	// Variables used to signal when the camera thread has started up
 	BoolSignal readyForCamera;
+
+	// Variables used to hold names of output files
+	std::string MovieOutputFile;
+	std::string DataOutputFile;
 }
 
 using namespace CameraNamespace;
 
 // High-level management of the graphics thread
-void StartCameraThread(){
+void StartCameraThread(std::string outDir){
 	std::cout << "Starting camera thread.\n";
+
+	// Record names of data file and movie file
+	MovieOutputFile = outDir + "/" + "out.avi";
+	DataOutputFile = outDir + "/" + "CameraThread.txt"; 
 
 	ReadCameraConfig();
 	cameraThread = std::thread(CameraThread);
@@ -124,7 +132,7 @@ void StopCameraThread(){
 // Thread used to handle graphics operations
 void CameraThread(void){
 	// Set up logging
-	std::ofstream ofs("CameraThread.txt");
+	std::ofstream ofs(DataOutputFile);
 	ofs << "flyPresent,";
 	ofs << "x (mm),";
 	ofs << "y (mm),";
@@ -135,9 +143,17 @@ void CameraThread(void){
 
 	// Set up video capture
 	std::cout << "Setting up video capture.\n";
-	VideoCapture cap(CV_CAP_ANY);
-	cap.set(CV_CAP_PROP_FRAME_WIDTH, FrameWidth);
-	cap.set(CV_CAP_PROP_FRAME_HEIGHT, FrameHeight);
+	VideoCapture icap(CV_CAP_ANY);
+	icap.set(CV_CAP_PROP_FRAME_WIDTH, FrameWidth);
+	icap.set(CV_CAP_PROP_FRAME_HEIGHT, FrameHeight);
+	
+	// Set up video output
+	std::cout << "Setting up video output.\n";
+	VideoWriter ocap(MovieOutputFile,
+		CV_FOURCC('M', 'J', 'P', 'G'),
+		1.0/TargetLoopDuration,
+		Size(FrameWidth, FrameHeight),
+		true);
 
 	// Signal to main thread that camera setup is complete
 	std::cout << "Notifying main thread that video capture is set up.\n";
@@ -157,9 +173,12 @@ void CameraThread(void){
 
 		// Read image
 		Mat inFrame;
-		cap.read(inFrame);
+		icap.read(inFrame);
 
-		// Copy the debug image over to the other thread
+		// Write image to file
+		ocap.write(inFrame);
+
+		// Copy the debug image over to the debug thread
 		{
 			std::unique_lock<std::mutex> lck(debugMutex);
 			g_imDebug = inFrame.clone();

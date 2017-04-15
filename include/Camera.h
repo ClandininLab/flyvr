@@ -26,7 +26,7 @@ struct FlyPose{
 };
 
 // High-level thread management for graphics operations
-void StartCameraThread();
+void StartCameraThread(std::string outDir);
 void StopCameraThread();
 void ReadCameraConfig();
 

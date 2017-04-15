@@ -5,6 +5,8 @@ build/
 *.log
 *.txt
 *.log
+*.suo
+*.avi
 
 # For macOS
 *.DS_Store

@@ -21,7 +21,7 @@ enum class StimManagerStates { Init, Interleave, Stimulus };
 class StimManager
 {
 public:
-	StimManager(OgreApplication &app);
+	StimManager(OgreApplication &app, std::string stimConfigFile);
 	~StimManager(void);
 	void Update(Pose3D flyPose);
 
@@ -30,6 +30,7 @@ private:
 	void MakeStimulus(std::string name);
 
 	OgreApplication &app;
+	std::string stimConfigFile;
 
 	double iColorR, iColorG, iColorB;
 	double iDuration;
