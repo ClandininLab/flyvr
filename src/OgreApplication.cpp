@@ -19,22 +19,26 @@
 
 using namespace std::chrono;
 
-// Name of configuration file
-auto GraphicsConfigFile = "tv.ini";
+namespace OgreApplicationNamespace{
+	// Name of configuration file
+	auto GraphicsConfigFile = "tv.ini";
 
-// Path to folder containing CFG files
-// TODO: determine this automatically
-auto ResourcePath = "";
+	// Path to folder containing CFG files
+	// TODO: determine this automatically
+	auto ResourcePath = "";
 
-// Global variables used to manage access to real and virtual viewer position
-std::atomic<Pose3D> g_flyPose3D;
+	// Global variables used to manage access to real and virtual viewer position
+	std::atomic<Pose3D> g_flyPose3D;
 
-// Variables used to manage graphics thread
-bool kill3D = false;
-std::thread graphicsThread;
+	// Variables used to manage graphics thread
+	bool kill3D = false;
+	std::thread graphicsThread;
 
-// Variables used to signal when the graphics thread has started up
-BoolSignal readyFor3D;
+	// Variables used to signal when the graphics thread has started up
+	BoolSignal readyFor3D;
+}
+
+using namespace OgreApplicationNamespace;
 
 // High-level management of the graphics thread
 void StartGraphicsThread(void){
@@ -70,15 +74,8 @@ void GraphicsThread(void){
 	// Read in configuration information
 	app.readGraphicsConfig(GraphicsConfigFile);
 
-	// Read the target loop duration
-	// TODO: clean this up, doesn't make sense to read INI file twice...
-	CSimpleIniA iniFile;
-	iniFile.SetUnicode();
-	iniFile.LoadFile(GraphicsConfigFile);
-	double TargetLoopDuration = iniFile.GetDoubleValue("", "target-loop-duration", 8e-3);
-
 	// Launch application
-	app.go();
+	app.setup();
 
 	// Attach application to stimulus manager
 	StimManager stim(app);
@@ -86,9 +83,13 @@ void GraphicsThread(void){
 	// Let the main thread know that the 3D application is up and running
 	readyFor3D.update(true);
 
+	// Timing manager for the loop
+	TimeManager timeManager("GraphicsThread");
+	timeManager.start();
+
 	while (!kill3D){
-		// Record iteration start time
-		auto loopStart = high_resolution_clock::now();
+		// Log start of loop
+		timeManager.tick();
 
 		// Read out real pose and virtual pose
 		Pose3D flyPose3D = g_flyPose3D.load();
@@ -102,27 +103,15 @@ void GraphicsThread(void){
 		// Render the frame
 		app.renderOneFrame();
 
-		// Record iteration stop time
-		auto loopStop = high_resolution_clock::now();
-
-		// Aim for a target frame rate
-		auto loopDuration = duration<double>(loopStop - loopStart).count();
-		if (loopDuration >= TargetLoopDuration){
-			std::cout << "Slow frame (" << loopDuration << " s)\n";
-		}
-		else {
-			DelaySeconds(TargetLoopDuration - loopDuration);
-		}
+		// Ensure a maximum framerate
+		timeManager.waitUntil(app.targetLoopDuration);
 	}
 }
 
 OgreApplication::OgreApplication(void)
 	: mRoot(nullptr),
 	mSceneMgr(nullptr),
-	mResourcesCfg(Ogre::StringUtil::BLANK),
-	mPluginsCfg(Ogre::StringUtil::BLANK),
-	mOverlaySystem(nullptr),
-	mResourcePath(ResourcePath)
+	mOverlaySystem(nullptr)
 {
 }
 
@@ -140,6 +129,9 @@ void OgreApplication::readGraphicsConfig(const char* loc){
 	// Read global parameters
 	mNearClipDist = iniFile.GetDoubleValue("", "near-clip-dist", 0.01);
 	mFarClipDist = iniFile.GetDoubleValue("", "far-clip-dist", 10.0);
+
+	// Read the target loop duration
+	targetLoopDuration = iniFile.GetDoubleValue("", "target-loop-duration", 8e-3);
 
 	// Read all section names
 	CSimpleIniA::TNamesDepend sections;
@@ -181,27 +173,7 @@ void OgreApplication::readGraphicsConfig(const char* loc){
 	}
 }
 
-void OgreApplication::clear(void){
-	mSceneMgr->clearScene();
-}
-
-void OgreApplication::configure(void)
-{
-	// Show the configuration dialog and initialise the system.
-	// You can skip this and use root.restoreConfig() to load configuration
-	// settings if you were sure there are valid ones saved in ogre.cfg.
-	if (mRoot->restoreConfig())
-	{
-		// Create multiple render windows
-		createWindows();
-	}
-	else
-	{
-		throw std::runtime_error("Could not restore Ogre3D config.");
-	}
-}
-
-bool OgreApplication::createWindows(void)
+void OgreApplication::createWindows(void)
 {
 	// Multiple window code modified from PlayPen.cpp
 
@@ -225,36 +197,11 @@ bool OgreApplication::createWindows(void)
 		// Add to window list
 		mWindows.push_back(window);
 	}
-
-	return true;
-}
-
-void OgreApplication::chooseSceneManager(void)
-{
-	// Get the SceneManager, in this case a generic one
-	mSceneMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);
-
-	// Initialize the OverlaySystem (changed for Ogre 1.9)
-	mOverlaySystem = new Ogre::OverlaySystem();
-	mSceneMgr->addRenderQueueListener(mOverlaySystem);
 }
 
 void OgreApplication::renderOneFrame(void)
 {
 	mRoot->renderOneFrame();
-}
-
-void OgreApplication::createCameras(void)
-{
-	// Create all cameras
-	for (unsigned i = 0; i < mMonitors.size(); i++){
-		Ogre::String strCameraName = "Camera" + Ogre::StringConverter::toString(i);
-
-		mCameras.push_back(mSceneMgr->createCamera(strCameraName));
-	}
-
-	// Update the projection matrices assuming the eye is at the origin
-	updateProjMatrices(0, 0, 0);
 }
 
 void OgreApplication::updateProjMatrices(double x, double y, double z){
@@ -328,14 +275,6 @@ void OgreApplication::updateProjMatrices(double x, double y, double z){
 	}
 }
 
-void OgreApplication::createViewports(void)
-{
-	// Attach each camera to each respective window
-	for (unsigned int i = 0; i < mMonitors.size(); i++){
-		mViewports.push_back(mWindows[i]->addViewport(mCameras[i]));
-	}
-}
-
 Ogre::SceneManager* OgreApplication::getSceneManager(void){
 	return mSceneMgr;
 }
@@ -347,11 +286,11 @@ void OgreApplication::setBackground(double r, double g, double b){
 	}
 }
 
-void OgreApplication::setupResources(void)
+void OgreApplication::setupResources(Ogre::String resourcesCfg)
 {
 	// Load resource paths from config file
 	Ogre::ConfigFile cf;
-	cf.load(mResourcesCfg);
+	cf.load(resourcesCfg);
 
 	// Go through all sections & settings in the file
 	Ogre::ConfigFile::SectionIterator seci = cf.getSectionIterator();
@@ -373,36 +312,45 @@ void OgreApplication::setupResources(void)
 	}
 }
 
-void OgreApplication::loadResources(void)
+void OgreApplication::setup(void)
 {
-	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
-}
+	mRoot = new Ogre::Root("plugins.cfg");
 
-void OgreApplication::go(void)
-{
-	mResourcesCfg = mResourcePath + "resources.cfg";
-	mPluginsCfg = mResourcePath + "plugins.cfg";
+	setupResources("resources.cfg");
 
-	setup();
-}
+	if (mRoot->restoreConfig())
+	{
+		createWindows();
+	}
+	else
+	{
+		throw std::runtime_error("Could not restore Ogre3D config.");
+	}
 
-bool OgreApplication::setup(void)
-{
-	mRoot = new Ogre::Root(mPluginsCfg);
+	// Get the SceneManager, in this case a generic one
+	mSceneMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);
 
-	setupResources();
+	// Initialize the OverlaySystem (changed for Ogre 1.9)
+	mOverlaySystem = new Ogre::OverlaySystem();
+	mSceneMgr->addRenderQueueListener(mOverlaySystem);
 
-	configure();
+	// Create all cameras
+	for (unsigned i = 0; i < mMonitors.size(); i++){
+		Ogre::String strCameraName = "Camera" + Ogre::StringConverter::toString(i);
+		mCameras.push_back(mSceneMgr->createCamera(strCameraName));
+	}
 
-	chooseSceneManager();
-	createCameras();
-	createViewports();
+	// Update the projection matrices assuming the eye is at the origin
+	updateProjMatrices(0, 0, 0);
+
+	// Create all viewports
+	for (unsigned int i = 0; i < mMonitors.size(); i++){
+		mViewports.push_back(mWindows[i]->addViewport(mCameras[i]));
+	}
 
 	// Set default mipmap level (NB some APIs ignore this)
 	Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
 
 	// Load resources
-	loadResources();
-
-	return true;
-};
+	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
+}

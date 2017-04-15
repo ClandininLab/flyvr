@@ -21,23 +21,27 @@
 
 using namespace std::chrono;
 
-// Actions for key presses
-enum class KeyPressAction { Quit, Up, Down, Left, Right, Status, None };
+namespace TrackerNamespace{
+	// Actions for key presses
+	enum class KeyPressAction { Quit, Up, Down, Left, Right, Status, None };
 
-// Name of configuration file for tracker
-auto TrackerConfigFile = "tracker.ini";
+	// Name of configuration file for tracker
+	auto TrackerConfigFile = "tracker.ini";
 
-// Configuration parameters to be read from INI file
-double MaxDuration; // seconds
-double TargetLoopDuration; // seconds
-double MinMove; // millimeters
-double MaxMove; // millimeters
-double JogAmount; // millimeters
-double CenterX; // millimeters
-double CenterY; // millimeters
-double FlyY; // meters
-long AngleFilterLength;
-std::vector<double> angleList;
+	// Configuration parameters to be read from INI file
+	double MaxDuration; // seconds
+	double TargetLoopDuration; // seconds
+	double MinMove; // millimeters
+	double MaxMove; // millimeters
+	double JogAmount; // millimeters
+	double CenterX; // millimeters
+	double CenterY; // millimeters
+	double FlyY; // meters
+	long AngleFilterLength;
+	std::vector<double> angleList;
+}
+
+using namespace TrackerNamespace;
 
 void ReadTrackerConfig(){
 	// Load the INI file
@@ -131,20 +135,23 @@ int main() {
 	StartGraphicsThread();
 	StartCameraThread();
 	
-	auto trackerStart = high_resolution_clock::now();
-	double trackerDuration;
+	// Create timing manager for the loop
+	TimeManager timeManager("MainThread");
+	timeManager.start();
 
 	do {
-		auto loopStart = high_resolution_clock::now();
+		// Log start of loop
+		timeManager.tick();
 
 		// Get fly pose
 		FlyPose fly = GetFlyPose();
+		bool flyPresent = fly.present && fly.valid;
 
 		// Get CNC position
 		GrblStatus grbl = GetGrblStatus();
 
 		// Update graphics with fly position, if a fly is present
-		if (fly.present){
+		if (flyPresent && grbl.valid){
 			Pose3D flyPose;
 			flyPose.x = (grbl.y + fly.y - CenterY) * 1e-3;  // + X graphics is +Y GRBL, +Y Camera
 			flyPose.y = FlyY;
@@ -159,20 +166,30 @@ int main() {
 		// Handle key presses
 		auto action = GetKeyPress();
 		if (action == KeyPressAction::Up){
-			GrblMoveCommand(grbl.x - JogAmount, grbl.y);
+			if (grbl.valid){
+				GrblMoveCommand(grbl.x - JogAmount, grbl.y);
+			}
 		}
 		else if (action == KeyPressAction::Down){
-			GrblMoveCommand(grbl.x + JogAmount, grbl.y);
+			if (grbl.valid){
+				GrblMoveCommand(grbl.x + JogAmount, grbl.y);
+			}
 		}
 		else if (action == KeyPressAction::Left){
-			GrblMoveCommand(grbl.x, grbl.y - JogAmount);
+			if (grbl.valid){
+				GrblMoveCommand(grbl.x, grbl.y - JogAmount);
+			}
 		}
 		else if (action == KeyPressAction::Right){
-			GrblMoveCommand(grbl.x, grbl.y + JogAmount);
+			if (grbl.valid){
+				GrblMoveCommand(grbl.x, grbl.y + JogAmount);
+			}
 		}
 		else if (action == KeyPressAction::Status){
-			std::cout << "GRBL: <" << grbl.x << ", " << grbl.y << ">\n";
-			if (fly.present){
+			if (grbl.valid){
+				std::cout << "GRBL: <" << grbl.x << ", " << grbl.y << ">\n";
+			}
+			if (flyPresent){
 				std::cout << "Fly: <" << fly.x << ", " << fly.y << ">\n";
 			}
 		}
@@ -180,24 +197,17 @@ int main() {
 			break;
 		}
 		else {
-			if (fly.present){
+			if (flyPresent && grbl.valid){
 				double dx = clamp(-fly.x, MinMove, MaxMove);
 				double dy = clamp(fly.y, MinMove, MaxMove);
 				GrblMoveCommand(grbl.x + dx, grbl.y + dy);
 			}
 		}
 
-		// Aim for a target loop rate
-		auto loopStop = high_resolution_clock::now();
-		auto loopDuration = duration<double>(loopStop - loopStart).count();
-		if (loopDuration < TargetLoopDuration){
-			DelaySeconds(TargetLoopDuration - loopDuration);
-		}
+		// Wait if necessary to ensure a maximum loop rate
+		timeManager.waitUntil(TargetLoopDuration);
 
-		// Compute cumulative duration
-		trackerDuration = duration<double>(loopStop - trackerStart).count();
-
-	} while (trackerDuration < MaxDuration);
+	} while (timeManager.totalDuration() < MaxDuration);
 
 	StopCameraThread();
 	StopGraphicsThread();

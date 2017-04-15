@@ -36,7 +36,10 @@ struct GrblStatus
 
 	double tstamp;
 
-	GrblStatus() : x(0), y(0), z(0), tstamp(0) {}
+	// Validity indicator, false initially
+	bool valid;
+
+	GrblStatus() : x(0), y(0), z(0), tstamp(0), valid(false) {}
 };
 
 // High-level thread management
@@ -71,6 +74,8 @@ public:
 
 	// Resets the GRBL board
 	void Reset();
+
+	double TargetLoopDuration;
 
 private:
 	// Serial port used for communication with GRBL board

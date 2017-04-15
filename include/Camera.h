@@ -19,7 +19,10 @@ struct FlyPose{
 	double tstamp;
 	bool present;
 
-	FlyPose() : x(0), y(0), angle(0), tstamp(0), present(false) {}
+	// Validity indicator, false initially
+	bool valid;
+
+	FlyPose() : x(0), y(0), angle(0), tstamp(0), present(false), valid(false) {}
 };
 
 // High-level thread management for graphics operations
@@ -33,6 +36,9 @@ FlyPose GetFlyPose(void);
 
 // Thread used to handle graphics operations
 void CameraThread(void);
+
+// Thread used to display images for debugging purposes
+void DebugThread(void);
 
 // Image processing routines
 void processFrame(const cv::Mat &inFrame, cv::Mat &outFrame);

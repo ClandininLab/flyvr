@@ -65,30 +65,21 @@ public:
 	OgreApplication(void);
 	~OgreApplication(void);
 
-	void go(void);
+	void setup(void);
 	void readGraphicsConfig(const char* loc);
 
 	void updateProjMatrices(double x, double y, double z);
 	void setBackground(double r, double g, double b);
 
 	void renderOneFrame(void);
-	void clear(void);
 
 	Ogre::SceneManager* getSceneManager(void);
 
+	double targetLoopDuration;
+
 private:
-
-	bool setup(void);
-	void configure(void);
-	bool createWindows(void);
-
-	void chooseSceneManager(void);
-	void createCameras(void);
-	void createViewports(void);
-	void setupResources(void);
-	void loadResources(void);
-
-	void defineMonitors(void);
+	void setupResources(Ogre::String resourcesCfg);
+	void createWindows(void);
 
 	// Rendering options
 	double mNearClipDist;
@@ -99,8 +90,6 @@ private:
 	Ogre::SceneManager *mSceneMgr;
 
 	// Initialization variables
-	Ogre::String mResourcesCfg;
-	Ogre::String mPluginsCfg;
 	Ogre::OverlaySystem *mOverlaySystem;
 
 	// Per-display members
@@ -108,9 +97,6 @@ private:
 	std::vector<Ogre::Camera*> mCameras;
 	std::vector<Ogre::Viewport*> mViewports;
 	std::vector<MonitorInfo> mMonitors;
-
-	// Added for Mac compatibility
-	Ogre::String mResourcePath;
 };
 
 #endif

@@ -13,29 +13,33 @@ using namespace std::chrono;
 #include "Arduino.h"
 #include "Utility.h"
 
-// Delay when waiting for GRBL to react to a move command
-const double GRBL_DELAY = 100e-3;
+namespace ArduinoNamespace{
+	// Delay when waiting for GRBL to react to a move command
+	const double GRBL_DELAY = 100e-3;
 
-// Delay when waiting for Arduino to start up
-const double ARDUINO_DELAY = 2.0;
+	// Delay when waiting for Arduino to start up
+	const double ARDUINO_DELAY = 2.0;
 
-// Variable containing the CNC move command
-std::atomic<GrblCommand> g_moveCommand;
+	// Variable containing the CNC move command
+	std::atomic<GrblCommand> g_moveCommand;
 
-// Variable containing the most recent GRBL status
-std::atomic<GrblStatus> g_grblStatus;
+	// Variable containing the most recent GRBL status
+	std::atomic<GrblStatus> g_grblStatus;
 
-// Global variable used to signal when serial port should close
-bool killSerial = false;
+	// Global variable used to signal when serial port should close
+	bool killSerial = false;
 
-// Handle used to run SerialThread
-std::thread serialThread;
+	// Handle used to run SerialThread
+	std::thread serialThread;
 
-// Variables used to signal when the serial thread has started up
-BoolSignal readyForSerial;
+	// Variables used to signal when the serial thread has started up
+	BoolSignal readyForSerial;
 
-// Variables used to signal when the rig has stopped moving
-BoolSignal isIdle;
+	// Variables used to signal when the rig has stopped moving
+	BoolSignal isIdle;
+}
+
+using namespace ArduinoNamespace;
 
 void StartSerialThread(){
 	std::cout << "Starting serial thread.\n";
@@ -93,8 +97,13 @@ void SerialThread(void){
 	std::cout << "Notifying main thread that serial communication is set up.\n";
 	readyForSerial.update(true);
 
+	TimeManager timeManager("SerialThread");
+	timeManager.start();
+
 	// Continually poll GRBL status and move if desired
 	while (!killSerial){
+		timeManager.tick();
+
 		// Read the current status
 		grblStatus = grbl.ReadStatus();
 
@@ -123,6 +132,8 @@ void SerialThread(void){
 
 		// Write data to file
 		ofs << oss.str();
+
+		timeManager.waitUntil(grbl.TargetLoopDuration);
 	}
 }
 
@@ -182,6 +193,9 @@ void GrblBoard::ReadSerialConfig(const char* loc){
 	ComPort = iniFile.GetValue("", "com-port", "COM4");
 	//ComPort = "\\\\.\\" + ComPort;
 	std::cout << "Using port: " << ComPort << "\n";
+
+	// Target loop duration
+	TargetLoopDuration = iniFile.GetDoubleValue("", "target-loop-duration", 10e-3);
 }
 
 void GrblBoard::Init(){
@@ -309,6 +323,9 @@ void GrblBoard::WaitToStop(){
 }
 
 GrblStatus GrblBoard::ReadStatus(){
+	// Status to be returned
+	GrblStatus grblStatus;
+
 	// Query status.
 	RawCommand("?");
 
@@ -325,9 +342,6 @@ GrblStatus GrblBoard::ReadStatus(){
 		resp = arduino->ReadLine();
 		//std::cout << "resp: " << resp << "\n";
 	} while (!std::regex_search(resp, match, pat));
-
-	// Populate status
-	GrblStatus grblStatus;
 
 	// Parse status
 	auto state = match.str(1);
@@ -354,6 +368,9 @@ GrblStatus GrblBoard::ReadStatus(){
 
 	// Get timestamp
 	grblStatus.tstamp = GetTimeStamp();
+
+	// Mark status as valid
+	grblStatus.valid = true;
 
 	return grblStatus;
 }

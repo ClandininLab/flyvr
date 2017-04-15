@@ -14,40 +14,52 @@
 using namespace std::chrono;
 using namespace cv;
 
-// File name with configuration parameters
-auto CameraConfigFile = "camera.ini";
+namespace CameraNamespace{
+	// File name with configuration parameters
+	auto CameraConfigFile = "camera.ini";
 
-// Frame parameters
-unsigned FrameWidth;
-unsigned FrameHeight;
+	// Frame parameters
+	unsigned FrameWidth;
+	unsigned FrameHeight;
 
-// Image processing parameterse
-unsigned LowThresh;
-unsigned HighThresh;
-unsigned BlurSize;
-unsigned MinContour;
+	// Image processing parameterse
+	unsigned LowThresh;
+	unsigned HighThresh;
+	unsigned BlurSize;
+	unsigned MinContour;
 
-// Scale factors to convert pixels to mm
-double PixelPerMM;
+	// Scale factors to convert pixels to mm
+	double PixelPerMM;
 
-// Precision of log file
-unsigned LogPrecision;
+	// Precision of log file
+	unsigned LogPrecision;
 
-// Derived parameters
-unsigned CropAmount, CroppedWidth, CroppedHeight;
+	// Derived parameters
+	unsigned CropAmount, CroppedWidth, CroppedHeight;
 
-// Amount of time between debug frames
-double TargetDebugFrameTime;
+	// Target loop duration
+	double TargetLoopDuration;
 
-// Global variables used to manage access to camera measurement
-std::atomic<FlyPose> g_flyPose;
+	// Amount of time between debug frames
+	double TargetDebugFrameTime;
 
-// Variables used to manage camera thread
-bool killCamera = false;
-std::thread cameraThread;
+	// Global variables used to manage access to camera measurement
+	std::atomic<FlyPose> g_flyPose;
 
-// Variables used to signal when the camera thread has started up
-BoolSignal readyForCamera;
+	// Matrix used to display debug image
+	std::mutex debugMutex;
+	Mat g_imDebug;
+
+	// Variables used to manage camera thread
+	bool killDebug = false;
+	bool killCamera = false;
+	std::thread cameraThread;
+
+	// Variables used to signal when the camera thread has started up
+	BoolSignal readyForCamera;
+}
+
+using namespace CameraNamespace;
 
 // High-level management of the graphics thread
 void StartCameraThread(){
@@ -90,6 +102,7 @@ void ReadCameraConfig(){
 
 	// Precision of log file
 	TargetDebugFrameTime = iniFile.GetDoubleValue("", "target-debug-frame-time", 50e-3);
+	TargetLoopDuration = iniFile.GetDoubleValue("", "target-loop-duration", 10e-3);
 
 	// Compute derived constants
 	CropAmount = BlurSize;
@@ -130,13 +143,27 @@ void CameraThread(void){
 	std::cout << "Notifying main thread that video capture is set up.\n";
 	readyForCamera.update(true);
 
-	// Record iteration start time
-	auto lastDebugFrame = high_resolution_clock::now();
+	TimeManager timeManager("CameraThread");
+	timeManager.start();
+
+	TimeManager debugManager("CameraDebug");
+	debugManager.start();
+
+	// Launch debug thread
+	auto debugThread = std::thread(DebugThread);
 
 	while (!killCamera){
+		timeManager.tick();
+
 		// Read image
 		Mat inFrame;
 		cap.read(inFrame);
+
+		// Copy the debug image over to the other thread
+		{
+			std::unique_lock<std::mutex> lck(debugMutex);
+			g_imDebug = inFrame.clone();
+		}
 
 		// Prepare image for contour search
 		Mat outFrame;
@@ -160,6 +187,31 @@ void CameraThread(void){
 
 		// Write data to file
 		ofs << oss.str();
+
+		timeManager.waitUntil(TargetLoopDuration);
+	}
+
+	// Kill debug thread
+	killDebug = true;
+	debugThread.join();
+}
+
+void DebugThread(){
+	TimeManager debugManager("DebugThread");
+	debugManager.start();
+
+	while (!killDebug){
+		debugManager.tick();
+		Mat imDebug;
+		{
+			std::unique_lock<std::mutex> lck(debugMutex);
+			imDebug = g_imDebug.clone();
+		}
+		if (imDebug.rows > 0 && imDebug.cols > 0){
+			imshow("DebugThread", imDebug);
+			waitKey(1);
+		}
+		debugManager.waitUntil(TargetDebugFrameTime);
 	}
 }
 
@@ -192,15 +244,13 @@ FlyPose locateFly(const Mat &inFrame){
 	vector<std::vector<cv::Point>> imContours;
 	vector<cv::Vec4i> imHierarchy;
 
-	imshow("test", inFrame);
-	waitKey(1);
-
 	// Find all contours in image
 	findContours(inFrame, imContours, imHierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
 
 	// If there are no contours, return
 	if (imContours.size() == 0){
 		flyPose.tstamp = GetTimeStamp();
+		flyPose.valid = true;
 		return flyPose;
 	}
 
@@ -210,6 +260,7 @@ FlyPose locateFly(const Mat &inFrame){
 	// If there is no maximum contours, return
 	if (maxElem == imContours.end()){
 		flyPose.tstamp = GetTimeStamp();
+		flyPose.valid = true;
 		return flyPose;
 	}
 
@@ -218,6 +269,7 @@ FlyPose locateFly(const Mat &inFrame){
 
 	if (sizeMax <= MinContour){
 		flyPose.tstamp = GetTimeStamp();
+		flyPose.valid = true;
 		return flyPose;
 	}
 
@@ -229,6 +281,7 @@ FlyPose locateFly(const Mat &inFrame){
 	flyPose.y = (boundingBox.center.y - CroppedHeight / 2.0) / PixelPerMM;
 	flyPose.angle = boundingBox.angle;
 	flyPose.tstamp = GetTimeStamp();
+	flyPose.valid = true;
 
 	return flyPose;
 }

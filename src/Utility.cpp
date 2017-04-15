@@ -51,3 +51,30 @@ void BoolSignal::wait(){
 		statusCV.wait(lck);
 	}
 }
+
+TimeManager::TimeManager(std::string name) : name(name){}
+
+void TimeManager::start(void){
+	startTime = std::chrono::high_resolution_clock::now();
+}
+
+void TimeManager::tick(void){
+	loopStart = std::chrono::high_resolution_clock::now();
+}
+
+void TimeManager::waitUntil(double targetLoopDuration){
+	auto now = std::chrono::high_resolution_clock::now();
+	auto targetStop = loopStart + std::chrono::duration<double>(targetLoopDuration);
+	if (now <= targetStop){
+		std::this_thread::sleep_until(targetStop);
+	}
+	else {
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - loopStart);
+		std::cout << name << ": slow iteration (" << duration.count() << " ms)\n";
+	}
+}
+
+double TimeManager::totalDuration(){
+	auto now = std::chrono::high_resolution_clock::now();
+	return std::chrono::duration<double>(now - startTime).count();
+}

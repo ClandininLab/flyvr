@@ -5,6 +5,7 @@
 #ifndef UTILITY_H
 #define UTILITY_H
 
+#include <chrono>
 #include <iostream>
 #include <thread>
 #include <string>
@@ -28,6 +29,19 @@ private:
 	bool statusBool;
 	std::mutex statusMutex;
 	std::condition_variable statusCV;
+};
+
+class TimeManager{
+public:
+	TimeManager(std::string name);
+	void start(void);
+	void tick(void);
+	void waitUntil(double targetLoopDuration);
+	double totalDuration();
+private:
+	std::string name;
+	std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+	std::chrono::time_point<std::chrono::high_resolution_clock> loopStart;
 };
 
 #endif

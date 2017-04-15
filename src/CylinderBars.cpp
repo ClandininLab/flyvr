@@ -8,8 +8,12 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-// Side length of cube.mesh
-const double CubeSideLength = 100.0;
+namespace CylinderBarsNamespace{
+	// Side length of cube.mesh
+	const double CubeSideLength = 100.0;
+}
+
+using namespace CylinderBarsNamespace;
 
 CylinderBars::CylinderBars(std::string name, OgreApplication &app, CSimpleIniA &iniFile)
 	: name(name), app(app), iniFile(iniFile)
@@ -18,7 +22,7 @@ CylinderBars::CylinderBars(std::string name, OgreApplication &app, CSimpleIniA &
 }
 
 CylinderBars::~CylinderBars(){
-	app.clear();
+	app.getSceneManager()->clearScene();
 }
 
 void CylinderBars::Setup(){

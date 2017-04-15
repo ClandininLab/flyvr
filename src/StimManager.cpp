@@ -10,7 +10,11 @@
 #include "StimManager.h"
 #include "CylinderBars.h"
 
-auto StimConfigFile = "config.ini";
+namespace StimManagerNamespace{
+	auto StimConfigFile = "config.ini";
+}
+
+using namespace StimManagerNamespace;
 
 StimManager::StimManager(OgreApplication &app)
 	: app(app){
