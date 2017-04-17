@@ -146,7 +146,15 @@ GrblBoard::GrblBoard() {
 	ReadSerialConfig("serial.ini");
 
 	// Open the serial port
-	arduino = std::unique_ptr<Serial>(new Serial(ComPort, BaudRate));
+	std::cout << "Trying to open serial port... ";
+	try{
+		arduino = std::unique_ptr<Serial>(new Serial(ComPort, BaudRate));
+		std::cout << "success.\n";
+	}
+	catch (...){
+		std::cout << "FAILED.\n";
+		throw;
+	}
 
 	// Wait for Arduino to restart
 	std::cout << "Waiting for Arduino to start.\n";

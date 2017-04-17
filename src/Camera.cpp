@@ -21,6 +21,7 @@ namespace CameraNamespace{
 	// Frame parameters
 	unsigned FrameWidth;
 	unsigned FrameHeight;
+	unsigned FrameFPS;
 
 	// Image processing parameterse
 	unsigned LowThresh;
@@ -116,6 +117,7 @@ void ReadCameraConfig(){
 	CropAmount = BlurSize;
 	CroppedWidth = FrameWidth - 2 * CropAmount;
 	CroppedHeight = FrameHeight - 2 * CropAmount;
+	FrameFPS = int((1.0 / TargetLoopDuration) + 1);
 }
 
 // High-level management of the graphics thread
@@ -142,10 +144,18 @@ void CameraThread(void){
 	ofs.precision(LogPrecision);
 
 	// Set up video capture
-	std::cout << "Setting up video capture.\n";
+	std::cout << "Trying to open camera...";
+
 	VideoCapture icap(CV_CAP_ANY);
 	icap.set(CV_CAP_PROP_FRAME_WIDTH, FrameWidth);
 	icap.set(CV_CAP_PROP_FRAME_HEIGHT, FrameHeight);
+
+	if (icap.isOpened()){
+		std::cout << "success.\n";
+	} else{
+		std::cout << "FAILED.\n";
+		throw std::exception("Failed to open camera.");
+	}
 	
 	// Set up video output
 	std::cout << "Setting up video output.\n";
