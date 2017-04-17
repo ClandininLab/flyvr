@@ -122,7 +122,9 @@ void SerialThread(void){
 		moveCommand = g_moveCommand.exchange(stale);
 
 		// Run the move command if applicable
-		if (moveCommand.fresh && grblStatus.state == GrblStates::Idle){
+		bool canWriteRx = (grblStatus.rxBuf >= 64) ;
+		bool canWritePlan = (grblStatus.planBuf > 0);
+		if (moveCommand.fresh && canWriteRx && canWritePlan){
 			grbl.Move(moveCommand.x, moveCommand.y);
 		}
 
@@ -297,18 +299,20 @@ void GrblBoard::Home(){
 	WaitToStop();
 }
 
-void GrblBoard::Reset(){
-	arduino->Write("\x18");
-}
-
 void GrblBoard::GrblCommand(int key, int value){
 	std::ostringstream oss;
 	oss << "$" << key << "=" << value;
 	RawCommand(oss.str());
 }
 
-void GrblBoard::RawCommand(std::string cmd){
-	arduino->Write(cmd + "\r\n");
+std::string GrblBoard::RawCommand(std::string cmd, bool newLine){
+	if (newLine){
+		arduino->Write(cmd + "\n");
+	}
+	else {
+		arduino->Write(cmd);
+	}
+	return arduino->ReadLine();
 }
 
 void GrblBoard::MaxFeedRate(int value){
@@ -344,20 +348,30 @@ GrblStatus GrblBoard::ReadStatus(){
 	GrblStatus grblStatus;
 
 	// Query status.
-	RawCommand("?");
+	std::string resp = RawCommand("?", false);
 
 	// Pattern to parse response from GRBL
 	// Example: 
-	// <Idle|MPos:0.000,0.000,0.000
-	std::string num = "(-?\\d+\\.\\d+)";
-	std::regex pat("<(Idle|Run|Home|Alarm|Jog)\\|MPos:" + num + "," + num + "," + num);
+	// <Idle|MPos:0.000,0.000,0.000|Bf:15,128
+	std::string state_str = "(Idle|Run|Home|Alarm|Jog)";
+	std::string decimal = "(-?\\d+\\.\\d+)";
+	std::string integer = "(\\d+)";
+
+	// Build up the pattern
+	std::string pattern = "<" + state_str;
+	pattern += "\\|WPos:" + decimal + "," + decimal + "," + decimal;
+	pattern += "\\|Bf:" + integer + "," + integer;
+	std::regex rpat(pattern);
 
 	// Read lines from serial port until one matches
-	std::string resp;
+	// Most likely, the body of the loop will never execute, since resp
+	// should already contain the status report.  However, relying on this
+	// fact would make the program fragile because any extra line printed
+	// at any time would break this assumption.  Hence the loop.
 	std::smatch match;
-	do {
+	while (!std::regex_search(resp, match, rpat)){
 		resp = arduino->ReadLine();
-	} while (!std::regex_search(resp, match, pat));
+	} 
 
 	// Parse status
 	auto state = match.str(1);
@@ -384,6 +398,10 @@ GrblStatus GrblBoard::ReadStatus(){
 	grblStatus.x = std::stod(match.str(2));
 	grblStatus.y = std::stod(match.str(3));
 	grblStatus.z = std::stod(match.str(4));
+
+	// Parse buffer status
+	grblStatus.planBuf = std::stoi(match.str(5));
+	grblStatus.rxBuf = std::stoi(match.str(6));
 
 	// Get timestamp
 	grblStatus.tstamp = GetTimeStamp();

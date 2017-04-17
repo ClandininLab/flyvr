@@ -34,6 +34,10 @@ struct GrblStatus
 	double y;
 	double z;
 
+	// Buffer availability
+	unsigned planBuf;
+	unsigned rxBuf;
+
 	double tstamp;
 
 	// Validity indicator, false initially
@@ -86,7 +90,7 @@ private:
 
 	// Low-level communication routines
 	void GrblCommand(int key, int value);
-	void RawCommand(std::string cmdString);
+	std::string RawCommand(std::string cmdString, bool newLine=true);
 
 	// Commands used in the initialization of GRBL
 	void Init();
@@ -104,7 +108,7 @@ private:
 	void SetHomingFeedRate(int mm_per_min){ GrblCommand(24, mm_per_min); }
 	void SetHomingSeekRate(int mm_per_min){ GrblCommand(25, mm_per_min); }
 	void BrakeAfterMovement(void){ GrblCommand(1, 255); }
-	void SetupStatusReport(void){ GrblCommand(10, 1); }
+	void SetupStatusReport(void){ GrblCommand(10, 2); }
 	void SetUnitMM(){ RawCommand("G21"); }
 	void MoveAbsolute(){ RawCommand("G90"); }
 
