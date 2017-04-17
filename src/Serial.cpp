@@ -2,11 +2,17 @@
 
 // Modified by Steven Herbst (sherbst@stanford.edu)
 
+#include <iostream>
+
 #include "Serial.h"
 
 Serial::Serial(std::string portName, unsigned baudRate) : io(), serial(io, portName)
 {
 	serial.set_option(asio::serial_port_base::baud_rate(baudRate));
+	serial.set_option(asio::serial_port_base::character_size(8));
+	serial.set_option(asio::serial_port_base::parity(asio::serial_port_base::parity::none));
+	serial.set_option(asio::serial_port_base::stop_bits(asio::serial_port_base::stop_bits::one));
+	serial.set_option(asio::serial_port_base::flow_control(asio::serial_port_base::flow_control::none));
 }
 
 void Serial::Write(std::string buffer)

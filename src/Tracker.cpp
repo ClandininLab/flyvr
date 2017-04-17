@@ -41,6 +41,10 @@ namespace TrackerNamespace{
 	long AngleFilterLength;
 	double UnwrapThresh; // degrees
 	std::vector<double> angleList;
+
+	bool EnableGraphicsThread;
+	bool EnableSerialThread;
+	bool EnableCameraThread;
 }
 
 using namespace TrackerNamespace;
@@ -66,6 +70,11 @@ void ReadTrackerConfig(){
 	AngleFilterLength = iniFile.GetLongValue("", "angle-filter-length", 10);
 	UnwrapThresh = iniFile.GetDoubleValue("", "unwrap-threshold", 150.0);
 	angleList = std::vector<double>(AngleFilterLength, 0.0);
+
+	// Thread variables
+	EnableGraphicsThread = iniFile.GetBoolValue("", "enable-graphics-thread", true);
+	EnableSerialThread = iniFile.GetBoolValue("", "enable-serial-thread", true);
+	EnableCameraThread = iniFile.GetBoolValue("", "enable-camera-thread", true);
 }
 
 // Function to clamp a value between minimum and maximum bounds
@@ -156,33 +165,44 @@ int main(int argc, char* argv[]) {
 
 	ReadTrackerConfig();
 
-	StartSerialThread(outDir);
+	if (EnableSerialThread){
+		StartSerialThread(outDir);
+		std::cout << "Moving to start location\n";
+		GrblMoveCommand(CenterX, CenterY);
+		WaitForIdle();
+		std::cout << "Done\n";
+	}
 
-	std::cout << "Moving to start location\n";
-	GrblMoveCommand(CenterX, CenterY);
-	WaitForIdle();
-	std::cout << "Done\n";
+	if (EnableGraphicsThread){
+		StartGraphicsThread(stimFile, outDir);
+	}
 
-	StartGraphicsThread(stimFile, outDir);
-	StartCameraThread(outDir);
+	if (EnableCameraThread){
+		StartCameraThread(outDir);
+	}
 	
 	// Create timing manager for the loop
 	TimeManager timeManager("MainThread");
 	timeManager.start();
 
 	FlyPose fly, lastFly;
+	GrblStatus grbl;
 
 	do {
 		// Log start of loop
 		timeManager.tick();
 
 		// Get the new fly pose
-		fly = GetFlyPose();
+		if (EnableCameraThread){
+			fly = GetFlyPose();
+		}
 		bool flyPresent = fly.present && fly.valid;
 		bool lastFlyPresent = lastFly.present && lastFly.valid;
 
 		// Get CNC position
-		GrblStatus grbl = GetGrblStatus();
+		if (EnableSerialThread){
+			grbl = GetGrblStatus();
+		}
 
 		// Update graphics with fly position, if a fly is present
 		if (flyPresent && lastFlyPresent && grbl.valid){
@@ -193,10 +213,12 @@ int main(int argc, char* argv[]) {
 			flyPose.y = FlyY;
 			flyPose.z = (grbl.x - fly.x - CenterX) * 1e-3; // + Z graphics is +X GRBL, -X Camera
 			flyPose.pitch = 0;
-			flyPose.yaw = filterAngle(-fly.angle) * M_PI/180.0; // TODO: check the sign
+			flyPose.yaw = filterAngle(-fly.angle) * M_PI / 180.0; // TODO: check the sign
 			flyPose.roll = 0;
 
-			SetFlyPose3D(flyPose);
+			if (EnableGraphicsThread){
+				SetFlyPose3D(flyPose);
+			}
 		}
 
 		// Handle key presses
@@ -250,9 +272,15 @@ int main(int argc, char* argv[]) {
 
 	} while (timeManager.totalDuration() < MaxDuration);
 
-	StopCameraThread();
-	StopGraphicsThread();
-	StopSerialThread();
+	if (EnableCameraThread){
+		StopCameraThread();
+	}
+	if (EnableGraphicsThread){
+		StopGraphicsThread();
+	}
+	if (EnableSerialThread){
+		StopSerialThread();
+	}
 
 	return 0;
 }

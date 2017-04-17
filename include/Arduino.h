@@ -22,7 +22,7 @@ struct GrblCommand{
 };
 
 // GRBL states
-enum class GrblStates {Idle, Run, Home, Alarm};
+enum class GrblStates {Idle, Run, Home, Alarm, Jog};
 
 // Struct for storing the results of a GRBL status query
 struct GrblStatus
@@ -115,6 +115,9 @@ private:
 	unsigned StepsPerMM_X;
 	unsigned StepsPerMM_Y;
 	int HomingPullOff, HomingDebounce, HomingFeedRate, HomingSeekRate;
+
+	// Amount of time to wait before sending serial to arduino
+	double ArduinoDelay;
 
 	// COM port configuration
 	std::string ComPort;

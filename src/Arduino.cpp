@@ -17,9 +17,6 @@ namespace ArduinoNamespace{
 	// Delay when waiting for GRBL to react to a move command
 	const double GRBL_DELAY = 100e-3;
 
-	// Delay when waiting for Arduino to start up
-	const double ARDUINO_DELAY = 2.0;
-
 	// Variable containing the CNC move command
 	std::atomic<GrblCommand> g_moveCommand;
 
@@ -153,16 +150,19 @@ GrblBoard::GrblBoard() {
 
 	// Wait for Arduino to restart
 	std::cout << "Waiting for Arduino to start.\n";
-	DelaySeconds(ARDUINO_DELAY);
+	DelaySeconds(ArduinoDelay);
 
 	// Send setup commands
 	std::cout << "Initializing GRBL variables.\n";
 	Init();
 
+	// If GRBL is in an alarm state, home to the origin
 	// Home to origin before issuing G-code commands
-	// This is a blocking command that returns after homing is complete
-	std::cout << "Homing GRBL.\n";
-	Home();
+	GrblStatus status = ReadStatus();
+	if (status.state == GrblStates::Alarm){
+		std::cout << "Homing GRBL.\n";
+		Home();
+	}
 
 	// Send G-code commands
 	std::cout << "Sending G-Code configuration.\n";
@@ -190,6 +190,9 @@ void GrblBoard::ReadSerialConfig(const char* loc){
 	// Soft limits
 	MaxTravelX = iniFile.GetDoubleValue("", "max-travel-x", 600);
 	MaxTravelY = iniFile.GetDoubleValue("", "max-travel-y", 600);
+
+	// Arduino delay
+	ArduinoDelay = iniFile.GetDoubleValue("", "arduino-delay", 0.1);
 
 	// Get baud rate
 	BaudRate = iniFile.GetLongValue("", "baud-rate", 400000);
@@ -339,14 +342,13 @@ GrblStatus GrblBoard::ReadStatus(){
 	// Example: 
 	// <Idle|MPos:0.000,0.000,0.000
 	std::string num = "(-?\\d+\\.\\d+)";
-	std::regex pat("<(Idle|Run|Home|Alarm)\\|MPos:" + num + "," + num + "," + num);
+	std::regex pat("<(Idle|Run|Home|Alarm|Jog)\\|MPos:" + num + "," + num + "," + num);
 
 	// Read lines from serial port until one matches
 	std::string resp;
 	std::smatch match;
 	do {
 		resp = arduino->ReadLine();
-		//std::cout << "resp: " << resp << "\n";
 	} while (!std::regex_search(resp, match, pat));
 
 	// Parse status
@@ -362,6 +364,9 @@ GrblStatus GrblBoard::ReadStatus(){
 	}
 	else if (state == "Alarm"){
 		grblStatus.state = GrblStates::Alarm;
+	}
+	else if (state == "Jog"){
+		grblStatus.state = GrblStates::Jog;
 	}
 	else{
 		throw std::runtime_error("Invalid GRBL state.");
