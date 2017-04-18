@@ -67,6 +67,24 @@ add_custom_command(TARGET tracker POST_BUILD       # Adds a post-build event to 
         ${POST_BUILD_COPY_LIST}                    # <--this is in-file
         ${BIN_DIR})                                # <--this is out-file path
 
+# Pass in the location of OGRE SDK
+add_definitions(-DOGRE_TOP="${OGRE_TOP}")
+        
 # Use ASIO without Boost
 add_definitions(-DASIO_STANDALONE)
 add_definitions(-DWIN32_LEAN_AND_MEAN)
+
+# Need to define _WIN32_WINNT for ASIO
+# http://stackoverflow.com/questions/9742003/platform-detection-in-cmake
+macro(get_WIN32_WINNT version)
+    if (WIN32 AND CMAKE_SYSTEM_VERSION)
+        set(ver ${CMAKE_SYSTEM_VERSION})
+        string(REPLACE "." "" ver ${ver})
+        string(REGEX REPLACE "([0-9])" "0\\1" ver ${ver})
+
+        set(${version} "0x${ver}")
+    endif()
+endmacro()
+
+get_WIN32_WINNT(ver)
+add_definitions(-D_WIN32_WINNT=${ver})

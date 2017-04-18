@@ -122,8 +122,8 @@ void SerialThread(void){
 		moveCommand = g_moveCommand.exchange(stale);
 
 		// Run the move command if applicable
-		bool canWriteRx = (grblStatus.rxBuf >= 64) ;
-		bool canWritePlan = (grblStatus.planBuf > 0);
+		bool canWriteRx = (grblStatus.rxBuf >= grbl.MinRxBuf);
+		bool canWritePlan = (grblStatus.planBuf >= grbl.MinPlanBuf);
 		if (moveCommand.fresh && canWriteRx && canWritePlan){
 			grbl.Move(moveCommand.x, moveCommand.y);
 		}
@@ -203,6 +203,10 @@ void GrblBoard::ReadSerialConfig(const char* loc){
 
 	// Arduino delay
 	ArduinoDelay = iniFile.GetDoubleValue("", "arduino-delay", 0.1);
+
+	// Buffer requirements
+	MinRxBuf = iniFile.GetLongValue("", "min-rx-buf", 64);
+	MinPlanBuf = iniFile.GetLongValue("", "min-plan-buf", 1);
 
 	// Get baud rate
 	BaudRate = iniFile.GetLongValue("", "baud-rate", 400000);

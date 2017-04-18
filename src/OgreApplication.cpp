@@ -147,8 +147,11 @@ void OgreApplication::readGraphicsConfig(const char *loc){
 		if (sectionName != ""){
 			MonitorInfo monitor;
 
-			// Configuration information
+			// Basic information
 			monitor.id = iniFile.GetLongValue(sectionName.c_str(), "id", 1);
+			monitor.name = sectionName;
+
+			// Display options
 			monitor.pixelWidth = iniFile.GetLongValue(sectionName.c_str(), "width-pixels", 1440);
 			monitor.pixelHeight = iniFile.GetLongValue(sectionName.c_str(), "height-pixels", 900);
 			monitor.displayFullscreen = iniFile.GetBoolValue(sectionName.c_str(), "display-fullscreen", true);
@@ -196,6 +199,9 @@ void OgreApplication::createWindows(void)
 		// Create the new render window and set it up
 		Ogre::RenderWindow *window = mRoot->createRenderWindow(strWindowName,
 			monitor.pixelWidth, monitor.pixelHeight, monitor.displayFullscreen, &nvList);
+		std::cout << "Opened monitor: " << monitor.name << "\n";
+
+		// Do not deactivate the window if it looses focus
 		window->setDeactivateOnFocusChange(false);
 
 		// Add to window list
@@ -308,7 +314,9 @@ void OgreApplication::setupResources(Ogre::String resourcesCfg)
 		for (i = settings->begin(); i != settings->end(); ++i)
 		{
 			typeName = i->first;
-			archName = i->second;
+			archName = Ogre::String(OGRE_TOP) + "/" + i->second;
+
+			std::cout << "archName: " << archName << "\n";
 
 			Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
 				archName, typeName, secName);
@@ -318,7 +326,11 @@ void OgreApplication::setupResources(Ogre::String resourcesCfg)
 
 void OgreApplication::setup(void)
 {
-	mRoot = new Ogre::Root("plugins.cfg");
+	mRoot = new Ogre::Root(Ogre::StringUtil::BLANK);
+
+	auto PluginDir = Ogre::String(OGRE_TOP) + "/bin/release";
+	mRoot->loadPlugin(PluginDir + "/" + Ogre::String("RenderSystem_Direct3D9.dll"));
+	mRoot->loadPlugin(PluginDir + "/" + Ogre::String("Plugin_ParticleFX.dll"));
 
 	setupResources("resources.cfg");
 
@@ -328,6 +340,7 @@ void OgreApplication::setup(void)
 	}
 	else
 	{
+		std::cout << "Could not restore Ogre3D config.\n";
 		throw std::runtime_error("Could not restore Ogre3D config.");
 	}
 

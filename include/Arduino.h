@@ -81,6 +81,10 @@ public:
 
 	double TargetLoopDuration;
 
+	// Buffer length requirements
+	unsigned MinRxBuf;
+	unsigned MinPlanBuf;
+
 private:
 	// Serial port used for communication with GRBL board
 	std::unique_ptr<Serial> arduino{};

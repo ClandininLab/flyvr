@@ -24,7 +24,7 @@ using namespace std::chrono;
 
 namespace TrackerNamespace{
 	// Actions for key presses
-	enum class KeyPressAction { Quit, Up, Down, Left, Right, Status, None };
+	enum class KeyPressAction { Quit, Up, Down, Left, Right, Status, ToggleTracking, Center, None };
 
 	// Name of configuration file for tracker
 	auto TrackerConfigFile = "tracker.ini";
@@ -41,6 +41,8 @@ namespace TrackerNamespace{
 	long AngleFilterLength;
 	double UnwrapThresh; // degrees
 	std::vector<double> angleList;
+
+	bool ShouldTrack = true;
 
 	bool EnableGraphicsThread;
 	bool EnableSerialThread;
@@ -59,7 +61,7 @@ void ReadTrackerConfig(){
 	MaxDuration = iniFile.GetDoubleValue("", "max-duration", 25);
 	TargetLoopDuration = iniFile.GetDoubleValue("", "target-loop-duration", 10e-3);
 	MinMove = iniFile.GetDoubleValue("", "min-move", 1);
-	MaxMove = iniFile.GetDoubleValue("", "max-move", 40);
+	MaxMove = iniFile.GetDoubleValue("", "max-move", 10);
 	JogAmount = iniFile.GetDoubleValue("", "jog-amount", 1);
 
 	// Center position
@@ -75,22 +77,6 @@ void ReadTrackerConfig(){
 	EnableGraphicsThread = iniFile.GetBoolValue("", "enable-graphics-thread", true);
 	EnableSerialThread = iniFile.GetBoolValue("", "enable-serial-thread", true);
 	EnableCameraThread = iniFile.GetBoolValue("", "enable-camera-thread", true);
-}
-
-// Function to clamp a value between minimum and maximum bounds
-double clamp(double value, double min, double max){
-	if (std::abs(value) < min){
-		return 0.0;
-	}
-	else if (value < -max) {
-		return -max;
-	}
-	else if (value > max) {
-		return max;
-	}
-	else {
-		return value;
-	}
 }
 
 KeyPressAction GetKeyPress(){
@@ -113,6 +99,12 @@ KeyPressAction GetKeyPress(){
 		}
 		else if (char(key) == 's'){
 			return KeyPressAction::Status;
+		}
+		else if (char(key) == 't'){
+			return KeyPressAction::ToggleTracking;
+		}
+		else if (char(key) == 'c'){
+			return KeyPressAction::Center;
 		}
 		else if (key == 27){
 			return KeyPressAction::Quit;
@@ -243,6 +235,11 @@ int main(int argc, char* argv[]) {
 				GrblMoveCommand(grbl.x, grbl.y + JogAmount);
 			}
 		}
+		else if (action == KeyPressAction::Center){
+			if (grbl.valid){
+				GrblMoveCommand(CenterX, CenterY);
+			}
+		}
 		else if (action == KeyPressAction::Status){
 			if (grbl.valid){
 				std::cout << "GRBL: <" << grbl.x << ", " << grbl.y << ">\n";
@@ -251,14 +248,34 @@ int main(int argc, char* argv[]) {
 				std::cout << "Fly: <" << fly.x << ", " << fly.y << ">\n";
 			}
 		}
+		else if (action == KeyPressAction::ToggleTracking){
+			ShouldTrack = !ShouldTrack;
+			if (ShouldTrack){
+				std::cout << "Tracking enabled.\n";
+			}
+			else{
+				std::cout << "Tracking disabled.\n";
+			}
+		}
 		else if (action == KeyPressAction::Quit){
 			break;
 		}
 		else {
-			if (flyPresent && grbl.valid){
-				double dx = clamp(-fly.x, MinMove, MaxMove);
-				double dy = clamp(fly.y, MinMove, MaxMove);
-				GrblMoveCommand(grbl.x + dx, grbl.y + dy);
+			if (flyPresent && grbl.valid && ShouldTrack){
+				double dx = -fly.x;
+				double dy = fly.y;
+				double mag = std::hypot(dx, dy);
+				if (mag < MinMove){
+					// do nothing...
+				}
+				else if (mag < MaxMove){
+					// Move full amount
+					GrblMoveCommand(grbl.x + dx, grbl.y + dy);
+				}
+				else {
+					// Move max amount on vector in correct direction
+					GrblMoveCommand(grbl.x + dx * (MaxMove / mag), grbl.y + dy * (MaxMove / mag));
+				}
 			}
 		}
 

@@ -46,6 +46,9 @@ struct MonitorInfo{
 	Ogre::Vector3 pb;
 	Ogre::Vector3 pc;
 
+	// Human readable name
+	std::string name;
+
 	MonitorInfo() : id(0), pixelWidth(0), pixelHeight(0), displayFullscreen(false),
 		pa(Ogre::Vector3::ZERO), pb(Ogre::Vector3::ZERO), pc(Ogre::Vector3::ZERO) {}
 };
