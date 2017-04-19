@@ -2,6 +2,8 @@
 // http://flyvisionlab.weebly.com/
 // Contact: Steven Herbst <sherbst@stanford.edu>
 
+#include <iostream>
+#include <fstream>
 #include "Utility.h"
 
 double getColor(std::string s, ColorType t){
@@ -52,7 +54,7 @@ void BoolSignal::wait(){
 	}
 }
 
-TimeManager::TimeManager(std::string name) : name(name){}
+TimeManager::TimeManager(const std::string &name) : name(name){}
 
 void TimeManager::start(void){
 	startTime = std::chrono::high_resolution_clock::now();
@@ -77,4 +79,14 @@ void TimeManager::waitUntil(double targetLoopDuration){
 double TimeManager::totalDuration(){
 	auto now = std::chrono::high_resolution_clock::now();
 	return std::chrono::duration<double>(now - startTime).count();
+}
+
+// copy in binary mode
+// http://stackoverflow.com/questions/9125122/how-to-copy-a-file-from-a-folder-to-another-folder
+bool copyFile(const std::string &src, const std::string &dest)
+{
+	std::ifstream istream(src.c_str(), std::ios::binary);
+	std::ofstream ostream(dest.c_str(), std::ios::binary);
+	ostream << istream.rdbuf();
+	return istream && ostream;
 }

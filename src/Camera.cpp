@@ -67,7 +67,7 @@ namespace CameraNamespace{
 using namespace CameraNamespace;
 
 // High-level management of the graphics thread
-void StartCameraThread(std::string outDir){
+void StartCameraThread(const std::string &outDir){
 	std::cout << "Starting camera thread.\n";
 
 	// Record names of data file and movie file

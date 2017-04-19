@@ -54,7 +54,7 @@ struct MonitorInfo{
 };
 
 // High-level thread management for graphics operations
-void StartGraphicsThread(std::string stimFile, std::string outDir);
+void StartGraphicsThread(const std::string &stimFile, const std::string &outDir);
 void ReadGraphicsConfig(void);
 void StopGraphicsThread(void);
 void SetFlyPose3D(Pose3D flyPose3D);

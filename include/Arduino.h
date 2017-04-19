@@ -43,11 +43,12 @@ struct GrblStatus
 	// Validity indicator, false initially
 	bool valid;
 
-	GrblStatus() : x(0), y(0), z(0), tstamp(0), valid(false) {}
+	GrblStatus() : state(GrblStates::Idle), x(0), y(0), z(0), tstamp(0), 
+		planBuf(15), rxBuf(64), valid(false) {}
 };
 
 // High-level thread management
-void StartSerialThread(std::string outDir);
+void StartSerialThread(const std::string &outDir);
 void StopSerialThread();
 
 // Interface functions for other threads

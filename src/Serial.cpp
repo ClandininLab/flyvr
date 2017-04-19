@@ -6,7 +6,7 @@
 
 #include "Serial.h"
 
-Serial::Serial(std::string portName, unsigned baudRate) : io(), serial(io, portName)
+Serial::Serial(const std::string &portName, unsigned baudRate) : io(), serial(io, portName)
 {
 	serial.set_option(asio::serial_port_base::baud_rate(baudRate));
 	serial.set_option(asio::serial_port_base::character_size(8));

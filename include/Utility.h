@@ -20,6 +20,8 @@ void DelaySeconds(double t);
 
 double GetTimeStamp();
 
+bool copyFile(const std::string &src, const std::string &dest);
+
 class BoolSignal{
 public:
 	BoolSignal() : statusBool(false) {}
@@ -33,7 +35,7 @@ private:
 
 class TimeManager{
 public:
-	TimeManager(std::string name);
+	explicit TimeManager(const std::string &name);
 	void start(void);
 	void tick(void);
 	void waitUntil(double targetLoopDuration);

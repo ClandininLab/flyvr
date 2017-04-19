@@ -21,7 +21,7 @@ enum class StimManagerStates { Init, Interleave, Stimulus };
 class StimManager
 {
 public:
-	StimManager(OgreApplication &app, std::string stimConfigFile, std::string GraphicsOutputFile);
+	StimManager(OgreApplication &app, const std::string &stimConfigFile, const std::string &GraphicsOutputFile);
 	~StimManager(void);
 	void Update(Pose3D flyPose);
 

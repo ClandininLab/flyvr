@@ -43,7 +43,7 @@ namespace OgreApplicationNamespace{
 using namespace OgreApplicationNamespace;
 
 // High-level management of the graphics thread
-void StartGraphicsThread(std::string stimFile, std::string outDir){
+void StartGraphicsThread(const std::string &stimFile, const std::string &outDir){
 	std::cout << "Starting graphics thread.\n";
 
 	// Record the name of the output file
@@ -119,7 +119,10 @@ void GraphicsThread(void){
 OgreApplication::OgreApplication(void)
 	: mRoot(nullptr),
 	mSceneMgr(nullptr),
-	mOverlaySystem(nullptr)
+	mOverlaySystem(nullptr),
+	targetLoopDuration(10e-3),
+	mNearClipDist(0.001),
+	mFarClipDist(100.0)
 {
 }
 

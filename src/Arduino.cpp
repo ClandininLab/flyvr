@@ -41,7 +41,7 @@ namespace ArduinoNamespace{
 
 using namespace ArduinoNamespace;
 
-void StartSerialThread(std::string outDir){
+void StartSerialThread(const std::string &outDir){
 	std::cout << "Starting serial thread.\n";
 
 	// Record name of file for serial output

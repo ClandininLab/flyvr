@@ -136,6 +136,21 @@ double unwrapAngle(double val, double old){
 	return val;
 }
 
+void copyConfigFiles(const std::string &stimFile, const std::string &outDir){
+	// Stimulus file
+	copyFile(stimFile, outDir + "/" + stimFile);
+
+	// INI files
+	copyFile("camera.ini", outDir + "/" + "camera.ini");
+	copyFile("serial.ini", outDir + "/" + "serial.ini");
+	copyFile("tracker.ini", outDir + "/" + "tracker.ini");
+	copyFile("tv.ini", outDir + "/" + "tv.ini");
+
+	// CFG files
+	copyFile("ogre.cfg", outDir + "/" + "ogre.cfg");
+	copyFile("resources.cfg", outDir + "/" + "resources.cfg");
+}
+
 int main(int argc, char* argv[]) {
 	std::string stimFile;
 	std::string outDir;
@@ -154,6 +169,9 @@ int main(int argc, char* argv[]) {
 
 	// Make the output directory if necessary
 	_mkdir(outDir.c_str());
+
+	// Copy over the config files for later reference
+	copyConfigFiles(stimFile, outDir);
 
 	ReadTrackerConfig();
 

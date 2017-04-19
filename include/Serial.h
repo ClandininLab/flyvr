@@ -12,7 +12,7 @@ class Serial
 {
 public:
 	// Constructor accepts port name (e.g., "COM4") and baud rate (e.g., 400000)
-	Serial(std::string portName, unsigned baudRate);
+	Serial(const std::string &portName, unsigned baudRate);
 
 	// Writes string to serial terminal, returns true if successful, false otherwise
 	void Write(std::string buffer);

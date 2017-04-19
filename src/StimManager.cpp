@@ -10,7 +10,9 @@
 #include "StimManager.h"
 #include "CylinderBars.h"
 
-StimManager::StimManager(OgreApplication &app, std::string stimConfigFile, std::string GraphicsOutputFile)
+StimManager::StimManager(OgreApplication &app, 
+	const std::string &stimConfigFile, 
+	const std::string &GraphicsOutputFile)
 	: app(app), stimConfigFile(stimConfigFile), graphicsOutputFile(GraphicsOutputFile){
 
 	// Load the INI file
@@ -132,7 +134,7 @@ void StimManager::PickNextStimulus(void){
 	MakeStimulus(currentStimName);
 
 	// Increment the stimulus name pointer
-	nextStimName++;
+	++nextStimName;
 }
 
 void StimManager::ShuffleStimNames(){
