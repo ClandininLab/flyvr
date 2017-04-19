@@ -10,8 +10,8 @@
 #include "StimManager.h"
 #include "CylinderBars.h"
 
-StimManager::StimManager(OgreApplication &app, std::string stimConfigFile)
-	: app(app), stimConfigFile(stimConfigFile){
+StimManager::StimManager(OgreApplication &app, std::string stimConfigFile, std::string GraphicsOutputFile)
+	: app(app), stimConfigFile(stimConfigFile), graphicsOutputFile(GraphicsOutputFile){
 
 	// Load the INI file
 	iniFile.SetUnicode();
@@ -39,8 +39,8 @@ StimManager::StimManager(OgreApplication &app, std::string stimConfigFile)
 		}
 	}
 
-	// Put the stim name pointer to the end to force a shuffle
-	currentStimName = stimNames.end();
+	// Put the currentStimName pointer to the end to force a shuffle
+	nextStimName = stimNames.end();
 
 	// Create the random number generator from the provided seed
 	// mt19937 is the "mersenne_twister_engine" pseudo-random number generator
@@ -48,6 +48,13 @@ StimManager::StimManager(OgreApplication &app, std::string stimConfigFile)
 
 	// Set the state to "Init" (pre-interleave)
 	state = StimManagerStates::Init;
+
+	// Open the output file stream
+	outFileStream = std::ofstream(graphicsOutputFile);
+	outFileStream << "managerState," << "stimName,";
+	outFileStream << "flyX (m)," << "flyY (m)," << "flyZ (m),";
+	outFileStream << "flyPitch (rad)," << "flyYaw (rad)," << "flyRoll (rad),";
+	outFileStream << "stimString," << "timestamp (s)\n";
 }
 
 StimManager::~StimManager(){
@@ -56,12 +63,18 @@ StimManager::~StimManager(){
 // Main state machine for the stimulus manager
 // Sets up the interleave background and runs each stimulus to completion
 void StimManager::Update(Pose3D flyPose){
+	std::string managerState;
+	std::string stimString = "";
+	std::string stimName = "";
+
 	if (state == StimManagerStates::Init){
+		managerState = "Init";
 		app.setBackground(iColorR, iColorG, iColorB);
 		lastTime = std::chrono::high_resolution_clock::now();
 		state = StimManagerStates::Interleave;
 	}
 	else if (state == StimManagerStates::Interleave){
+		managerState = "Interleave";
 		auto thisTime = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration<double>(thisTime - lastTime).count();
 		if (duration >= iDuration){
@@ -70,8 +83,11 @@ void StimManager::Update(Pose3D flyPose){
 		}
 	}
 	else if (state == StimManagerStates::Stimulus){
-		// Update stimulus
-		currentStimulus->Update(flyPose);
+		managerState = "Stimulus";
+		stimName = currentStimName;
+
+		// Update stimulus and record stimulus state
+		stimString = currentStimulus->Update(flyPose);
 
 		// Check if stimulus is done
 		if (currentStimulus->isDone){
@@ -83,22 +99,44 @@ void StimManager::Update(Pose3D flyPose){
 	else{
 		throw std::runtime_error("Invalid StimManager state.");
 	}
+
+	// Format output string
+	std::ostringstream oss;
+	oss << managerState << ",";
+	oss << stimName << ",";
+	oss << std::fixed << flyPose.x << ",";
+	oss << std::fixed << flyPose.y << ",";
+	oss << std::fixed << flyPose.z << ",";
+	oss << std::fixed << flyPose.pitch << ",";
+	oss << std::fixed << flyPose.yaw << ",";
+	oss << std::fixed << flyPose.roll << ",";
+	oss << stimString << ",";
+	oss << std::fixed << GetTimeStamp();
+	oss << "\n";
+
+	// Write output string to file
+	outFileStream << oss.str();
 }
 
 // Picks the next stimulus name from the configuration file
 // If we've reached the end of the list, shuffle first
 void StimManager::PickNextStimulus(void){
-	// Shuffle list if we've reached the end
-	if (currentStimName == stimNames.end()){
-		std::shuffle(stimNames.begin(), stimNames.end(), randomGenerator);
-		currentStimName = stimNames.begin();
+	if (nextStimName == stimNames.end()){
+		// Shuffle list if we've reached the end
+		ShuffleStimNames();
+		nextStimName = stimNames.begin();
 	}
 
 	// Instantiate the next stimulus
-	MakeStimulus(*currentStimName);
+	currentStimName = *nextStimName;
+	MakeStimulus(currentStimName);
 
-	// increment the pointer
-	currentStimName++;
+	// Increment the stimulus name pointer
+	nextStimName++;
+}
+
+void StimManager::ShuffleStimNames(){
+	std::shuffle(stimNames.begin(), stimNames.end(), randomGenerator);
 }
 
 // Creates a new stimulus object based on the specifications in the given section

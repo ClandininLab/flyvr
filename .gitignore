@@ -10,3 +10,4 @@ build/
 
 # For macOS
 *.DS_Store
+*.ann

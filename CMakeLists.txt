@@ -21,10 +21,10 @@ list(APPEND INCLUDE_DIRS "${OGRE_INC_DIR}/OGRE" "${OGRE_INC_DIR}/OGRE/Overlay" "
 include_directories(include ${INCLUDE_DIRS})
 
 # Bring in library directories
+# Note that CMake will add Release and Debug subdirectories for each link_directory
 set(CV_LIB_DIR "${CV_TOP}/x64/vc12/lib")
-set(OGRE_LIB_DIR_OPTIMIZED "${OGRE_TOP}/lib/release")
-set(OGRE_LIB_DIR_DEBUG "${OGRE_TOP}/lib/debug")
-link_directories(${CV_LIB_DIR} ${OGRE_LIB_DIR_OPTIMIZED} ${OGRE_LIB_DIR_DEBUG})
+set(OGRE_LIB_DIR "${OGRE_TOP}/lib")
+link_directories(${CV_LIB_DIR} ${OGRE_LIB_DIR})
 
 # Define all source files
 list(APPEND SOURCES "src/CylinderBars.cpp" "src/Tracker.cpp" "src/Camera.cpp")
@@ -69,7 +69,7 @@ add_custom_command(TARGET tracker POST_BUILD       # Adds a post-build event to 
 
 # Pass in the location of OGRE SDK
 add_definitions(-DOGRE_TOP="${OGRE_TOP}")
-        
+
 # Use ASIO without Boost
 add_definitions(-DASIO_STANDALONE)
 add_definitions(-DWIN32_LEAN_AND_MEAN)

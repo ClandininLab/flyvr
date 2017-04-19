@@ -11,7 +11,7 @@ class Stimulus{
 public:
 	virtual ~Stimulus(){};
 	// TODO: accept position of fly 
-	virtual void Update(Pose3D flyPose) = 0;
+	virtual std::string Update(Pose3D flyPose) = 0;
 	// TODO: add method to output per-frame information from stimulus
 	bool isDone = false;
 };

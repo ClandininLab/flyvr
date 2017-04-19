@@ -19,7 +19,7 @@ class CylinderBars : public Stimulus{
 public:
 	CylinderBars(std::string name, OgreApplication &app, CSimpleIniA &iniFile);
 	~CylinderBars();
-	void Update(Pose3D flyPose);
+	std::string Update(Pose3D flyPose);
 private:
 	void Setup(void);
 	void CreateScene(void);

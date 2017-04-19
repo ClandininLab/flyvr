@@ -37,6 +37,7 @@ namespace OgreApplicationNamespace{
 	// String containing the name of the stimulus config file
 	const char * GraphicsConfigFile = "tv.ini";
 	std::string StimConfigFile = "config.ini";
+	std::string GraphicsOutputFile;
 }
 
 using namespace OgreApplicationNamespace;
@@ -44,6 +45,9 @@ using namespace OgreApplicationNamespace;
 // High-level management of the graphics thread
 void StartGraphicsThread(std::string stimFile, std::string outDir){
 	std::cout << "Starting graphics thread.\n";
+
+	// Record the name of the output file
+	GraphicsOutputFile = outDir + "/" + "GraphicsThread.txt";
 
 	// Record the name of the stimulus file
 	StimConfigFile = stimFile;
@@ -82,7 +86,7 @@ void GraphicsThread(void){
 	app.setup();
 
 	// Attach application to stimulus manager
-	StimManager stim(app, StimConfigFile);
+	StimManager stim(app, StimConfigFile, GraphicsOutputFile);
 
 	// Let the main thread know that the 3D application is up and running
 	readyFor3D.update(true);
@@ -328,9 +332,15 @@ void OgreApplication::setup(void)
 {
 	mRoot = new Ogre::Root(Ogre::StringUtil::BLANK);
 
+#ifdef _DEBUG
+	auto PluginDir = Ogre::String(OGRE_TOP) + "/bin/debug";
+	mRoot->loadPlugin(PluginDir + "/" + Ogre::String("RenderSystem_Direct3D9_d.dll"));
+	mRoot->loadPlugin(PluginDir + "/" + Ogre::String("Plugin_ParticleFX_d.dll"));
+#else
 	auto PluginDir = Ogre::String(OGRE_TOP) + "/bin/release";
 	mRoot->loadPlugin(PluginDir + "/" + Ogre::String("RenderSystem_Direct3D9.dll"));
 	mRoot->loadPlugin(PluginDir + "/" + Ogre::String("Plugin_ParticleFX.dll"));
+#endif
 
 	setupResources("resources.cfg");
 

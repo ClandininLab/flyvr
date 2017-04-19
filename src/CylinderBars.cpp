@@ -128,7 +128,11 @@ void CylinderBars::CreateScene(void){
 	}
 }
 
-void CylinderBars::Update(Pose3D flyPose){
+std::string CylinderBars::Update(Pose3D flyPose){
+	std::string stimState;
+	double duration = 0;
+	double rotation = 0;
+
 	// In closed loop, "move the world" so the fly appears to be in the same position
 	if (closedLoop){
 		auto rootNode = app.getSceneManager()->getRootSceneNode();
@@ -138,14 +142,16 @@ void CylinderBars::Update(Pose3D flyPose){
 	}
 
 	if (currentState == CylinderBarStates::Init){
+		stimState = "Init";
 		lastTime = std::chrono::high_resolution_clock::now();
 		app.setBackground(backColorR, backColorG, backColorB);
 
 		currentState = CylinderBarStates::WaitBefore;
 	}
 	else if (currentState == CylinderBarStates::WaitBefore){
+		stimState = "WaitBefore";
 		auto thisTime = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration<double>(thisTime - lastTime).count();
+		duration = std::chrono::duration<double>(thisTime - lastTime).count();
 
 		if (duration >= waitBefore){
 			lastTime = std::chrono::high_resolution_clock::now();
@@ -153,13 +159,14 @@ void CylinderBars::Update(Pose3D flyPose){
 		}
 	}
 	else if (currentState == CylinderBarStates::Active){
+		stimState = "Active";
 		auto thisTime = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration<double>(thisTime - lastTime).count();
+		duration = std::chrono::duration<double>(thisTime - lastTime).count();
 
 		// Rotate stimulus
-		auto rot = duration * rotationSpeed;
+		rotation = duration * rotationSpeed;
 		stimNode->setOrientation(stimNode->getInitialOrientation());
-		stimNode->yaw(Ogre::Radian(rot));
+		stimNode->yaw(Ogre::Radian(rotation));
 
 		if (duration >= activeDuration){
 			lastTime = std::chrono::high_resolution_clock::now();
@@ -167,8 +174,9 @@ void CylinderBars::Update(Pose3D flyPose){
 		}
 	}
 	else if (currentState == CylinderBarStates::WaitAfter){
+		stimState = "WaitAfter";
 		auto thisTime = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration<double>(thisTime - lastTime).count();
+		duration = std::chrono::duration<double>(thisTime - lastTime).count();
 
 		if (duration >= waitAfter){
 			isDone = true;
@@ -177,4 +185,14 @@ void CylinderBars::Update(Pose3D flyPose){
 	else {
 		throw std::runtime_error("Invalid CylinderBar state.");
 	}
+
+	// Format output string
+	std::ostringstream oss;
+	oss << "\"";
+	oss << "state:" << stimState << ",";
+	oss << "duration:" << std::fixed << duration << ",";
+	oss << "rotation:" << std::fixed << rotation;
+	oss << "\"";
+
+	return oss.str();
 }
