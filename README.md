@@ -13,8 +13,19 @@ These instructions assume a Windows build platform.
 > cd tracker
 > mkdir build
 > cd build
+```
+For a optimized (Release) build:
+```
 > cmake .. -G "Visual Studio 12 Win64" -DCMAKE_BUILD_TYPE=Release
 > cmake --build . --target ALL_BUILD --config Release
-> cd Release
+> cd ../bin
+> tracker
+```
+
+For a debug build:
+```
+> cmake .. -G "Visual Studio 12 Win64" -DCMAKE_BUILD_TYPE=Debug
+> cmake --build . --target ALL_BUILD
+> cd ../bin
 > tracker
 ```
