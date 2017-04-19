@@ -16,7 +16,7 @@ These instructions assume a Windows build platform.
 ```
 For a optimized (Release) build:
 ```
-> cmake .. -G "Visual Studio 12 Win64" -DCMAKE_BUILD_TYPE=Release
+> cmake .. -G "Visual Studio 12 Win64"
 > cmake --build . --target ALL_BUILD --config Release
 > cd ../bin
 > tracker
@@ -24,7 +24,7 @@ For a optimized (Release) build:
 
 For a debug build:
 ```
-> cmake .. -G "Visual Studio 12 Win64" -DCMAKE_BUILD_TYPE=Debug
+> cmake .. -G "Visual Studio 12 Win64"
 > cmake --build . --target ALL_BUILD  --config Debug
 > cd ../bin
 > tracker
