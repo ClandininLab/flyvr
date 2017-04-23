@@ -37,7 +37,7 @@ For a debug build:
 Install Windows 10.
 
 ### Tools
-1. Install (Visual Studio 2017 Community)[https://www.visualstudio.com/]
+1. Install [Visual Studio 2017 Community](https://www.visualstudio.com/)
 2. Install the latest version of (CMake)[https://cmake.org/]
 3. Install the latest version of (pylon)[https://www.baslerweb.com/en/support/downloads/software-downloads/]
 
