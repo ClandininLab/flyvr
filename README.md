@@ -44,11 +44,11 @@ Adapted from instructions [here](https://github.com/gnea/grbl/wiki/Compiling-Grb
 6. Save and close config.h
 7. Launch the Arduino IDE
 8. Click the Sketch drop-down menu, navigate to Include Library and select Add .ZIP Library.
- * IMPORTANT: Be sure to select the GRBL folder inside the grbl-XXX folder, which only contains the source files and an example directory.
+    * IMPORTANT: Be sure to select the GRBL folder inside the grbl-XXX folder, which only contains the source files and an example directory.
 9. Open the GrblUpload Arduino example.
- * Click the File down-down menu, navigate to Examples->Grbl, and select GrblUpload.
+    * Click the File down-down menu, navigate to Examples->Grbl, and select GrblUpload.
 10. Compile and upload Grbl to your Arduino.
- * Connect your Arduino Uno to your computer.
- * Make sure your board is set to the Arduino Uno in the Tool->Board menu and the serial port is selected correctly in Tool->Serial Port.
- * Click the Upload, and GRBL should compile and flash to your Arduino.
+    * Connect your Arduino Uno to your computer.
+    * Make sure your board is set to the Arduino Uno in the Tool->Board menu and the serial port is selected correctly in Tool->Serial Port.
+    * Click the Upload, and GRBL should compile and flash to your Arduino.
 
