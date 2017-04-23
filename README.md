@@ -32,9 +32,26 @@ For a debug build:
 
 ## Setup
 
+### Operating System
+
+Install Windows 10.
+
+### Tools
+1. Install (Visual Studio 2017 Community)[https://www.visualstudio.com/]
+2. Install the latest version of (CMake)[https://cmake.org/]
+3. Install the latest version of (pylon)[https://www.baslerweb.com/en/support/downloads/software-downloads/]
+
+### Libraries
+
+1. Download (ASIO)[https://github.com/chriskohlhoff/asio].  No compiling is necessary.
+2. Download (SimpleINI)[https://github.com/brofield/simpleini].  No compiling is necessary.
+3. Install the (latest release)[http://opencv.org/releases.html] of OpenCV from source.
+4. Install (OGRE dependencies)[https://bitbucket.org/cabalistic/ogredeps] from source.
+5. Install (OGRE 1.9)[https://bitbucket.org/sinbad/ogre/branch/v1-9] from source.
+
 ### GRBL
 
-Adapted from instructions [here](https://github.com/gnea/grbl/wiki/Compiling-Grbl)
+Adapted from instructions (here)[https://github.com/gnea/grbl/wiki/Compiling-Grbl]
 
 1. Download GRBL source code: https://github.com/gnea/grbl
 2. Modify configuration for fast communication and 2-axis homing
