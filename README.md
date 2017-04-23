@@ -37,17 +37,18 @@ For a debug build:
 Adapted from instructions [here](https://github.com/gnea/grbl/wiki/Compiling-Grbl)
 
 1. Download GRBL source code: https://github.com/gnea/grbl
-2. Open config.h
-3. Change BAUD_RATE from 230400 to 400000 (around line 41)
-4. Comment out existing definitions for HOMING_CYCLE_0 and HOMING_CYCLE_1 (around lines 105-106)
-5. Uncomment definition for HOMING_CYCLE_0 that homes X and Y in one cycle (around line 110)
-6. Save and close config.h
-7. Launch the Arduino IDE
-8. Click the Sketch drop-down menu, navigate to Include Library and select Add .ZIP Library.
+2. Modify configuration for fast communication and 2-axis homing
+    1. Open config.h
+    2. Change BAUD_RATE from 230400 to 400000 (around line 41)
+    3. Comment out existing definitions for HOMING_CYCLE_0 and HOMING_CYCLE_1 (around lines 105-106)
+    4. Uncomment definition for HOMING_CYCLE_0 that homes X and Y in one cycle (around line 110)
+    5. Save and close config.h
+3. Launch the Arduino IDE
+4. Click the Sketch drop-down menu, navigate to Include Library and select Add .ZIP Library.
     * IMPORTANT: Be sure to select the GRBL folder inside the grbl-XXX folder, which only contains the source files and an example directory.
-9. Open the GrblUpload Arduino example.
+5. Open the GrblUpload Arduino example.
     * Click the File down-down menu, navigate to Examples->Grbl, and select GrblUpload.
-10. Compile and upload Grbl to your Arduino.
+6. Compile and upload Grbl to your Arduino.
     * Connect your Arduino Uno to your computer.
     * Make sure your board is set to the Arduino Uno in the Tool->Board menu and the serial port is selected correctly in Tool->Serial Port.
     * Click the Upload, and GRBL should compile and flash to your Arduino.
