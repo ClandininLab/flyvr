@@ -34,12 +34,13 @@ For a debug build:
 
 ### Operating System
 
-Install Windows 10.
+Install Windows 10 and update the NVidia graphics card drivers.
 
 ### Tools
-1. Install [Visual Studio 2017 Community](https://www.visualstudio.com/)
-2. Install the latest version of [CMake](https://cmake.org/)
-3. Install the latest version of [pylon](https://www.baslerweb.com/en/support/downloads/software-downloads/)
+1. Install [GitHub Desktop](https://desktop.github.com/)
+2. Install [Visual Studio 2017 Community](https://www.visualstudio.com/)
+3. Install the latest version of [CMake](https://cmake.org/)
+4. Install the latest version of [pylon](https://www.baslerweb.com/en/support/downloads/software-downloads/)
 
 ### Libraries
 
