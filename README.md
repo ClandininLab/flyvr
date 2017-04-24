@@ -73,25 +73,26 @@ Adapted instructions from [here](http://www.aupcgroup.com/blog/index.php?/archiv
 #### Ogre3D Main Library
 
 1. Open SourceTree.
-1. Click Clone / New.
-1. Enter URL (https://bitbucket.org/sinbad/ogre/)[https://bitbucket.org/sinbad/ogre/]
-1. Enter destination directory C:\lib\ogre
-1. Click Advanced Options
-1. Enter Branch v1-9
-1. Click Clone.
-2. Open CMake, set source directory to C:\lib\ogre and build directory C:\lib\ogre\build
-3. Click Configure, wait for process to finish.  
-4. Set OGRE_DEPENDENCIES_DIR to C:\lib\ogredeps\build\ogredeps
-5. Click Configure and repeat until none of the fields are marked in red.
-4. Click Generate.
+    1. Click Clone / New.
+    1. Enter URL (https://bitbucket.org/sinbad/ogre/)[https://bitbucket.org/sinbad/ogre/]
+    1. Enter destination directory C:\lib\ogre
+    1. Click Advanced Options
+    1. Enter Branch v1-9
+    1. Click Clone.
+2. Open CMake
+    1. Set source directory to C:\lib\ogre and build directory C:\lib\ogre\build
+    3. Click Configure, wait for process to finish.  
+    4. Set OGRE_DEPENDENCIES_DIR to C:\lib\ogredeps\build\ogredeps
+    5. Click Configure and repeat until none of the fields are marked in red.
+    4. Click Generate.
 5. Go to directory C:\lib\ogre\build, open OGRE.sln
-5. Open file RenderSystem_Direct3D9 -> include -> OgreD3D9Prerequisites.h
-    1. On line 75 comment out #include \<DxErr.h\>
-    1. Immediately after it paste in (this code)[https://pastebin.com/LQkqLfi8]
-6. Set config to Release, right click ALL_BUILD and click "Build"
-6. Set config to Debug, right click ALL_BUILD and click "Build"
-6. Set config to Release, right click INSTALL and click "Build"
-6. Set config to Debug, right click INSTALL and click "Build"
+    5. Open file RenderSystem_Direct3D9 -> include -> OgreD3D9Prerequisites.h
+        1. On line 75 comment out #include \<DxErr.h\>
+        1. Immediately after it paste in (this code)[https://pastebin.com/LQkqLfi8]
+    6. Set config to Release, right click ALL_BUILD and click "Build"
+    6. Set config to Debug, right click ALL_BUILD and click "Build"
+    6. Set config to Release, right click INSTALL and click "Build"
+    6. Set config to Debug, right click INSTALL and click "Build"
 
 ### GRBL
 
