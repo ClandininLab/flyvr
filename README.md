@@ -74,7 +74,7 @@ Adapted instructions from [here](http://www.aupcgroup.com/blog/index.php?/archiv
 
 1. Open SourceTree.
     1. Click Clone / New.
-    1. Enter URL (https://bitbucket.org/sinbad/ogre/)[https://bitbucket.org/sinbad/ogre/]
+    1. Enter URL [https://bitbucket.org/sinbad/ogre/](https://bitbucket.org/sinbad/ogre/)
     1. Enter destination directory C:\lib\ogre
     1. Click Advanced Options
     1. Enter Branch v1-9
