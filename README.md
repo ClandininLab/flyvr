@@ -37,6 +37,7 @@ For a debug build:
 Install Windows 10 and update the NVidia graphics card drivers.
 
 ### Tools
+0. Install [SourceTree](https://www.sourcetreeapp.com/)
 1. Install [GitHub Desktop](https://desktop.github.com/)
 2. Install [Visual Studio 2017 Community](https://www.visualstudio.com/)
     * Select "Desktop Development with C++" and "Game Development with C++" options
@@ -47,7 +48,8 @@ Install Windows 10 and update the NVidia graphics card drivers.
 
 1. Download [ASIO](https://github.com/chriskohlhoff/asio).  No compiling is necessary.
 2. Download [SimpleINI](https://github.com/brofield/simpleini).  No compiling is necessary.
-3. Download the [latest OpenCV binary](http://opencv.org/releases.html).
+3. Install the latest [OpenCV 2.4 binary](http://opencv.org/releases.html).
+0. Install the [DirectX End User Runtime](https://www.microsoft.com/en-us/download/confirmation.aspx?id=35)
 4. Install [OGRE 1.9](https://bitbucket.org/sinbad/ogre/branch/v1-9) from source.
     * Detailed instructions [here](http://www.aupcgroup.com/blog/index.php?/archives/9-Building-Ogre3D-with-Microsoft-Visual-C++-14.0-Visual-Studio-Community-2015.html)
     * Note that you will need to uncheck OGREDEPS_BUILD_SDL2 when building the Ogre3D dependencies.
