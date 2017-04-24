@@ -47,7 +47,7 @@ Install Windows 10 and update the NVidia graphics card drivers.
 
 1. Download [ASIO](https://github.com/chriskohlhoff/asio).  No compiling is necessary.
 2. Download [SimpleINI](https://github.com/brofield/simpleini).  No compiling is necessary.
-3. Install the [latest release](http://opencv.org/releases.html) of OpenCV from source.
+3. Download the [latest OpenCV binary](http://opencv.org/releases.html).
 4. Install [OGRE dependencies](https://bitbucket.org/cabalistic/ogredeps) from source.
 5. Install [OGRE 1.9](https://bitbucket.org/sinbad/ogre/branch/v1-9) from source.
 
