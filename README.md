@@ -82,7 +82,6 @@ Adapted instructions from [here](http://www.aupcgroup.com/blog/index.php?/archiv
 2. Open CMake, set source directory to C:\lib\ogre and build directory C:\lib\ogre\build
 3. Click Configure, wait for process to finish.  
 4. Set OGRE_DEPENDENCIES_DIR to C:\lib\ogredeps\build\ogredeps
-5. Uncheck OGRE_BUILD_RENDERSYSTEM_GL and  OGRE_BUILD_RENDERSYSTEM_GL3PLUS
 5. Click Configure and repeat until none of the fields are marked in red.
 4. Click Generate.
 5. Go to directory C:\lib\ogre\build, open OGRE.sln
