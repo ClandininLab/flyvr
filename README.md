@@ -16,7 +16,7 @@ These instructions assume a Windows build platform.
 ```
 For a optimized (Release) build:
 ```
-> cmake .. -G "Visual Studio 12 Win64"
+> cmake .. -G "Visual Studio 15 Win64"
 > cmake --build . --target ALL_BUILD --config Release
 > cd ../bin
 > tracker
@@ -24,7 +24,7 @@ For a optimized (Release) build:
 
 For a debug build:
 ```
-> cmake .. -G "Visual Studio 12 Win64"
+> cmake .. -G "Visual Studio 15 Win64"
 > cmake --build . --target ALL_BUILD  --config Debug
 > cd ../bin
 > tracker
@@ -37,7 +37,7 @@ For a debug build:
 Install Windows 10 and update the NVidia graphics card drivers.
 
 ### Tools
-0. Install [SourceTree](https://www.sourcetreeapp.com/)
+1. Install [SourceTree](https://www.sourcetreeapp.com/)
 1. Install [GitHub Desktop](https://desktop.github.com/)
 2. Install [Visual Studio 2017 Community](https://www.visualstudio.com/)
     * Select "Desktop Development with C++" and "Game Development with C++" options
@@ -46,13 +46,44 @@ Install Windows 10 and update the NVidia graphics card drivers.
 
 ### Libraries
 
-1. Download [ASIO](https://github.com/chriskohlhoff/asio).  No compiling is necessary.
-2. Download [SimpleINI](https://github.com/brofield/simpleini).  No compiling is necessary.
-3. Install the latest [OpenCV 2.4 binary](http://opencv.org/releases.html).
-4. Install [OGRE 1.9](https://bitbucket.org/sinbad/ogre/branch/v1-9) from source.
-    * Detailed instructions [here](http://www.aupcgroup.com/blog/index.php?/archives/9-Building-Ogre3D-with-Microsoft-Visual-C++-14.0-Visual-Studio-Community-2015.html)
-    * Note that you will need to uncheck OGREDEPS_BUILD_SDL2 when building the Ogre3D dependencies.
-    * You do not have to edit the snprintf definition as described in the instructions, since that has been fixed in the Ogre3D dependency source code.
+1. Download [ASIO](https://github.com/chriskohlhoff/asio), move code to C:\lib\asio
+2. Download [SimpleINI](https://github.com/brofield/simpleini), move code to C:\lib\simpleini
+3. Install the latest [OpenCV 2.4 binary](http://opencv.org/releases.html) to C:\lib\opencv
+
+### Installing OGRE 1.9
+
+Adapted instructions from [here](http://www.aupcgroup.com/blog/index.php?/archives/9-Building-Ogre3D-with-Microsoft-Visual-C++-14.0-Visual-Studio-Community-2015.html).
+
+#### Ogre3D Dependencies
+1. Download [OGRE dependencies code](https://bitbucket.org/cabalistic/ogredeps/downloads/) to C:\lib\ogredeps
+1. Create directory C:\lib\ogredeps\build
+2. Open CMake, set source directory to C:\lib\ogredeps and build directory C:\lib\ogredeps\build
+3. Click Configure, wait for process to finish.  
+4. Uncheck OGREDEPS_BUILD_SDL2
+5. Click Configure and repeat until none of the fields are marked in red.
+4. Click Generate.
+5. Go to directory C:\lib\ogredeps\build, open OGREDEPS.sln
+6. Set config to Release, right click ALL_BUILD and click "Build"
+6. Set config to Debug, right click ALL_BUILD and click "Build"
+6. Set config to Release, right click INSTALL and click "Build"
+6. Set config to Debug, right click INSTALL and click "Build"
+
+#### Ogre3D Main Library
+
+1. Go to [OGRE 1.9 site](https://bitbucket.org/sinbad/ogre/branch/v1-9).
+2. Click Checkout -> Checkout in SourceTree
+3. Follow instructions to download code through SourceTree to C:\lib\ogre
+2. Open CMake, set source directory to C:\lib\ogre and build directory C:\lib\ogre\build
+3. Click Configure, wait for process to finish.  
+4. Set OGRE_DEPENDENCIES_DIR to C:\lib\ogredeps\build\ogredeps
+5. Uncheck OGRE_BUILD_RENDERSYSTEM_GL and  OGRE_BUILD_RENDERSYSTEM_GL3PLUS
+5. Click Configure and repeat until none of the fields are marked in red.
+4. Click Generate.
+5. Go to directory C:\lib\ogre\build, open OGRE.sln
+6. Set config to Release, right click ALL_BUILD and click "Build"
+6. Set config to Debug, right click ALL_BUILD and click "Build"
+6. Set config to Release, right click INSTALL and click "Build"
+6. Set config to Debug, right click INSTALL and click "Build"
 
 ### GRBL
 
