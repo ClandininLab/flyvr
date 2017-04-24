@@ -39,6 +39,7 @@ Install Windows 10 and update the NVidia graphics card drivers.
 ### Tools
 1. Install [GitHub Desktop](https://desktop.github.com/)
 2. Install [Visual Studio 2017 Community](https://www.visualstudio.com/)
+    * Select "Desktop Development with C++" and "Game Development with C++" options
 3. Install the latest version of [CMake](https://cmake.org/)
 4. Install the latest version of [pylon](https://www.baslerweb.com/en/support/downloads/software-downloads/)
 
