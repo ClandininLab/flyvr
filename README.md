@@ -87,7 +87,7 @@ Adapted instructions from [here](http://www.aupcgroup.com/blog/index.php?/archiv
     4. Click Generate.
 5. Go to directory C:\lib\ogre\build, open OGRE.sln
     5. Open file RenderSystem_Direct3D9 -> include -> OgreD3D9Prerequisites.h
-        1. On line 75 comment out #include \<DxErr.h\>
+        1. On line 75 comment out #include \<DxErr.h>
         1. Immediately after it paste in (this code)[https://pastebin.com/LQkqLfi8]
     6. Set config to Release, right click ALL_BUILD and click "Build"
     6. Set config to Debug, right click ALL_BUILD and click "Build"
