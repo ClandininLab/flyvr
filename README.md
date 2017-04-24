@@ -49,6 +49,7 @@ Install Windows 10 and update the NVidia graphics card drivers.
 1. Download [ASIO](https://github.com/chriskohlhoff/asio), move code to C:\lib\asio
 2. Download [SimpleINI](https://github.com/brofield/simpleini), move code to C:\lib\simpleini
 3. Install the latest [OpenCV 2.4 binary](http://opencv.org/releases.html) to C:\lib\opencv
+1. Install [.NET Framework](https://www.microsoft.com/en-us/download/details.aspx?id=21)
 1. Install [DirectX SDK](http://www.microsoft.com/en-us/download/details.aspx?id=6812)
 
 ### Installing OGRE 1.9
