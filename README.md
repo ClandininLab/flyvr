@@ -64,10 +64,10 @@ Adapted instructions from [here](http://docs.opencv.org/3.2.0/d3/d52/tutorial_wi
 1. Open CMake
 1. TODO: describe configuring CMake
 1. Open OpenCv.sln
-    6. Set config to Release, right click ALL_BUILD and click "Build"
-    6. Set config to Debug, right click ALL_BUILD and click "Build"
-    6. Set config to Release, right click INSTALL and click "Build"
-    6. Set config to Debug, right click INSTALL and click "Build"
+    1. Set config to Release, right click ALL_BUILD and click "Build"
+    2. Set config to Debug, right click ALL_BUILD and click "Build"
+    3. Set config to Release, right click INSTALL and click "Build"
+    4. Set config to Debug, right click INSTALL and click "Build"
 
 ### Installing OGRE 1.9
 
@@ -83,10 +83,10 @@ Adapted instructions from [here](http://www.aupcgroup.com/blog/index.php?/archiv
     5. Click Configure and repeat until none of the fields are marked in red.
     4. Click Generate.
 5. Go to directory C:\lib\ogredeps\build, open OGREDEPS.sln
-    6. Set config to Release, right click ALL_BUILD and click "Build"
-    6. Set config to Debug, right click ALL_BUILD and click "Build"
-    6. Set config to Release, right click INSTALL and click "Build"
-    6. Set config to Debug, right click INSTALL and click "Build"
+    1. Set config to Release, right click ALL_BUILD and click "Build"
+    2. Set config to Debug, right click ALL_BUILD and click "Build"
+    3. Set config to Release, right click INSTALL and click "Build"
+    4. Set config to Debug, right click INSTALL and click "Build"
 
 #### Ogre3D Main Library
 
