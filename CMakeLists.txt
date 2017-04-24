@@ -6,10 +6,10 @@ cmake_minimum_required(VERSION 3.6)
 project (Tracker)
 
 # Library locations
-set(INI_TOP "C:/lib/simpleini-master")
+set(INI_TOP "C:/lib/simpleini")
 set(CV_TOP "C:/lib/opencv/build")
-set(OGRE_TOP "C:/lib/sinbad-ogre-108ab0bcc696/build/sdk")
-set(ASIO_TOP "C:/lib/asio-master/asio")
+set(OGRE_TOP "C:/lib/ogre/build/sdk")
+set(ASIO_TOP "C:/lib/asio")
 
 # Bring in headers
 set(INI_INC_DIR ${INI_TOP})
@@ -37,10 +37,10 @@ add_executable(tracker ${SOURCES})
 
 # Set up linking
 target_link_libraries(tracker 
-            debug opencv_core2410d.lib optimized opencv_core2410.lib
-            debug opencv_imgproc2410d.lib optimized opencv_imgproc2410.lib
-            debug opencv_highgui2410d.lib optimized opencv_highgui2410.lib
-            debug opencv_features2d2410d.lib optimized opencv_features2d2410.lib
+            debug opencv_core2413d.lib optimized opencv_core2413.lib
+            debug opencv_imgproc2413d.lib optimized opencv_imgproc2413.lib
+            debug opencv_highgui2413d.lib optimized opencv_highgui2413.lib
+            debug opencv_features2d2413d.lib optimized opencv_features2d2413.lib
             debug OgreMain_d.lib optimized OgreMain.lib
             debug OIS_d.lib optimized OIS.lib
             debug OgreOverlay_d.lib optimized OgreOverlay.lib)

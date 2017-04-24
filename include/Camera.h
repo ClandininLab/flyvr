@@ -22,7 +22,7 @@ struct FlyPose{
 	// Validity indicator, false initially
 	bool valid;
 
-	FlyPose() : x(0), y(0), angle(0), tstamp(0), present(false), valid(false) {}
+	FlyPose() noexcept : x(0), y(0), angle(0), tstamp(0), present(false), valid(false) {}
 };
 
 // High-level thread management for graphics operations

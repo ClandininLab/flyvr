@@ -18,7 +18,7 @@ struct GrblCommand{
 	double x;
 	double y;
 	bool fresh;
-	GrblCommand() : x(0), y(0), fresh(false) {}
+	GrblCommand() noexcept: x(0), y(0), fresh(false) {}
 };
 
 // GRBL states
@@ -43,7 +43,7 @@ struct GrblStatus
 	// Validity indicator, false initially
 	bool valid;
 
-	GrblStatus() : state(GrblStates::Idle), x(0), y(0), z(0), tstamp(0), 
+	GrblStatus() noexcept: state(GrblStates::Idle), x(0), y(0), z(0), tstamp(0), 
 		planBuf(15), rxBuf(64), valid(false) {}
 };
 
