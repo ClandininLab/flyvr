@@ -97,7 +97,7 @@ Adapted instructions from [here](http://www.aupcgroup.com/blog/index.php?/archiv
 
 ### GRBL
 
-Adapted from instructions (here)[https://github.com/gnea/grbl/wiki/Compiling-Grbl]
+Adapted from instructions [here](https://github.com/gnea/grbl/wiki/Compiling-Grbl)
 
 1. Download [GRBL source code](https://github.com/gnea/grbl)
 2. Modify configuration for fast communication and 2-axis homing
