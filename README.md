@@ -50,6 +50,8 @@ Install Windows 10 and update the NVidia graphics card drivers.
 3. Download the [latest OpenCV binary](http://opencv.org/releases.html).
 4. Install [OGRE 1.9](https://bitbucket.org/sinbad/ogre/branch/v1-9) from source.
     * Detailed instructions [here](http://www.aupcgroup.com/blog/index.php?/archives/9-Building-Ogre3D-with-Microsoft-Visual-C++-14.0-Visual-Studio-Community-2015.html)
+    * Note that you will need to uncheck OGREDEPS_BUILD_SDL2 when building the Ogre3D dependencies.
+    * You do not have to edit the snprintf definition as described in the instructions, since that has been fixed in the Ogre3D dependency source code.
 
 ### GRBL
 
