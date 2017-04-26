@@ -30,16 +30,19 @@ For a debug build:
 > tracker
 ```
 
-## Setup
+## Computer Setup
+
+These are instructions to prepare the lab compute from a fresh Windows install.
 
 ### Operating System
 
 1. Install Windows 10
-1. Update network card driver from CD
+1. Update network card driver from Gigabyte CD
 1. Update (Intel drivers)[http://www.intel.com/content/www/us/en/support/detect.html]
 
 ### Tools
 1. Install [CMake](https://cmake.org/)
+1. Install [Notepad++](https://notepad-plus-plus.org/)
 1. Install [GitHub desktop](https://desktop.github.com/)
 1. Install [pylon](https://www.baslerweb.com/en/support/downloads/software-downloads/)
 1. Install [Visual Studio 2015 Community](http://softwarelicensingstore.stanford.edu/)
@@ -55,7 +58,9 @@ For a debug build:
     1. [BOOST](https://goo.gl/QmGS7N) to C:\lib\boost
     1. [OGRE 1.9 SDK](https://goo.gl/jzp20i) to C:\lib\ogre
 
-### GRBL
+### GRBL Setup
+
+These are instructions to program a fresh Arduino Uno board with the GRBL software.
 
 Adapted from instructions [here](https://github.com/gnea/grbl/wiki/Compiling-Grbl)
 
