@@ -34,17 +34,21 @@ For a debug build:
 
 ### Operating System
 
-Install Windows 10 and update the NVidia graphics card drivers.
+1. Install Windows 10
+1. Update network card driver from CD
+1. Update (Intel drivers)[http://www.intel.com/content/www/us/en/support/detect.html]
 
 ### Tools
-1. Install [Visual Studio 2015 Community](https://www.visualstudio.com/)
-    1. Be sure to install C++ Tools.  Do not install the Windows SDK through Visual Studio, since it is outdated.
-1. Install the [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk).
-1. Install the latest version of [CMake](https://cmake.org/)
-1. Install the latest version of [pylon](https://www.baslerweb.com/en/support/downloads/software-downloads/)
+1. Install [CMake](https://cmake.org/)
+1. Install [GitHub desktop](https://desktop.github.com/)
+1. Install [pylon](https://www.baslerweb.com/en/support/downloads/software-downloads/)
+1. Install [Visual Studio 2015 Community](http://softwarelicensingstore.stanford.edu/)
+    1. Be sure to install C++ Tools and Windows SDK.
+1. Install the latest [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk)
 
 ### Libraries
 
+1. Download [ASIO](https://github.com/chriskohlhoff/asio) to C:\lib\asio
 1. Download [SimpleINI](https://github.com/brofield/simpleini) to C:\lib\simpleini
 1. Download [OpenCV 3.2](http://opencv.org/releases.html) to C:\lib\opencv
 1. From this [forum post](http://ogre3d.org/forums/viewtopic.php?t=69274) install the following:
