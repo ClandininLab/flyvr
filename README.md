@@ -44,7 +44,7 @@ Install Windows 10 and update the NVidia graphics card drivers.
 ### Libraries
 
 1. Download [SimpleINI](https://github.com/brofield/simpleini) to C:\lib\simpleini
-1. Download [OpenCV 2.4.13](http://opencv.org/releases.html) to C:\lib\opencv
+1. Download [OpenCV 3.2](http://opencv.org/releases.html) to C:\lib\opencv
 1. From this [forum post](http://ogre3d.org/forums/viewtopic.php?t=69274) install the following:
     1. [BOOST](https://goo.gl/QmGS7N)
     1. [OGRE 1.9 SDK](https://goo.gl/jzp20i)
