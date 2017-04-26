@@ -8,23 +8,27 @@ project (Tracker)
 # Library locations
 set(INI_TOP "C:/lib/simpleini")
 set(CV_TOP "C:/lib/opencv/build")
-set(OGRE_TOP "C:/lib/ogre/build/sdk")
+set(OGRE_TOP "C:/lib/ogre")
 set(ASIO_TOP "C:/lib/asio")
+set(BOOST_TOP "C:/lib/boost")
 
 # Bring in headers
 set(INI_INC_DIR ${INI_TOP})
 set(CV_INC_DIR "${CV_TOP}/include")
 set(ASIO_INC_DIR "${ASIO_TOP}/include")
 set(OGRE_INC_DIR "${OGRE_TOP}/include")
+set(BOOST_INC_DIR "${BOOST_TOP}")
 list(APPEND INCLUDE_DIRS ${INI_INC_DIR} ${CV_INC_DIR} ${ASIO_INC_DIR})
 list(APPEND INCLUDE_DIRS "${OGRE_INC_DIR}/OGRE" "${OGRE_INC_DIR}/OGRE/Overlay" "${OGRE_INC_DIR}/OIS")
+list(APPEND INCLUDE_DIRS "${BOOST_INC_DIR}")
 include_directories(include ${INCLUDE_DIRS})
 
 # Bring in library directories
 # Note that CMake will add Release and Debug subdirectories for each link_directory
-set(CV_LIB_DIR "${CV_TOP}/x64/vc12/lib")
+set(CV_LIB_DIR "${CV_TOP}/x64/vc14/lib")
 set(OGRE_LIB_DIR "${OGRE_TOP}/lib")
-link_directories(${CV_LIB_DIR} ${OGRE_LIB_DIR})
+set(BOOST_LIB_DIR "${BOOST_TOP}/lib")
+link_directories(${CV_LIB_DIR} ${OGRE_LIB_DIR} ${BOOST_LIB_DIR})
 
 # Define all source files
 list(APPEND SOURCES "src/CylinderBars.cpp" "src/Tracker.cpp" "src/Camera.cpp")
@@ -37,15 +41,13 @@ add_executable(tracker ${SOURCES})
 
 # Set up linking
 target_link_libraries(tracker 
-            debug opencv_core2413d.lib optimized opencv_core2413.lib
-            debug opencv_imgproc2413d.lib optimized opencv_imgproc2413.lib
-            debug opencv_highgui2413d.lib optimized opencv_highgui2413.lib
-            debug opencv_features2d2413d.lib optimized opencv_features2d2413.lib
+            debug opencv_world320d.lib optimized opencv_world320.lib
             debug OgreMain_d.lib optimized OgreMain.lib
             debug OIS_d.lib optimized OIS.lib
             debug OgreOverlay_d.lib optimized OgreOverlay.lib)
 
 # Define DLL locations
+set(CV_DLL_DIR "${CV_TOP}/x64/vc14/bin")
 set(OGRE_DLL_DIR_OPTIMIZED "${OGRE_TOP}/bin/release")
 set(OGRE_DLL_DIR_DEBUG "${OGRE_TOP}/bin/debug")
 
@@ -57,6 +59,8 @@ set(OUT_PATH $<TARGET_FILE_DIR:tracker>)
 
 # Set up post-build copying of config files and DLLs
 # http://stackoverflow.com/questions/10671916/how-to-copy-dll-files-into-the-same-folder-as-the-executable-using-cmake
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_world320.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_world320d.dll")
 list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR_OPTIMIZED}/OgreMain.dll")
 list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR_OPTIMIZED}/OgreOverlay.dll")
 list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR_DEBUG}/OgreMain_d.dll")
@@ -75,16 +79,4 @@ add_definitions(-DASIO_STANDALONE)
 add_definitions(-DWIN32_LEAN_AND_MEAN)
 
 # Need to define _WIN32_WINNT for ASIO
-# http://stackoverflow.com/questions/9742003/platform-detection-in-cmake
-macro(get_WIN32_WINNT version)
-    if (WIN32 AND CMAKE_SYSTEM_VERSION)
-        set(ver ${CMAKE_SYSTEM_VERSION})
-        string(REPLACE "." "" ver ${ver})
-        string(REGEX REPLACE "([0-9])" "0\\1" ver ${ver})
-
-        set(${version} "0x${ver}")
-    endif()
-endmacro()
-
-get_WIN32_WINNT(ver)
-add_definitions(-D_WIN32_WINNT=${ver})
+add_definitions(-D_WIN32_WINNT=0x0A00)

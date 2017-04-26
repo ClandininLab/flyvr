@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <atomic>
+#include <vector>
 #include <SimpleIni.h>
 
 #include "Utility.h"
@@ -256,7 +257,7 @@ void processFrame(const Mat &inFrame, Mat &outFrame){
 }
 
 // Comparison function for contour sizes
-bool contourCompare(vector<Point> a, vector<Point> b) {
+bool contourCompare(std::vector<Point> a, std::vector<Point> b) {
 	return a.size() < b.size();
 }
 
@@ -267,8 +268,8 @@ FlyPose locateFly(const Mat &inFrame){
 
 	// Variables related to contour search
 	RotatedRect boundingBox;
-	vector<std::vector<cv::Point>> imContours;
-	vector<cv::Vec4i> imHierarchy;
+	std::vector<std::vector<cv::Point>> imContours;
+	std::vector<cv::Vec4i> imHierarchy;
 
 	// Find all contours in image
 	findContours(inFrame, imContours, imHierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
