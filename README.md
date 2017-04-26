@@ -37,7 +37,12 @@ These are instructions to prepare the lab compute from a fresh Windows install.
 ### Operating System
 
 1. Install Windows 10
-1. Update network card driver from Gigabyte CD
+1. Install the following from the Gigabyte CD
+    1. INF Update Utility
+    1. Intel(R) Management Engine Software
+    1. Creative Sound Driver
+    1. Bigfoot Networks Killer Network Manager
+    1. Intel Rapid Storage Technology Driver
 1. Update (Intel drivers)[http://www.intel.com/content/www/us/en/support/detect.html]
 
 ### Tools
