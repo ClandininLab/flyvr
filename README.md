@@ -38,7 +38,8 @@ Install Windows 10 and update the NVidia graphics card drivers.
 
 ### Tools
 1. Install [Visual Studio 2015 Community](https://www.visualstudio.com/)
-    1. Be sure to install C++ Tools and Windows SDK
+    1. Be sure to install C++ Tools.  Do not install the Windows SDK through Visual Studio, since it is outdated.
+1. Install the [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk).
 1. Install the latest version of [CMake](https://cmake.org/)
 1. Install the latest version of [pylon](https://www.baslerweb.com/en/support/downloads/software-downloads/)
 
