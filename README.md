@@ -16,7 +16,7 @@ These instructions assume a Windows build platform.
 ```
 For a optimized (Release) build:
 ```
-> cmake .. -G "Visual Studio 15 Win64"
+> cmake .. -G "Visual Studio 14 Win64"
 > cmake --build . --target ALL_BUILD --config Release
 > cd ../bin
 > tracker
@@ -24,7 +24,7 @@ For a optimized (Release) build:
 
 For a debug build:
 ```
-> cmake .. -G "Visual Studio 15 Win64"
+> cmake .. -G "Visual Studio 14 Win64"
 > cmake --build . --target ALL_BUILD  --config Debug
 > cd ../bin
 > tracker
@@ -37,81 +37,17 @@ For a debug build:
 Install Windows 10 and update the NVidia graphics card drivers.
 
 ### Tools
-1. Install [SourceTree](https://www.sourcetreeapp.com/)
-1. Install [GitHub Desktop](https://desktop.github.com/)
-2. Install [Visual Studio 2017 Community](https://www.visualstudio.com/)
-    * Select "Desktop Development with C++" and "Game Development with C++" options
-3. Install the latest version of [CMake](https://cmake.org/)
-4. Install the latest version of [pylon](https://www.baslerweb.com/en/support/downloads/software-downloads/)
+1. Install [Visual Studio 2015 Community](https://www.visualstudio.com/)
+1. Install the latest version of [CMake](https://cmake.org/)
+1. Install the latest version of [pylon](https://www.baslerweb.com/en/support/downloads/software-downloads/)
 
 ### Libraries
 
-1. Download [ASIO](https://github.com/chriskohlhoff/asio) to C:\lib\asio
-2. Download [SimpleINI](https://github.com/brofield/simpleini) to C:\lib\simpleini
-1. Install [.NET Framework](https://www.microsoft.com/en-us/download/details.aspx?id=21)
-1. Install [DirectX SDK](http://www.microsoft.com/en-us/download/details.aspx?id=6812)
-
-### Installing OpenCV 3.2
-
-Adapted instructions from [here](http://docs.opencv.org/3.2.0/d3/d52/tutorial_windows_install.html).
-
-1. Download [OpenCV 3.2 source](http://opencv.org/releases.html) to C:\lib\opencv
-1. Make directory C:\lib\opencv\dep
-    1. Download [Intel TBB source](https://github.com/01org/tbb/releases) to C:\lib\opencv\dep
-    1. Download [Intel IPP source](https://software.intel.com/en-us/intel-ipp) to C:\lib\opencv\dep
-    1. Download [Eigen source](http://eigen.tuxfamily.org/index.php?title=Main_Page#Download) to C:\lib\eigen\dep
-1. Make directory C:\lib\opencv\build
-1. Open CMake
-1. TODO: describe configuring CMake
-1. Open OpenCv.sln
-    1. Set config to Release, right click ALL_BUILD and click "Build"
-    2. Set config to Debug, right click ALL_BUILD and click "Build"
-    3. Set config to Release, right click INSTALL and click "Build"
-    4. Set config to Debug, right click INSTALL and click "Build"
-
-### Installing OGRE 1.9
-
-Adapted instructions from [here](http://www.aupcgroup.com/blog/index.php?/archives/9-Building-Ogre3D-with-Microsoft-Visual-C++-14.0-Visual-Studio-Community-2015.html).
-
-#### Ogre3D Dependencies
-1. Download [OGRE dependencies code](https://bitbucket.org/cabalistic/ogredeps/downloads/) to C:\lib\ogredeps
-1. Create directory C:\lib\ogredeps\build
-2. Open CMake.
-    1. Set source directory to C:\lib\ogredeps and build directory C:\lib\ogredeps\build
-    3. Click Configure, wait for process to finish.  
-    4. Uncheck OGREDEPS_BUILD_SDL2
-    5. Click Configure and repeat until none of the fields are marked in red.
-    4. Click Generate.
-5. Go to directory C:\lib\ogredeps\build, open OGREDEPS.sln
-    1. Set config to Release, right click ALL_BUILD and click "Build"
-    2. Set config to Debug, right click ALL_BUILD and click "Build"
-    3. Set config to Release, right click INSTALL and click "Build"
-    4. Set config to Debug, right click INSTALL and click "Build"
-
-#### Ogre3D Main Library
-
-1. Open SourceTree.
-    1. Click Clone / New.
-    1. Enter URL [https://bitbucket.org/sinbad/ogre/](https://bitbucket.org/sinbad/ogre/)
-    1. Enter destination directory C:\lib\ogre
-    1. Click Advanced Options
-    1. Enter Branch v1-9
-    1. Click Clone.
-2. Open CMake
-    1. Set source directory to C:\lib\ogre and build directory C:\lib\ogre\build
-    3. Click Configure, wait for process to finish.  
-    4. Set OGRE_DEPENDENCIES_DIR to C:\lib\ogredeps\build\ogredeps
-    5. Click Configure and repeat until none of the fields are marked in red.
-    4. Click Generate.
-5. Go to directory C:\lib\ogre\build, open OGRE.sln
-6. Open file RenderSystem_Direct3D9 -> include -> OgreD3D9Prerequisites.h
-    1. On line 75 comment out #include \<DxErr.h>
-    1. Immediately after it paste in [this code](https://pastebin.com/LQkqLfi8)
-    1. Save file
-6. Set config to Release, right click ALL_BUILD and click "Build"
-6. Set config to Debug, right click ALL_BUILD and click "Build"
-6. Set config to Release, right click INSTALL and click "Build"
-6. Set config to Debug, right click INSTALL and click "Build"
+1. Download [SimpleINI](https://github.com/brofield/simpleini) to C:\lib\simpleini
+1. Download [OpenCV 3.2](http://opencv.org/releases.html) to C:\lib\opencv
+1. From this [forum post](http://ogre3d.org/forums/viewtopic.php?t=69274) install the following:
+    1. [BOOST](https://goo.gl/QmGS7N)
+    1. [OGRE SDK](https://goo.gl/jzp20i)
 
 ### GRBL
 
@@ -133,4 +69,3 @@ Adapted from instructions [here](https://github.com/gnea/grbl/wiki/Compiling-Grb
     * Connect your Arduino Uno to your computer.
     * Make sure your board is set to the Arduino Uno in the Tool->Board menu and the serial port is selected correctly in Tool->Serial Port.
     * Click the Upload, and GRBL should compile and flash to your Arduino.
-
