@@ -51,7 +51,8 @@ These are instructions to prepare the lab compute from a fresh Windows install.
 1. Install [7Zip](http://www.7-zip.org/download.html)
 1. Install [pylon](https://www.baslerweb.com/en/support/downloads/software-downloads/)
 1. Install [Visual Studio 2015 Community with Update 3](https://my.visualstudio.com/downloads)
-    1. Be sure to install C++ Tools and Windows SDK.
+    1. You may have to create an account and subscribe to the free "Visual Studio Dev Essentials"
+    1. Do a custom install with only Programming Tools -> Visual C++ -> Common Tools for Visual C++ 2015 selected.
 1. Install the latest [Windows SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-10-sdk)
 
 ### Libraries
