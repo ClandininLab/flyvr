@@ -42,7 +42,6 @@ These are instructions to prepare the lab compute from a fresh Windows install.
     1. Intel(R) Management Engine Software
     1. Creative Sound Driver
     1. Bigfoot Networks Killer Network Manager
-    1. Intel Rapid Storage Technology Driver
 1. Update (Intel drivers)[http://www.intel.com/content/www/us/en/support/detect.html]
 
 ### Tools
