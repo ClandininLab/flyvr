@@ -50,16 +50,9 @@ void CylinderBars::Setup(){
 	rotationSpeed = -1.0 * M_PI / 180.0 * iniFile.GetDoubleValue(name.c_str(), "rotation-speed", 15.0);
 
 	// Less commonly used parameters
-	lightHeight = iniFile.GetDoubleValue(name.c_str(), "light-height", 1.25);
 	patternRadius = iniFile.GetDoubleValue(name.c_str(), "pattern-radius", 0.8);
 	panelHeight = iniFile.GetDoubleValue(name.c_str(), "panel-height", 5);
 	panelThickness = iniFile.GetDoubleValue(name.c_str(), "panel-thickness", 0.001);
-
-	// Background light definition
-	std::string backLight(iniFile.GetValue(name.c_str(), "background-light", "0"));
-	backLightR = getColor(backLight, ColorType::Red);
-	backLightG = getColor(backLight, ColorType::Green);
-	backLightB = getColor(backLight, ColorType::Blue);
 
 	// Create the scene
 	CreateScene();
@@ -76,13 +69,8 @@ void CylinderBars::CreateScene(void){
 	// Create node for all stimulus objects
 	stimNode = rootNode->createChildSceneNode();
 
-	// Turn on background lighting
-	sceneMgr->setAmbientLight(Ogre::ColourValue(backLightR, backLightG, backLightB));
-
-	// Create main light
-	auto light = sceneMgr->createLight();
-	light->setPosition(Ogre::Real(0), Ogre::Real(lightHeight), Ogre::Real(0));
-	stimNode->attachObject(light);
+	// Ambient lighting sets the color of the panels, since they are white
+	sceneMgr->setAmbientLight(Ogre::ColourValue(foreColorR, foreColorG, foreColorB));
 
 	// Derived scene parameters
 	auto dtheta = (2.0 * M_PI) / numSpatialPeriod;
@@ -120,11 +108,6 @@ void CylinderBars::CreateScene(void){
 		// Attach the cube mesh to the panel
 		auto panelEnt = sceneMgr->createEntity("cube.mesh");
 		panelNode->attachObject(panelEnt);
-
-		// Set the panel color to the desired value
-		// TODO: is there a better way to set the color of a panel?
-		auto panelColor = Ogre::ColourValue(foreColorR, foreColorG, foreColorB);
-		panelEnt->getSubEntity(0)->getMaterial().getPointer()->getTechnique(0)->getPass(0)->setDiffuse(panelColor);
 	}
 }
 

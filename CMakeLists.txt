@@ -8,7 +8,7 @@ project (Tracker)
 # Library locations
 set(INI_TOP "C:/lib/simpleini")
 set(CV_TOP "C:/lib/opencv/build")
-set(OGRE_TOP "C:/lib/ogre")
+set(OGRE_TOP "C:/lib/ogre/build/sdk")
 set(ASIO_TOP "C:/lib/asio")
 set(BOOST_TOP "C:/lib/boost")
 

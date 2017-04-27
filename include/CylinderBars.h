@@ -45,12 +45,6 @@ private:
 	double backColorG;
 	double backColorB;
 
-	double backLightR;
-	double backLightG;
-	double backLightB;
-
-	double lightHeight;
-
 	double waitBefore;
 	double activeDuration;
 	double waitAfter;
