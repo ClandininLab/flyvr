@@ -63,8 +63,21 @@ These are instructions to prepare the lab compute from a fresh Windows install.
 1. Download [ASIO](https://github.com/chriskohlhoff/asio) to C:\lib\asio
 1. Download [SimpleINI](https://github.com/brofield/simpleini) to C:\lib\simpleini
 1. Download [OpenCV 3.2](http://opencv.org/releases.html) to C:\lib\opencv
-
-### Building Ogre Dependencies
+ 
+#### Building Ogre3D Dependencies
+1. Download [OGRE dependencies code](https://bitbucket.org/cabalistic/ogredeps/downloads/) to C:\lib\ogredeps
+1. Create directory C:\lib\ogredeps\build
+2. Open CMake.
+    1. Set source directory to C:\lib\ogredeps and build directory C:\lib\ogredeps\build
+    3. Click Configure, wait for process to finish.  
+    4. Uncheck OGREDEPS_BUILD_SDL2
+    5. Click Configure and repeat until none of the fields are marked in red.
+    4. Click Generate.
+5. Go to directory C:\lib\ogredeps\build, open OGREDEPS.sln
+    1. Set config to Release, right click ALL_BUILD and click "Build"
+    2. Set config to Debug, right click ALL_BUILD and click "Build"
+    3. Set config to Release, right click INSTALL and click "Build"
+    4. Set config to Debug, right click INSTALL and click "Build"
  
 ### Building Ogre3D
 
