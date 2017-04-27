@@ -63,16 +63,8 @@ These are instructions to prepare the lab compute from a fresh Windows install.
 1. Download [ASIO](https://github.com/chriskohlhoff/asio) to C:\lib\asio
 1. Download [SimpleINI](https://github.com/brofield/simpleini) to C:\lib\simpleini
 1. Download [OpenCV 3.2](http://opencv.org/releases.html) to C:\lib\opencv
-1. From this [forum post](http://ogre3d.org/forums/viewtopic.php?t=69274) install the following:
-    1. [BOOST](https://goo.gl/QmGS7N) to C:\lib\boost
-    1. [OGRE Dependencies](https://goo.gl/Ykbknu) to C:\lib\ogredeps
-1. Set environment variables to point to Boost:
-    1. Click Start, type eniron 
-    1. Click "Edit System Environment Variables"
-    1. Click Advanced -> Environment Variables
-    1. Click System Variables -> New
-    1. Set Name=Boost_DIR and Value=C:\lib\boost
-    1. Repeat with Name=BOOST_ROOT and Value=C:\lib\boost
+
+### Building Ogre Dependencies
  
 ### Building Ogre3D
 
