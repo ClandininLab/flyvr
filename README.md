@@ -66,6 +66,7 @@ These are instructions to prepare the lab compute from a fresh Windows install.
 1. From this [forum post](http://ogre3d.org/forums/viewtopic.php?t=69274) install the following:
     1. [BOOST](https://goo.gl/QmGS7N) to C:\lib\boost
     1. [OGRE Dependencies](https://goo.gl/Ykbknu) to C:\lib\ogredeps
+1. Set environment variables Boost_DIR and BOOST_ROOT to C:\lib\boost
  
 ### Building Ogre3D
 
@@ -75,6 +76,20 @@ These are instructions to prepare the lab compute from a fresh Windows install.
     1. Dest: C:\lib\ogre
     1. Name: ogre
     1. Advanced options -> Clone only branch -> v1-9
+1. Make directory C:\lib\ogre\build
+1. Open CMake GUI
+    1. Source dir: C:\lib\ogre
+    1. Build dir: C:\lib\ogre\build
+    1. Click configure.
+    1. Set OGRE_DEPENDENCIES_DIR to C:\lib\ogredeps
+1. Go to C:\lib\ogre\build
+1. Open OGRE.sln
+1. Open RenderSystems/Direct3D9/include/OgreD3D9Prerequisites.h
+    1. Comment out "#include <DxErr.h>" (line 75)
+    1. Replace with [this code](https://pastebin.com/V5fzrZt7).  Here's the [reference](http://www.aupcgroup.com/blog/index.php?/archives/9-Building-Ogre3D-with-Microsoft-Visual-C++-14.0-Visual-Studio-Community-2015.html) for that code.
+1. For both Release and Debug configurations
+    1. Right click ALL_BUILD, click Build
+    1. Right click INSTALL, click Build
 
 ### GRBL Setup
 
