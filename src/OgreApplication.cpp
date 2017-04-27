@@ -202,6 +202,7 @@ void OgreApplication::createWindows(void)
 		// Select the desired monitor for this render window
 		Ogre::NameValuePairList nvList;
 		nvList["monitorIndex"] = Ogre::StringConverter::toString(monitor.id);
+		nvList["vsync"] = "true";
 
 		// Create the new render window and set it up
 		Ogre::RenderWindow *window = mRoot->createRenderWindow(strWindowName,
