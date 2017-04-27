@@ -48,12 +48,15 @@ These are instructions to prepare the lab compute from a fresh Windows install.
 1. Install [CMake](https://cmake.org/)
 1. Install [Notepad++](https://notepad-plus-plus.org/)
 1. Install [GitHub desktop](https://desktop.github.com/)
+1. Install [SourceTree]()
 1. Install [7Zip](http://www.7-zip.org/download.html)
 1. Install [pylon](https://www.baslerweb.com/en/support/downloads/software-downloads/)
 1. Install [Visual Studio 2015 Community with Update 3](https://my.visualstudio.com/downloads)
     1. You may have to create an account and subscribe to the free "Visual Studio Dev Essentials"
     1. Select Programming Tools -> Visual C++ -> Common Tools for Visual C++ 2015
     1. Select Windows and Web Development -> Universal Windows App Development Tools -> Tools (1.4.1) and Windows 10 SDK (10.0.14393)
+1. Install [.NET Framework](https://www.microsoft.com/en-us/download/details.aspx?id=21)
+1. Install [DirectX SDK](https://www.microsoft.com/en-us/download/confirmation.aspx?id=6812)
 
 ### Libraries
 
@@ -62,7 +65,16 @@ These are instructions to prepare the lab compute from a fresh Windows install.
 1. Download [OpenCV 3.2](http://opencv.org/releases.html) to C:\lib\opencv
 1. From this [forum post](http://ogre3d.org/forums/viewtopic.php?t=69274) install the following:
     1. [BOOST](https://goo.gl/QmGS7N) to C:\lib\boost
-    1. [OGRE 1.9 SDK](https://goo.gl/jzp20i) to C:\lib\ogre
+    1. [OGRE Dependencies](https://goo.gl/Ykbknu) to C:\lib\ogredeps
+ 
+### Building Ogre3D
+
+1. Open SourceTree.
+1. Click Clone.
+    1. URL: https://bitbucket.org/sinbad/ogre
+    1. Dest: C:\lib\ogre
+    1. Name: ogre
+    1. Advanced options -> Clone only branch -> v1-9
 
 ### GRBL Setup
 
