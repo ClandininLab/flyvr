@@ -92,7 +92,7 @@ These are instructions to prepare the lab compute from a fresh Windows install.
     1. Source dir: C:\lib\ogre
     1. Build dir: C:\lib\ogre\build
     1. Click configure.
-    1. Set OGRE_DEPENDENCIES_DIR to C:\lib\ogredeps
+    1. Set OGRE_DEPENDENCIES_DIR to C:\lib\ogredeps\build\ogredeps
 1. Go to C:\lib\ogre\build
 1. Open OGRE.sln
 1. Open RenderSystems/Direct3D9/include/OgreD3D9Prerequisites.h
