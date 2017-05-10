@@ -140,6 +140,7 @@ void OgreApplication::readGraphicsConfig(const char *loc){
 	// Read global parameters
 	mNearClipDist = iniFile.GetDoubleValue("", "near-clip-dist", 0.01);
 	mFarClipDist = iniFile.GetDoubleValue("", "far-clip-dist", 10.0);
+	mShowConfigDialog = iniFile.GetBoolValue("", "show-config-dialog", false);
 
 	// Read the target loop duration
 	targetLoopDuration = iniFile.GetDoubleValue("", "target-loop-duration", 8e-3);
@@ -348,15 +349,22 @@ void OgreApplication::setup(void)
 
 	setupResources("resources.cfg");
 
-	if (mRoot->restoreConfig())
-	{
-		createWindows();
+	// Configure Ogre3D
+	bool configResult;
+	if (mShowConfigDialog) {
+		configResult = mRoot->showConfigDialog();
 	}
-	else
-	{
+	else {
+		configResult = mRoot->restoreConfig();
+	}
+
+	if (!configResult){
 		std::cout << "Could not restore Ogre3D config.\n";
 		throw std::runtime_error("Could not restore Ogre3D config.");
 	}
+
+	// Create render windows on all monitors
+	createWindows();
 
 	// Get the SceneManager, in this case a generic one
 	mSceneMgr = mRoot->createSceneManager(Ogre::ST_GENERIC);

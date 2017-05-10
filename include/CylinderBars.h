@@ -24,6 +24,8 @@ private:
 	void Setup(void);
 	void CreateScene(void);
 
+	void CylinderBars::createRectMesh();
+
 	std::string name;
 	OgreApplication &app;
 	CSimpleIniA &iniFile;

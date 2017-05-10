@@ -88,6 +88,9 @@ private:
 	double mNearClipDist;
 	double mFarClipDist;
 
+	// Configuration options
+	bool mShowConfigDialog;
+
 	// Top-level scene management
 	Ogre::Root *mRoot;
 	Ogre::SceneManager *mSceneMgr;

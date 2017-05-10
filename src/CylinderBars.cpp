@@ -72,21 +72,15 @@ void CylinderBars::CreateScene(void){
 	// Ambient lighting sets the color of the panels, since they are white
 	sceneMgr->setAmbientLight(Ogre::ColourValue(foreColorR, foreColorG, foreColorB));
 
-	// Derived scene parameters
+	// Create rectangle mesh
+	createRectMesh();
+
 	auto dtheta = (2.0 * M_PI) / numSpatialPeriod;
-	auto awidth = dutyCycle * dtheta;
-	auto xdim = 2 * patternRadius * sin(awidth / 2.0);
-	auto ydim = panelHeight;
-	auto zdim = panelThickness;
 
 	// Create and attach all stimulus objects
 	for (int i = 0; i < numSpatialPeriod; i++){
 		// Create node for the panel
 		auto panelNode = stimNode->createChildSceneNode();
-
-		// Apply scaling to panel
-		auto n = 1.0 / CubeSideLength;
-		panelNode->setScale(Ogre::Real(xdim*n), Ogre::Real(ydim*n), Ogre::Real(zdim*n));
 
 		// Calculate angular position of this panel
 		auto theta = i*dtheta;
@@ -106,9 +100,34 @@ void CylinderBars::CreateScene(void){
 		panelNode->roll(Ogre::Radian(roll));
 
 		// Attach the cube mesh to the panel
-		auto panelEnt = sceneMgr->createEntity("cube.mesh");
-		panelNode->attachObject(panelEnt);
+		auto rectMesh = sceneMgr->createEntity("RectMesh");
+		rectMesh->setCastShadows(false);
+		panelNode->attachObject(rectMesh);
 	}
+}
+
+void CylinderBars::createRectMesh()
+{
+	// Derived parameters
+	auto dtheta = (2.0 * M_PI) / numSpatialPeriod;
+	auto awidth = dutyCycle * dtheta;
+	auto xdim = 2 * patternRadius * sin(awidth / 2.0);
+	auto ydim = panelHeight;
+
+	Ogre::ManualObject obj("RectObject");
+
+	obj.begin("BaseWhite", Ogre::RenderOperation::OT_TRIANGLE_LIST);
+
+	obj.position(-xdim / 2.0, +ydim / 2.0, 0);
+	obj.position(+xdim / 2.0, +ydim / 2.0, 0);
+	obj.position(-xdim / 2.0, -ydim / 2.0, 0);
+	obj.position(+xdim / 2.0, -ydim / 2.0, 0);
+
+	obj.triangle(0, 3, 1);
+	obj.triangle(0, 2, 3);
+
+	obj.end();
+	obj.convertToMesh("RectMesh");
 }
 
 std::string CylinderBars::Update(Pose3D flyPose){
