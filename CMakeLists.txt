@@ -7,7 +7,7 @@ project (Tracker)
 
 # Library locations
 set(INI_TOP "C:/lib/simpleini")
-set(CV_TOP "C:/lib/opencv/build")
+set(CV_TOP "C:/lib/opencv/build/install")
 set(OGRE_TOP "C:/lib/ogre/build/sdk")
 set(ASIO_TOP "C:/lib/asio")
 set(BOOST_TOP "C:/lib/boost")
@@ -40,8 +40,18 @@ list(APPEND SOURCES "include/Tracker.h" "include/Utility.h" "include/Arduino.h" 
 add_executable(tracker ${SOURCES})
 
 # Set up linking
+
 target_link_libraries(tracker 
-            debug opencv_world320d.lib optimized opencv_world320.lib
+            debug opencv_core320d.lib optimized opencv_core320.lib
+			debug opencv_highgui320d.lib optimized opencv_highgui320.lib
+			debug opencv_imgproc320d.lib optimized opencv_imgproc320.lib
+			debug opencv_features2d320d.lib optimized opencv_features2d320.lib
+			debug opencv_calib3d320d.lib optimized opencv_calib3d320.lib
+			debug opencv_xfeatures2d320d.lib optimized opencv_xfeatures2d320.lib
+			debug opencv_imgcodecs320d.lib optimized opencv_imgcodecs320.lib
+			debug opencv_videoio320d.lib optimized opencv_videoio320.lib
+			debug opencv_flann320d.lib optimized opencv_flann320.lib
+			debug opencv_video320d.lib optimized opencv_video320.lib
             debug OgreMain_d.lib optimized OgreMain.lib
             debug OIS_d.lib optimized OIS.lib
             debug OgreOverlay_d.lib optimized OgreOverlay.lib)
@@ -59,8 +69,27 @@ set(OUT_PATH $<TARGET_FILE_DIR:tracker>)
 
 # Set up post-build copying of config files and DLLs
 # http://stackoverflow.com/questions/10671916/how-to-copy-dll-files-into-the-same-folder-as-the-executable-using-cmake
-list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_world320.dll")
-list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_world320d.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_core320d.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_core320.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_highgui320d.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_highgui320.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_imgproc320d.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_imgproc320.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_features2d320d.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_features2d320.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_calib3d320d.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_calib3d320.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_xfeatures2d320d.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_xfeatures2d320.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_imgcodecs320d.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_imgcodecs320.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_videoio320d.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_videoio320.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_flann320d.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_flann320.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_video320d.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_video320.dll")
+list(APPEND POST_BUILD_COPY_LIST "${CV_DLL_DIR}/opencv_ffmpeg320_64.dll")
 list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR_OPTIMIZED}/OgreMain.dll")
 list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR_OPTIMIZED}/OgreOverlay.dll")
 list(APPEND POST_BUILD_COPY_LIST "${OGRE_DLL_DIR_DEBUG}/OgreMain_d.dll")

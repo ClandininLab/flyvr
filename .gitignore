@@ -12,3 +12,4 @@ bin/out
 # For macOS
 *.DS_Store
 *.ann
+*.bmp
