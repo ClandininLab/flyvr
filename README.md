@@ -124,3 +124,15 @@ Adapted from instructions [here](https://github.com/gnea/grbl/wiki/Compiling-Grb
     * Connect your Arduino Uno to your computer.
     * Make sure your board is set to the Arduino Uno in the Tool->Board menu and the serial port is selected correctly in Tool->Serial Port.
     * Click the Upload, and GRBL should compile and flash to your Arduino.
+    
+### TV Setup
+
+1. Download [firmware update](http://seikidigital.com.au/support/downloads.php) for SE50UY04.  The file should be called SE50UY04_20130528.zip.
+1. Unzip the firmware update and put the enclosed file install.img on a blank USB thumb drive.  The thumb drive must be formatted as FAT32 and there cannot be any other files on the drive.
+2. For each TV:
+    1. Turn on TV.
+    1. Plug USB thumb drive into a USB port on the TV.
+    2. Press MENU button on remote.
+    2. Press "0" four times to open the service menu.
+    2. Select "Software Update" and confirm OK.
+    2. Wait for firmware update to complete.  The TV will restart in the proeces
