@@ -14,6 +14,7 @@
 
 using namespace std::chrono;
 using namespace cv;
+using namespace cv::xfeatures2d;
 
 namespace CameraNamespace{
 	// File name with configuration parameters
@@ -25,10 +26,10 @@ namespace CameraNamespace{
 	unsigned FrameFPS;
 
 	// Image processing parameterse
-	unsigned LowThresh;
-	unsigned HighThresh;
-	unsigned BlurSize;
-	unsigned MinContour;
+	std::atomic<unsigned> LowThresh;
+	std::atomic<unsigned> HighThresh;
+	std::atomic<unsigned> BlurSize;
+	std::atomic<unsigned> MinContour;
 
 	// Scale factors to convert pixels to mm
 	double PixelPerMM;
@@ -36,14 +37,15 @@ namespace CameraNamespace{
 	// Precision of log file
 	unsigned LogPrecision;
 
-	// Derived parameters
-	unsigned CropAmount, CroppedWidth, CroppedHeight;
-
 	// Target loop duration
 	double TargetLoopDuration;
 
 	// Amount of time between debug frames
 	double TargetDebugFrameTime;
+
+	// Use a pre-recorded video
+	bool UseRecordedInput;
+	std::string RecordedInputFile;
 
 	// Global variables used to manage access to camera measurement
 	std::atomic<FlyPose> g_flyPose;
@@ -63,6 +65,16 @@ namespace CameraNamespace{
 	// Variables used to hold names of output files
 	std::string MovieOutputFile;
 	std::string DataOutputFile;
+	//std::string FlyTemplateFile;
+	//std::string FlyMaskFile;
+
+	// Variable used to hold image used for debugging
+	std::atomic<DebugImage> debugImage = DebugImage::Input;
+
+	// OpenCV matrices
+	Mat inFrame, grayFrame, blurFrame, threshFrame, croppedFrame;
+	RotatedRect boundingBox;
+	Rect roi;
 }
 
 using namespace CameraNamespace;
@@ -115,10 +127,11 @@ void ReadCameraConfig(){
 	TargetLoopDuration = iniFile.GetDoubleValue("", "target-loop-duration", 10e-3);
 
 	// Compute derived constants
-	CropAmount = BlurSize;
-	CroppedWidth = FrameWidth - 2 * CropAmount;
-	CroppedHeight = FrameHeight - 2 * CropAmount;
 	FrameFPS = int((1.0 / TargetLoopDuration) + 1);
+
+	// Precision of log file
+	UseRecordedInput = iniFile.GetBoolValue("", "use-recorded-input", false);
+	RecordedInputFile = iniFile.GetValue("", "recorded-input-file", "in.avi");
 }
 
 // High-level management of the graphics thread
@@ -147,10 +160,17 @@ void CameraThread(void){
 	// Set up video capture
 	std::cout << "Trying to open camera...";
 
-	VideoCapture icap(CV_CAP_ANY);
+	VideoCapture icap;
+	if (UseRecordedInput) {
+		icap = VideoCapture(RecordedInputFile);
+	}
+	else {
+		icap = VideoCapture(CV_CAP_ANY);
+	}
+
 	icap.set(CV_CAP_PROP_FRAME_WIDTH, FrameWidth);
 	icap.set(CV_CAP_PROP_FRAME_HEIGHT, FrameHeight);
-
+	
 	if (icap.isOpened()){
 		std::cout << "success.\n";
 	} else{
@@ -180,27 +200,31 @@ void CameraThread(void){
 		timeManager.tick();
 
 		// Read image
-		Mat inFrame;
-		icap.read(inFrame);
+		bool hasFrame = icap.read(inFrame);
 
+		// Loop video when using recorded input
+		if (UseRecordedInput) {
+			if (!hasFrame) {
+				// Reload file
+				icap = VideoCapture(RecordedInputFile);
+				continue;
+			}
+		}
+		
 		// Write image to file
 		ocap.write(inFrame);
 
 		// Prepare image for contour search
-		Mat outFrame;
-		processFrame(inFrame, outFrame);
-
-		// Copy the processed image over to the debug thread
-		{
-			std::unique_lock<std::mutex> lck(debugMutex);
-			g_imDebug = outFrame.clone();
-		}
+		processFrame();
 
 		// Locate the fly in the frame
-		FlyPose flyPose = locateFly(outFrame);
+		FlyPose flyPose = locateFly();
 
 		// Update fly position
 		g_flyPose.store(flyPose);
+
+		// Show image on debug window
+		drawDebugImage(flyPose.present);
 
 		// Log the fly position
 		// Format output data
@@ -227,33 +251,51 @@ void DebugThread(){
 	TimeManager debugManager("DebugThread");
 	debugManager.start();
 
+	int blur_slider = BlurSize;
+	int thresh_slider = LowThresh;
+	int debugImage_slider = int((DebugImage)debugImage);
+	bool madeTrackbars = false;
+
+	namedWindow("DebugThread", CV_WINDOW_AUTOSIZE);
+
 	while (!killDebug){
 		debugManager.tick();
+
+		BlurSize = std::max(blur_slider, 1);
+		LowThresh = std::max(thresh_slider, 1);
+		debugImage = DebugImage(debugImage_slider);
+
 		Mat imDebug;
 		{
 			std::unique_lock<std::mutex> lck(debugMutex);
 			imDebug = g_imDebug.clone();
 		}
+
 		if (imDebug.rows > 0 && imDebug.cols > 0){
+			resize(imDebug, imDebug, Size(imDebug.cols * 2, imDebug.rows * 2));
 			imshow("DebugThread", imDebug);
+			if (!madeTrackbars) {
+				madeTrackbars = true;
+				createTrackbar("Blur Size", "DebugThread", &blur_slider, 30);
+				createTrackbar("Low Threshold", "DebugThread", &thresh_slider, 255);
+				createTrackbar("Debug Image", "DebugThread", &debugImage_slider, int(DebugImage::LENGTH) - 1);
+			}
 			waitKey(1);
 		}
 		debugManager.waitUntil(TargetDebugFrameTime);
 	}
 }
 
-void processFrame(const Mat &inFrame, Mat &outFrame){
+void processFrame(){
 	// Convert to grayscale
-	cvtColor(inFrame, outFrame, CV_BGR2GRAY);
+	cvtColor(inFrame, grayFrame, CV_BGR2GRAY);
 
 	// Blur the image to reduce noise
-	blur(outFrame, outFrame, Size(BlurSize, BlurSize));
-
-	// Crop the image to remove edge effects of blurring
-	outFrame = outFrame(Rect(CropAmount, CropAmount, CroppedWidth, CroppedHeight));
+	blur(grayFrame, blurFrame, Size(BlurSize, BlurSize));
+	// medianBlur(grayFrame, blurFrame, 2.*std::round((BlurSize + 1.0) / 2.0) - 1);
 
 	// Threshold image to produce black-and-white result
-	threshold(outFrame, outFrame, LowThresh, HighThresh, THRESH_BINARY_INV);
+	threshold(blurFrame, threshFrame, LowThresh, HighThresh, THRESH_BINARY_INV);
 }
 
 // Comparison function for contour sizes
@@ -262,17 +304,23 @@ bool contourCompare(std::vector<Point> a, std::vector<Point> b) {
 }
 
 // Locate the fly as the biggest contour in the image
-FlyPose locateFly(const Mat &inFrame){
+FlyPose locateFly(){
+	// Crop the image to remove edge effects of blurring
+	int CropAmount = (int)((BlurSize+1)/2.0);
+	int CroppedWidth = FrameWidth - 2 * CropAmount;
+	int CroppedHeight = FrameHeight - 2 * CropAmount;
+	roi = Rect(CropAmount, CropAmount, CroppedWidth, CroppedHeight);
+	croppedFrame = threshFrame(roi);
+
 	// FlyPose to be returned
 	FlyPose flyPose;
 
 	// Variables related to contour search
-	RotatedRect boundingBox;
 	std::vector<std::vector<cv::Point>> imContours;
 	std::vector<cv::Vec4i> imHierarchy;
 
 	// Find all contours in image
-	findContours(inFrame, imContours, imHierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
+	findContours(croppedFrame, imContours, imHierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE);
 
 	// If there are no contours, return
 	if (imContours.size() == 0){
@@ -304,7 +352,7 @@ FlyPose locateFly(const Mat &inFrame){
 	}
 
 	// If we reach here, there is a contour large enough for fitEllipse
-	boundingBox = fitEllipse(Mat(*maxElem));
+    boundingBox = fitEllipse(Mat(*maxElem));
 
 	// Compute fly position
 	flyPose.x = (boundingBox.center.x - CroppedWidth / 2.0) / PixelPerMM;
@@ -316,3 +364,126 @@ FlyPose locateFly(const Mat &inFrame){
 
 	return flyPose;
 }
+
+void drawDebugImage(bool flyPresent) {
+	// Acquire lock for g_imDebug
+	std::unique_lock<std::mutex> lck(debugMutex);
+
+	// Show the desired debugging image
+	if (debugImage == DebugImage::Input) {
+		g_imDebug = inFrame.clone();
+	}
+	else if (debugImage == DebugImage::Grayscale) {
+		g_imDebug = grayFrame.clone();
+		cvtColor(g_imDebug, g_imDebug, CV_GRAY2BGR);
+	}
+	else if (debugImage == DebugImage::Blurred) {
+		g_imDebug = blurFrame.clone();
+		cvtColor(g_imDebug, g_imDebug, CV_GRAY2BGR);
+	}
+	else if (debugImage == DebugImage::Threshold) {
+		g_imDebug = threshFrame.clone();
+		cvtColor(g_imDebug, g_imDebug, CV_GRAY2BGR);
+	}
+	else {
+		throw std::exception("Unknown debugImage type.");
+	}
+
+	// Draw region of interest (ROI)
+	rectangle(g_imDebug, roi, Scalar(0, 0, 255), 1, 8, 0);
+
+	// Draw the fly ellipse if it's present
+	if (flyPresent) {
+		auto shift = roi.tl();
+		auto centerShift = Point2f(boundingBox.center.x + shift.x, boundingBox.center.y + shift.y);
+		auto bboxShift = RotatedRect(centerShift, boundingBox.size, boundingBox.angle);
+		ellipse(g_imDebug, bboxShift, Scalar(255, 0, 0));
+	}
+}
+
+//// OLD CODE
+
+// Reference: http://docs.opencv.org/3.2.0/de/da9/tutorial_template_matching.html
+/*
+FlyPose locateFly() {
+Mat result;
+
+double maxVal = 0;
+for (double angle = )
+matchTemplate(grayFrame, flyTemplate, result, CV_TM_SQDIFF, flyMask);
+double minVal; double maxVal; Point minLoc; Point maxLoc;
+minMaxLoc(result, &minVal, &maxVal, &minLoc, &maxLoc, Mat());
+Point matchLoc;
+matchLoc = minLoc;
+
+{
+std::unique_lock<std::mutex> lck(debugMutex);
+//g_imDebug = result.clone();
+g_imDebug = grayFrame.clone();
+rectangle(g_imDebug, matchLoc, Point(matchLoc.x + flyTemplate.cols, matchLoc.y + flyTemplate.rows), Scalar::all(0), 2, 8, 0);
+}
+
+FlyPose toReturn;
+return toReturn;
+}
+*/
+
+/*
+FlyPose locateFly() {
+Mat result = estimateRigidTransform(flyTemplate, grayFrame, false);
+
+// Draw image for debug purposes
+{
+std::unique_lock<std::mutex> lck(debugMutex);
+g_imDebug = flyTemplate.clone();
+}
+
+std::cout << result;
+
+FlyPose toReturn;
+return toReturn;
+}
+*/
+
+// Reference: http://docs.opencv.org/2.4/doc/tutorials/features2d/feature_homography/feature_homography.html
+/*
+FlyPose locateFly() {
+std::vector<KeyPoint> flyKeypoints, imgKeypoints;
+Mat flyDescriptors, imgDescriptors;
+
+flyDetector = SURF::create(MinHessian);
+
+flyDetector->detectAndCompute(flyTemplate, noArray(), flyKeypoints, flyDescriptors);
+flyDetector->detectAndCompute(grayFrame, noArray(), imgKeypoints, imgDescriptors);
+
+FlannBasedMatcher matcher;
+std::vector< DMatch > matches;
+matcher.match(flyDescriptors, imgDescriptors, matches);
+
+//-- Localize the object
+std::vector<Point2f> flyMatchPoints;
+std::vector<Point2f> imgMatchPoints;
+
+for (int i = 0; i < matches.size(); i++)
+{
+//-- Get the keypoints from the good matches
+flyMatchPoints.push_back(flyKeypoints[matches[i].queryIdx].pt);
+imgMatchPoints.push_back(imgKeypoints[matches[i].trainIdx].pt);
+}
+
+Mat H = findHomography(flyMatchPoints, imgMatchPoints, CV_RANSAC);
+
+// Draw image for debug purposes
+{
+std::unique_lock<std::mutex> lck(debugMutex);
+//drawKeypoints(grayFrame, imgKeypoints, g_imDebug);
+
+drawMatches(flyTemplate, flyKeypoints, grayFrame, imgKeypoints,
+matches, g_imDebug, Scalar::all(-1), Scalar::all(-1),
+std::vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+}
+
+FlyPose toReturn;
+return toReturn;
+}
+*/
