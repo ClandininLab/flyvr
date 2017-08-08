@@ -31,7 +31,7 @@
 #define E_MASK 0b11000000
 #define W_MASK 0b00111111
 
-#define STEP_OVFL 0x4000
+#define STEP_OVFL 0x7FFF
 
 #define IN_BUF_LEN 4
 #define OUT_BUF_LEN 7
