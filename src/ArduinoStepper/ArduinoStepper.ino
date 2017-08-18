@@ -1,3 +1,7 @@
+// FlyVR
+// http://flyvisionlab.weebly.com/
+// Contact: Steven Herbst <sherbst@stanford.edu>
+
 // Arduino pin assignments
 #define STEP_X 2
 #define STEP_Y1 3
@@ -31,14 +35,19 @@
 #define E_MASK 0b11000000
 #define W_MASK 0b00111111
 
+#define TIMER_FREQ_HZ 30000
 #define STEP_OVFL 0x7FFF
 
-#define IN_BUF_LEN 4
-#define OUT_BUF_LEN 7
+// Serial communication settings
 
-void serialSetup() {
-  Serial.begin(9600);
-}
+#define IN_BUF_LEN 5
+#define OUT_BUF_LEN 6
+
+#define BAUD_RATE 400000
+
+// status reporting mechanism
+#define STATUS_MASK 0b00011110
+#define COMM_ERR_BIT 0
 
 void pinSetup() {
   pinMode(ENABLE_N, OUTPUT);
@@ -69,108 +78,128 @@ void pinSetup() {
   digitalWrite(STEP_Y2, LOW);
 }
 
-void setTimerFrequency(long hz){
-  OCR1A = 16000000/hz - 1;
-}
-
 void timerSetup() {
   //set timer1 interrupt at 1Hz
-  TCCR1A = 0;// set entire TCCR1A register to 0
-  TCCR1B = 0;// same for TCCR1B
-  TCNT1  = 0;//initialize counter value to 0
+  TCCR1A = 0; // set entire TCCR1A register to 0
+  TCCR1B = 0; // same for TCCR1B
+  TCNT1  = 0; // initialize counter value to 0
+  
   // set the timer frequency
-  setTimerFrequency(30000);
+  OCR1A = F_CPU/TIMER_FREQ_HZ - 1;
+  
   // turn on CTC mode
   TCCR1B |= (1 << WGM12);
+  
   // Set CS10 and CS12 bits for 1x prescaler
   // https://arduinodiy.wordpress.com/2012/02/28/timer-interrupts/
   TCCR1B |= (1 << CS10);  
+  
   // enable timer compare interrupt
   TIMSK1 |= (1 << OCIE1A);
 }
 
-void debug(bool value){
-  if (value) {
-    digitalWrite(DEBUG, HIGH);
-  } else {
-    digitalWrite(DEBUG, LOW);
-  }
-}
-
 void setup() {
+  // Set up pins direction and initial values
   pinSetup();
+
+  // Set up timer used to drive steppers
   timerSetup(); 
-  serialSetup();
+
+  // Set up serial communication
+  Serial.begin(BAUD_RATE);
 }
 
-bool shouldRun = false;
-
+// Stepper velocities
 volatile unsigned int alphaX = 0;
 volatile unsigned int alphaY = 0;
 
+// Stepper directions
 volatile bool dirX = false;
 volatile bool dirY = false;
 
+// Stepper positions
+volatile int xsteps = 0;
+volatile int ysteps = 0;
+
+// Serial I/O buffers
 byte inBuf[IN_BUF_LEN];
 byte outBuf[OUT_BUF_LEN];
 
-volatile long xsteps = 0;
-volatile long ysteps = 0;
-
 void loop() {
-  if (Serial.available() > 0) {
+  if (Serial.available() >= IN_BUF_LEN) {
     Serial.readBytes(inBuf, IN_BUF_LEN);
-    
-    noInterrupts();
-    
-    // read in the dirX value
-    dirX = ((inBuf[0] >> 7) & 0x01);
-    if (dirX){
-      PORTD |= N_MASK;
-    } else {
-      PORTD &= S_MASK;
-    }
-    
-    // read in the alphaX value
-    alphaX = inBuf[0] & 0x7F;
-    alphaX <<= 8;
-    alphaX |= inBuf[1];
 
-    // read in the dirY value
-    dirY = ((inBuf[2] >> 7) & 0x01);
-    if (dirY){
-      PORTD |= E_MASK;
-    } else {
-      PORTD &= W_MASK;
-    }
+    // compute the input checksum
+    byte cksum = inBuf[0] + inBuf[1] + inBuf[2] + inBuf[3];
 
-    // read in the alphaY value
-    alphaY = inBuf[2] & 0x7F;
-    alphaY <<= 8;
-    alphaY |= inBuf[3];
+    // start building up the status report
+    byte sysStatus = PINB & STATUS_MASK;
+
+    //////////////////////////////////////////////////
+    // disable timer interrupt while processing input
+    TIMSK1 &= ~(1 << OCIE1A);
+    //////////////////////////////////////////////////
+
+    // test the checksum, only process input if the checksum matches
+    if (inBuf[4] == cksum){
+      
+      // read in the dirX value
+      dirX = ((inBuf[0] >> 7) & 0x01);
+      if (dirX){
+        PORTD |= N_MASK;
+      } else {
+        PORTD &= S_MASK;
+      }
+      
+      // read in the alphaX value
+      alphaX = inBuf[0] & 0x7F;
+      alphaX <<= 8;
+      alphaX |= inBuf[1];
+  
+      // read in the dirY value
+      dirY = ((inBuf[2] >> 7) & 0x01);
+      if (dirY){
+        PORTD |= E_MASK;
+      } else {
+        PORTD &= W_MASK;
+      }
+  
+      // read in the alphaY value
+      alphaY = inBuf[2] & 0x7F;
+      alphaY <<= 8;
+      alphaY |= inBuf[3];
+    } else {
+      // report communication problem
+      sysStatus |= (1 << COMM_ERR_BIT);
+    }
 
     // create the output buffer
 
-    // save the pin state of the limit switches
-    outBuf[0] = PINB;
+    // store the system status (limit switches, communication error)
+    outBuf[0] = sysStatus;
 
     // save the number of steps along the X axis
-    outBuf[1] = xsteps >> 16;
-    outBuf[2] = xsteps >> 8;
-    outBuf[3] = xsteps;
+    outBuf[1] = xsteps >> 8;
+    outBuf[2] = xsteps;
 
     // save the number of steps along the Y axis
-    outBuf[4] = ysteps >> 16;
-    outBuf[5] = ysteps >> 8;
-    outBuf[6] = ysteps;
-    
-    interrupts();
+    outBuf[3] = ysteps >> 8;
+    outBuf[4] = ysteps;
+
+    //////////////////////////////////////////////////
+    // enable timer interrupt after processing I/O
+    TIMSK1 |= (1 << OCIE1A);
+    //////////////////////////////////////////////////
+
+    // calculate the output checksum
+    outBuf[5] = outBuf[0] + outBuf[1] + outBuf[2] + outBuf[3] + outBuf[4];
 
     // send the output buffer
     Serial.write(outBuf, OUT_BUF_LEN);
   }
 }
 
+// Counts used to determine when the next step should be taken
 unsigned int xcount = 0;
 unsigned int ycount = 0;
 

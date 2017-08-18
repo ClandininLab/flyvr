@@ -1,159 +1,142 @@
-import numpy as np
-import cv2
 import time
-from math import pi
-import serial
+from math import pi, tan, radians
 
-def nothing(x):
-    pass
+from cnc import CncThread
+from camera import CamThread
 
-class CncStatus:
-    def __init__(self, status):
-        self.limN = bool((status[0] >> 1) & 1 == 0)
-        self.limS = bool((status[0] >> 2) & 1 == 0)
-        self.limE = bool((status[0] >> 3) & 1 == 0)
-        self.limW = bool((status[0] >> 4) & 1 == 0)
-        self.posX = self.posFromByteArr(status[1:4])
-        self.posY = self.posFromByteArr(status[4:7])
-
-    @property
-    def anyLim(self):
-        return self.limN or self.limS or self.limE or self.limW
-
-    def posFromByteArr(self, byteArr):
-        intPos = int.from_bytes(byteArr, byteorder='big', signed=True)
-        return float(intPos)*25e-6
-
-class CNC:
-    def __init__(self, com='COM4', baud=9600):
-        self.ser = serial.Serial(com, baud, serial.EIGHTBITS, serial.PARITY_NONE, serial.STOPBITS_ONE)
-        
-        self.lastVelX = 0
-        self.lastVelY = 0
-
-    def getStatus(self):
-        return self.setVel(velX=None, velY=None)
-
-    def setVel(self, velX, velY):
-        if velX is None:
-            velX = self.lastVelX
-        if velY is None:
-            velY = self.lastVelY
-            
-        byteArrOut = bytearray(self.velByte(velX) + self.velByte(velY))
-        self.ser.write(byteArrOut)
-
-        self.lastVelX = velX
-        self.lastVelY = velY
-
-        byteArrIn = bytearray(self.ser.read(7))
-        return CncStatus(byteArrIn)
-
-    def velByte(self, v):
-        frac = abs(v)/0.75 # 0.75m/s is the max speed
-        intVal = round(frac*32767)
-        if v > 0:
-            intVal = intVal | 0x8000
-        highByte = (intVal >> 8) & 0xFF
-        lowByte = intVal & 0xFF
-        return [highByte, lowByte]
-
+def clamp(v, minV, maxV):
+    if v < minV:
+        return minV
+    elif v > maxV:
+        return maxV
+    else:
+        return v
+    
 def main():
-    timestr = time.strftime("%Y%m%d-%H%M%S")
+    # Parameters of the control loop
+    fc = 0.4 # crossover frequency, Hz
+    phase_margin = 60 # phase margin, degrees
+
+    # limits of velocity and acceleration
+    maxAbsVel = 0.30 # m/s
+    maxAbsAcc = 0.25 # m/s^2
+
+    # boundaries of the arena
+    minPosX = 0.15
+    maxPosX = 0.65
+    minPosY = 0.15
+    maxPosY = 0.65
+
+    # Open file for logging
+    timestr = time.strftime('%Y%m%d-%H%M%S')
     f = open(timestr + '.csv', 'w')
 
-    cnc = CNC()
-    time.sleep(2)
+    # Open connection to CNC rig and camera
+    cnc = CncThread()
+    cam = CamThread()
 
-    cv2.namedWindow('frame')
-    cv2.createTrackbar('thresh','frame',120,255,nothing)
+    # Make sure CNC is stopped and get initial position reading
+    cnc.setVel(0, 0)
+    cncX = cnc.status.posX
+    cncY = cnc.status.posY
 
-    cap = cv2.VideoCapture(0)
-    px_per_m = 14334
-
-    fc = 0.4 # hertz
-    a = 2*pi*fc
-    b = a**2
-
-    integX = 0
-    integY = 0
-    maxVel = 0.075
+    # Compute derived parameters of control loop
+    wc = 2*pi*fc
+    a = wc*tan(radians(phase_margin))
+    b = wc**2
+    minVel = -maxAbsVel
+    maxVel = +maxAbsVel
+    
+    # Initialize the control loop
+    prevVelX = 0
+    prevVelY = 0
+    prevCamX = 0
+    prevCamY = 0
 
     lastTime = time.time()
 
-    velX = 0
-    velY = 0
-    decayFactor = 0.9
+    # control update based on fly position
+    def updateFromFlyPos(cam, prevCam, prevVel, dt):
+        return prevVel + (b*dt/2 + a)*cam + (b*dt/2 - a)*prevCam
 
-    while(True):
-        # Capture frame-by-frame
-        ret, im = cap.read()
+    # control update based on CNC position
+    def updateFromCncPos(cnc, vel, minPos, maxPos):
+        if (cnc <= minPos and vel <= 0) or (cnc >= maxPos and vel >= 0):
+            return 0
+        else:
+            return vel
 
-        # Our operations on the frame come here
-        im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    # control update based on maximum velocity
+    def updateFromMaxVel(vel):
+        if vel <= -maxAbsVel:
+            return -maxAbsVel
+        elif vel >= maxAbsVel:
+            return maxAbsVel
+        else:
+            return vel
 
-        thresh = cv2.getTrackbarPos('thresh', 'frame')
-        ret, im  = cv2.threshold(im, thresh, 255, cv2.THRESH_BINARY_INV)
-        im2, contours, h = cv2.findContours(im, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # control update based on maximum acceleration
+    def updateFromMaxAcc(vel, prevVel, dt):
+        # compute acceleration
+        acc = (vel-prevVel)/dt
+
+        # limit acceleration
+        if acc <= -maxAbsAcc:
+            return prevVel - maxAbsAcc*dt
+        elif acc >= maxAbsAcc:
+            return prevVel + maxAbsAcc*dt
+        else:
+            return vel
+    
+    while(True):        
+        # get raw fly position
+        camX, camY, flyPresent = cam.getFlyPos()
 
         # read current time
         thisTime = time.time()
+        dt = thisTime - lastTime
 
-        flyPresent = False
-        camX = 0.0
-        camY = 0.0
-            
-        if len(contours) > 0:
-            maxC = max(contours, key = cv2.contourArea)
-            cv2.drawContours(im, [maxC], -1, (128,255,0), 3)
-            M = cv2.moments(maxC)
-            
-            if float(M["m00"]) > 0:
-                flyPresent = True
-                    
-                rows, cols = im.shape
-                camX = ((float(M["m10"]) / float(M["m00"])) - float(cols)/2.0)/px_per_m 
-                camY = ((float(M["m01"]) / float(M["m00"])) - float(rows)/2.0)/px_per_m
-
-        # compute velX and velY
         if flyPresent:
-            # compute integrals
-            dt = thisTime - lastTime
-            integX = integX + camX*dt
-            integY = integY + camY*dt
-
-            # compute velocities
-            velX = a*camX + b*integX
-            velY = a*camY + b*integY
-            velX = float(np.sign(velX))*min(abs(velX), maxVel)
-            velY = float(np.sign(velY))*min(abs(velY), maxVel)
+            # update velocities from fly position
+            velX = updateFromFlyPos(camX, prevCamX, prevVelX, dt)
+            velY = updateFromFlyPos(camY, prevCamY, prevVelY, dt)
+            
+            # update velocities from CNC position
+            velX = updateFromCncPos(cncX, velX, minPosX, maxPosX)
+            velY = updateFromCncPos(cncY, velY, minPosY, maxPosY)
         else:
-            # otherwise decay current velocity
-            velX = decayFactor*velX
-            velY = decayFactor*velY
+            velX = 0
+            velY = 0
+
+        # update velocities based on velocity limits
+        velX = updateFromMaxVel(velX)
+        velY = updateFromMaxVel(velY)
+
+        # update velocities based on acceleration limits
+        velX = updateFromMaxAcc(velX, prevVelX, dt)
+        velY = updateFromMaxAcc(velY, prevVelY, dt)
 
         # update CNC velocity and log position
-        status = cnc.setVel(velX, velY)
+        cnc.setVel(velX, velY)
+        cncX = cnc.status.posX
+        cncY = cnc.status.posY
 
         # write log file
         f.write(str(thisTime) + ', ')
         f.write(str(flyPresent) + ', ')
         f.write(str(camX) + ', ' + str(camY) + ', ')
-        f.write(str(status.posX) + ', ' + str(status.posY) + '\n')
+        f.write(str(cncX) + ', ' + str(cncY) + '\n')
 
-        # update lastTime variable
+        # save some variables from this iteration
         lastTime = thisTime
-        
-        # Display the resulting frame
-        cv2.imshow('frame', im)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        prevVelX = velX
+        prevVelY = velY
+        prevCamX = camX
+        prevCamY = camY
+
+        # display debugging image
+        if not cam.displayFrame():
             break
-
-    cnc.setVel(0, 0)
-
-    # When everything done, release the capture
-    cap.release()
-    cv2.destroyAllWindows()
-
-if __name__=='__main__':
+        
+if __name__ == '__main__':
     main()
