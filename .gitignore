@@ -13,3 +13,5 @@ bin/out
 *.DS_Store
 *.ann
 *.bmp
+bin/config - Copy.ini
+*.pyc

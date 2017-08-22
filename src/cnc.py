@@ -34,34 +34,22 @@ class CncThread(Service):
         self.status = self.cnc.status
 
     def setVel(self, cmdX, cmdY):
-        # write command
-        self.cmdLock.acquire()
-        self.cmdX = cmdX
-        self.cmdY = cmdY
-        self.cmdLock.release()
+        with self.cmdLock:
+            self.cmdX, self.cmdY = cmdX, cmdY
 
     def getVel(self):
-        # read command
-        self.cmdLock.acquire()
-        cmdX = self.cmdX
-        cmdY = self.cmdY
-        self.cmdLock.release()
-
-        return cmdX, cmdY
+        with self.cmdLock:
+            return self.cmdX, self.cmdY
 
     @property
     def status(self):
-        self.statusLock.acquire()
-        val = self._status
-        self.statusLock.release()
-
-        return val
+        with self.statusLock:
+            return self._status
 
     @status.setter
     def status(self, val):
-        self.statusLock.acquire()
-        self._status = val
-        self.statusLock.release()
+        with self.statusLock:
+            self._status = val
 
 class CncStatus:
     def __init__(self, status):
