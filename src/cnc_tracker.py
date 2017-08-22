@@ -1,8 +1,13 @@
 import time
-from math import pi, tan, radians
+import cv2
+
+from math import pi, tan, radians, ceil
 
 from cnc import CncThread
-from camera import CamThread
+from camera import CamThread, ImageType
+
+def nothing(x):
+    pass
 
 def clamp(v, minV, maxV):
     if v < minV:
@@ -12,7 +17,7 @@ def clamp(v, minV, maxV):
     else:
         return v
     
-def main():
+def main():    
     # Parameters of the control loop
     fc = 0.4 # crossover frequency, Hz
     phase_margin = 60 # phase margin, degrees
@@ -22,23 +27,39 @@ def main():
     maxAbsAcc = 0.25 # m/s^2
 
     # boundaries of the arena
-    minPosX = 0.15
-    maxPosX = 0.65
-    minPosY = 0.15
-    maxPosY = 0.65
+    minPosX = -1 #0.15
+    maxPosX = +1 #0.65
+    minPosY = -1 #0.15
+    maxPosY = +1 #0.65
+
+    # settings for UI
+    tPer = ceil(1e3/24)
+    typeDir = {0: ImageType.RAW, 1: ImageType.GRAY, 2: ImageType.THRESH}
+
+    # create the UI
+    cv2.namedWindow('image')
+    cv2.createTrackbar('threshold', 'image', 150, 254, nothing)
+    cv2.createTrackbar('imageType', 'image', 2, 2, nothing)    
 
     # Open file for logging
     timestr = time.strftime('%Y%m%d-%H%M%S')
     f = open(timestr + '.csv', 'w')
 
-    # Open connection to CNC rig and camera
+    # Open connection to CNC rig
     cnc = CncThread()
+    cnc.start()
+
+    # Open connection to camera
     cam = CamThread()
+    cam.start()
+
+    # Wait for CNC and camera data to appear
+    while cnc.status is None or cam.status is None:
+        time.sleep(100e-3)
 
     # Make sure CNC is stopped and get initial position reading
-    cnc.setVel(0, 0)
-    cncX = cnc.status.posX
-    cncY = cnc.status.posY
+    cncStatus = cnc.status
+    cncX, cncY = cncStatus.posX, cncStatus.posY
 
     # Compute derived parameters of control loop
     wc = 2*pi*fc
@@ -78,7 +99,16 @@ def main():
     # control update based on maximum acceleration
     def updateFromMaxAcc(vel, prevVel, dt):
         # compute acceleration
-        acc = (vel-prevVel)/dt
+        dv = vel-prevVel
+        if dt != 0:
+            acc = dv/dt
+        else:
+            if dv < 0:
+                acc = -float('inf')
+            elif dv > 0:
+                acc = +float('inf')
+            else:
+                acc = 0
 
         # limit acceleration
         if acc <= -maxAbsAcc:
@@ -88,9 +118,26 @@ def main():
         else:
             return vel
     
-    while(True):        
+    while True:
+        # adjust threshold
+        threshTrack = cv2.getTrackbarPos('threshold', 'image')
+        cam.threshold = threshTrack + 1
+
+        # adjust image type
+        typeTrack = cv2.getTrackbarPos('imageType', 'image')
+        cam.imageType = typeDir[typeTrack]
+        
         # get raw fly position
-        camX, camY, flyPresent = cam.getFlyPos()
+        camData = cam.status
+        camX = camData.flyX
+        camY = camData.flyY
+        flyPresent = camData.flyPresent
+
+        # draw the image if status available
+        if flyPresent:
+            cv2.drawContours(camData.outFrame, [camData.flyContour], 0, (0, 255, 0), 2)
+        # show the image
+        cv2.imshow('image', camData.outFrame)
 
         # read current time
         thisTime = time.time()
@@ -116,10 +163,12 @@ def main():
         velX = updateFromMaxAcc(velX, prevVelX, dt)
         velY = updateFromMaxAcc(velY, prevVelY, dt)
 
-        # update CNC velocity and log position
+        # update CNC velocity
         cnc.setVel(velX, velY)
-        cncX = cnc.status.posX
-        cncY = cnc.status.posY
+
+        # log current position
+        cncStatus = cnc.status
+        cncX, cncY = cncStatus.posX, cncStatus.posY
 
         # write log file
         f.write(str(thisTime) + ', ')
@@ -134,9 +183,25 @@ def main():
         prevCamX = camX
         prevCamY = camY
 
-        # display debugging image
-        if not cam.displayFrame():
+        # get user input, wait until next frame
+        key = cv2.waitKey(tPer)
+        if key==27:
             break
+
+    # close UI window
+    cv2.destroyAllWindows()
+
+    # stop processing frames
+    cam.stop()
+
+    # stop communicating with CNC
+    cnc.stop()
+
+    # print out CNC thread information
+    print('CNC interval (ms): ', cnc.avePeriod*1e3)
+
+    # print out camera thread information
+    print('Camera FPS: ', 1/cam.avePeriod)
         
 if __name__ == '__main__':
     main()

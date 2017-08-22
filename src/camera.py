@@ -7,7 +7,7 @@ from enum import Enum, auto
 from service import Service
 
 class CamThread(Service):
-    def __init__(self, defaultThresh=21):
+    def __init__(self, defaultThresh=150):
         # Serial I/O interface to CNC
         self.cam = Camera()
 
