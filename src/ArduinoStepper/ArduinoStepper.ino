@@ -36,14 +36,14 @@
 #define W_MASK 0b00111111
 
 #define TIMER_FREQ_HZ 30000
-#define STEP_OVFL 0x7FFF
+#define STEP_OVFL 0x7FFFFF
 
 // Serial communication settings
 
-#define IN_BUF_LEN 5
+#define IN_BUF_LEN 7
 #define OUT_BUF_LEN 6
 
-#define BAUD_RATE 400000
+#define BAUD_RATE 115200
 
 // status reporting mechanism
 #define STATUS_MASK 0b00011110
@@ -110,8 +110,8 @@ void setup() {
 }
 
 // Stepper velocities
-volatile unsigned int alphaX = 0;
-volatile unsigned int alphaY = 0;
+volatile unsigned long alphaX = 0;
+volatile unsigned long alphaY = 0;
 
 // Stepper directions
 volatile bool dirX = false;
@@ -130,7 +130,7 @@ void loop() {
     Serial.readBytes(inBuf, IN_BUF_LEN);
 
     // compute the input checksum
-    byte cksum = inBuf[0] + inBuf[1] + inBuf[2] + inBuf[3];
+    byte ckSumIn = inBuf[0] + inBuf[1] + inBuf[2] + inBuf[3] + inBuf[4] + inBuf[5];
 
     // start building up the status report
     byte sysStatus = PINB & STATUS_MASK;
@@ -141,7 +141,7 @@ void loop() {
     //////////////////////////////////////////////////
 
     // test the checksum, only process input if the checksum matches
-    if (inBuf[4] == cksum){
+    if (inBuf[6] == ckSumIn){
       
       // read in the dirX value
       dirX = ((inBuf[0] >> 7) & 0x01);
@@ -155,9 +155,11 @@ void loop() {
       alphaX = inBuf[0] & 0x7F;
       alphaX <<= 8;
       alphaX |= inBuf[1];
+      alphaX <<= 8;
+      alphaX |= inBuf[2];
   
       // read in the dirY value
-      dirY = ((inBuf[2] >> 7) & 0x01);
+      dirY = ((inBuf[3] >> 7) & 0x01);
       if (dirY){
         PORTD |= E_MASK;
       } else {
@@ -165,9 +167,11 @@ void loop() {
       }
   
       // read in the alphaY value
-      alphaY = inBuf[2] & 0x7F;
+      alphaY = inBuf[3] & 0x7F;
       alphaY <<= 8;
-      alphaY |= inBuf[3];
+      alphaY |= inBuf[4];
+      alphaY <<= 8;
+      alphaY |= inBuf[5];
     } else {
       // report communication problem
       sysStatus |= (1 << COMM_ERR_BIT);
@@ -191,7 +195,7 @@ void loop() {
     TIMSK1 |= (1 << OCIE1A);
     //////////////////////////////////////////////////
 
-    // calculate the output checksum
+    // store the output checksum
     outBuf[5] = outBuf[0] + outBuf[1] + outBuf[2] + outBuf[3] + outBuf[4];
 
     // send the output buffer
@@ -200,8 +204,8 @@ void loop() {
 }
 
 // Counts used to determine when the next step should be taken
-unsigned int xcount = 0;
-unsigned int ycount = 0;
+unsigned long xcount = 0;
+unsigned long ycount = 0;
 
 ISR(TIMER1_COMPA_vect){
   // Build up mask used for the motor control
