@@ -99,9 +99,17 @@ class FrameData:
         self.flyContour = flyContour
 
 class Camera:
-    def __init__(self, px_per_m = 14334):
+    def __init__(self,
+                 px_per_m = 8548.96030065,
+                 minArea = 0.00000136827, # m^2
+                 maxArea = 0.00010262062 # m^2
+                 ):
         # Store the number of pixels per meter
         self.px_per_m = px_per_m
+
+        # Compute minimum and maximum area in terms of pixel area
+        self.minAreaPx = minArea*px_per_m*px_per_m
+        self.maxAreaPx = maxArea*px_per_m*px_per_m
 
         # Open the capture stream
         self.cap = cv2.VideoCapture(0)
@@ -125,10 +133,14 @@ class Camera:
         flyX = 0
         flyY = 0
 
+        # remove invalid contours
+        results = [(cnt, cv2.contourArea(cnt)) for cnt in contours]
+        results = [(cnt, area) for cnt, area in results if self.minAreaPx <= area <= self.maxAreaPx]
+
         # If there is a contour, compute its centroid and mark the fly as present
-        if len(contours) > 0:
+        if len(results) > 0:
             # Find contour with largest area
-            flyContour = max(contours, key = cv2.contourArea)
+            flyContour = max(results, key = lambda x: x[1])[0]
 
             # Calculate moments of the largest contour
             M = cv2.moments(flyContour)

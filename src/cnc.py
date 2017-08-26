@@ -158,7 +158,7 @@ class CNC:
         maxIntArg = signBit - 1
 
         # convert speed to integer representation
-        intVal = round(abs(v)*maxIntArg/self.maxSpeed)
+        intVal = int(round(abs(v)*maxIntArg/self.maxSpeed))
 
         # check that the speed is not too high
         if intVal > maxIntArg:

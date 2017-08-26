@@ -1,45 +1,42 @@
+from numpy import sign
+
 from time import perf_counter
 from math import pi, tan, radians
 
+from threading import Lock
 from service import Service
 
 class TrackThread(Service):
     def __init__(self,
                  camThread, # handle of the camera thread
                  cncThread, # handle of the CNC control thread
-                 loopTime=10e-3, # target loop update rate
-                 fc = 0.1, # crossover frequency, Hz
-                 phase_margin = 60, # phase margin, degrees
+                 loopTime=5e-3, # target loop update rate
+                 fc = 1.2, # crossover frequency, Hz
+                 minAbsPos = 8.5e-3, # m
                  maxAbsVel = 0.75, # m/s
                  maxAbsAcc = 0.25, # m/s^2
-                 minPosX = -1, # m
-                 maxPosX = +1, # m
-                 minPosY = -1, # m
-                 maxPosY = +1 # m
                  ):
 
         # Store thread handles
         self.camThread = camThread
         self.cncThread = cncThread
 
+        # Create lock for handling manual control
+        self.manualCtrlLock = Lock()
+        self.manualControl = None
+
         # Store settings
+        self.minAbsPos = minAbsPos
         self.maxAbsVel = maxAbsVel
         self.maxAbsAcc = maxAbsAcc
-        self.minPosX = minPosX
-        self.maxPosX = maxPosX
-        self.minPosY = minPosY
-        self.maxPosY = maxPosY
 
         # Compute derived parameters of control loop
         wc = 2*pi*fc
-        self.a = wc*tan(radians(phase_margin))
-        self.b = wc**2
+        self.a = wc
 
         # Initialize the control loop
         self.prevVelX = 0
         self.prevVelY = 0
-        self.prevCamX = 0
-        self.prevCamY = 0
 
         # Set the starting time
         self.lastTime = perf_counter()
@@ -52,35 +49,34 @@ class TrackThread(Service):
         # read current time
         thisTime = perf_counter()
         dt = thisTime - self.lastTime
-        
-        # get latest CNC position
-        cncStatus = self.cncThread.status
-        if cncStatus is not None:
-            cncX = cncStatus.posX
-            cncY = cncStatus.posY
-        else:
-            return
-        
-        # get latest raw fly position
+
+        # get latest camera data
         flyData = self.camThread.flyData
+
+        # store fly position information            
         if flyData is not None:
-            camX = flyData.flyX
-            camY = flyData.flyY
+            flyX = flyData.flyX
+            flyY = flyData.flyY
             flyPresent = flyData.flyPresent
         else:
-            return
+            flyX = 0
+            flyY = 0
+            flyPresent = False
 
-        if flyPresent:
-            # update velocities from fly position
-            velX = self.updateFromFlyPos(camX, self.prevCamX, self.prevVelX, dt)
-            velY = self.updateFromFlyPos(camY, self.prevCamY, self.prevVelY, dt)
-            
-            # update velocities from CNC position
-            velX = self.updateFromCncPos(cncX, velX, self.minPosX, self.maxPosX)
-            velY = self.updateFromCncPos(cncY, velY, self.minPosY, self.maxPosY)
+        # get manual control information
+        manualControl = self.manualControl
+
+        if manualControl:
+            velX = manualControl.velX
+            velY = manualControl.velY
         else:
-            velX = 0
-            velY = 0
+            # update velocities from fly position
+            if flyPresent:
+                velX = self.updateFromFlyPos(flyX)
+                velY = self.updateFromFlyPos(flyY)
+            else:
+                velX = 0
+                velY = 0
 
         # update velocities based on velocity limits
         velX = self.updateFromMaxVel(velX)
@@ -97,19 +93,15 @@ class TrackThread(Service):
         self.lastTime = thisTime
         self.prevVelX = velX
         self.prevVelY = velY
-        self.prevCamX = camX
-        self.prevCamY = camY
 
     # control update based on fly position
-    def updateFromFlyPos(self, cam, prevCam, prevVel, dt):
-        return prevVel + (self.b*dt/2 + self.a)*cam + (self.b*dt/2 - self.a)*prevCam
-
-    # control update based on CNC position
-    def updateFromCncPos(self, cnc, vel, minPos, maxPos):
-        if (cnc <= minPos and vel <= 0) or (cnc >= maxPos and vel >= 0):
+    # PI controller approximated by bilinear transform of
+    # continuous time transfer function
+    def updateFromFlyPos(self, cam):
+        if abs(cam) <= self.minAbsPos:
             return 0
         else:
-            return vel
+            return self.a*cam
 
     # control update based on maximum velocity
     def updateFromMaxVel(self, vel):
@@ -146,4 +138,18 @@ class TrackThread(Service):
                 return +float('inf')
             else:
                 return 0
-  
+
+    @property
+    def manualControl(self):
+        with self.manualCtrlLock:
+            return self._manualControl
+
+    @manualControl.setter
+    def manualControl(self, val):
+        with self.manualCtrlLock:
+              self._manualControl = val
+    
+class ManualControl:
+    def __init__(self, velX, velY):
+        self.velX = velX
+        self.velY = velY

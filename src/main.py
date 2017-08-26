@@ -1,28 +1,40 @@
 import cv2
 import os
 
-from time import strftime
+from time import strftime, sleep, perf_counter
 from math import ceil
+from warnings import warn
+from pynput import keyboard
 
 from cnc import CncThread
 from camera import CamThread
-from tracker import TrackThread
+from tracker import TrackThread, ManualControl
 
 def nothing(x):
     pass
 
 def main():
+    # handler for key events
+    keySet = set()
+    def on_press(key):
+        keySet.add(key)
+    def on_release(key):
+        keySet.remove(key)
+    listener = keyboard.Listener(on_press=on_press, on_release=on_release)
+    listener.start()
+    
     # create folder for data
     folderName = strftime("%Y%m%d-%H%M%S")
     os.makedirs(folderName)
     os.chdir(folderName)
     
     # settings for UI
-    tPer = ceil(1e3/24)
+    tLoop = 1/24
+    absJogVel = 0.05
 
     # create the UI
     cv2.namedWindow('image')
-    cv2.createTrackbar('threshold', 'image', 150, 254, nothing)
+    cv2.createTrackbar('threshold', 'image', 35, 254, nothing)
     cv2.createTrackbar('imageType', 'image', 2, 2, nothing)    
 
     # Open connection to CNC rig
@@ -37,17 +49,49 @@ def main():
     tracker = TrackThread(cncThread=cnc, camThread=cam)
     tracker.start()
 
-    while True:
-        # adjust threshold
-        threshTrack = cv2.getTrackbarPos('threshold', 'image')
-        cam.threshold = threshTrack + 1
+    # main program loop
+    while keyboard.Key.esc not in keySet:
+        # log start time of loop
+        startTime = perf_counter()
 
-        # adjust image type
-        typeTrack = cv2.getTrackbarPos('imageType', 'image')
+        # handle up/down keyboard input
+        if keyboard.Key.up in keySet:
+            velX = +absJogVel
+        elif keyboard.Key.down in keySet:
+            velX = -absJogVel
+        else:
+            velX = 0
+
+        # handle left/right keyboard input
+        if keyboard.Key.right in keySet:
+            velY = +absJogVel
+        elif keyboard.Key.left in keySet:
+            velY = -absJogVel
+        else:
+            velY = 0
+
+        # create manual control command
+        if velX != 0 or velY != 0:
+            manualControl = ManualControl(velX=velX, velY=velY)
+        else:
+            manualControl = None
+
+        # issue manual control command
+        tracker.manualControl = manualControl
         
+        # compute new thresholds
+        threshTrack = cv2.getTrackbarPos('threshold', 'image')
+        threshold = threshTrack + 1
+
+        # issue threshold command
+        cam.threshold = threshold
+
+        # determine the type of image that should be displayed
+        typeTrack = cv2.getTrackbarPos('imageType', 'image')
+
         # get raw fly position
         frameData = cam.frameData
-
+        
         if frameData is not None:
             # get the image to display
             if typeTrack==0:
@@ -69,10 +113,8 @@ def main():
             # show the image
             cv2.imshow('image', outFrame)
 
-        # get user input, wait until next frame
-        key = cv2.waitKey(tPer)
-        if key==27:
-            break
+        # display image
+        cv2.waitKey(round(1e3*tLoop))
 
     # stop tracker thread
     tracker.stop()
@@ -88,6 +130,9 @@ def main():
 
     # close UI window
     cv2.destroyAllWindows()
+
+    # close the keyboard listener
+    listener.stop()
         
 if __name__ == '__main__':
     main()
