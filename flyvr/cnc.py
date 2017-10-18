@@ -41,7 +41,7 @@ class CncThread(Service):
 
         # log status
         if self.logging:
-            logStr = (str(perf_counter) + ',' +
+            logStr = (str(perf_counter()) + ',' +
                       str(status.posX) + ',' +
                       str(status.posY) + '\n')
             self.fPtr.write(logStr)

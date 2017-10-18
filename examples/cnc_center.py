@@ -13,11 +13,11 @@ def clamp(v, minV=-0.03, maxV=0.03):
         return v
 
 def main():
-    # centerX = 0.401
-    # centerY = 0.405
+    centerX = 0.401
+    centerY = 0.405
 
-    centerX = 0.01
-    centerY = 0.01
+    #centerX = 0.01
+    #centerY = 0.01
 
     k = 2*pi
     tol = 1e-3
@@ -27,6 +27,11 @@ def main():
 
     # wait for initial position report    
     time.sleep(0.1)
+
+    # move to edge
+    cnc.setVel(-0.02, -0.02)
+    while(not cnc.status.limS or not cnc.status.limW):
+        cnc.setVel(-0.02, -0.02)
 
     errX = centerX - cnc.status.posX
     errY = centerY - cnc.status.posY
