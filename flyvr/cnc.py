@@ -2,9 +2,9 @@ import serial
 import os.path
 
 from time import sleep, perf_counter
-
-from service import Service
 from threading import Lock
+
+from flyvr.service import Service
 
 class CncThread(Service):
     def __init__(self, maxTime=10e-3, logging=True):

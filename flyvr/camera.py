@@ -5,7 +5,7 @@ from time import perf_counter
 from threading import Lock
 from enum import Enum, auto
 
-from service import Service
+from flyvr.service import Service
 
 class CamThread(Service):
     def __init__(self, defaultThresh=150, maxTime=10e-3, logging=True):

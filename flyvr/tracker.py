@@ -2,9 +2,9 @@ from numpy import sign
 
 from time import perf_counter
 from math import pi, tan, radians
-
 from threading import Lock
-from service import Service
+
+from flyvr.service import Service
 
 class TrackThread(Service):
     def __init__(self,
