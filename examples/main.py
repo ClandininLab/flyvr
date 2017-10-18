@@ -1,14 +1,14 @@
 import cv2
 import os
+import os.path
 
-from time import strftime, sleep, perf_counter
-from math import ceil
-from warnings import warn
+from time import strftime, perf_counter
 from pynput import keyboard
+from pynput.keyboard import Key, KeyCode
 
-from cnc import CncThread
-from camera import CamThread
-from tracker import TrackThread, ManualControl
+from flyvr.cnc import CncThread, cnc_home
+from flyvr.camera import CamThread
+from flyvr.tracker import TrackThread, ManualVelocity
 
 def nothing(x):
     pass
@@ -22,24 +22,32 @@ def main():
         keySet.remove(key)
     listener = keyboard.Listener(on_press=on_press, on_release=on_release)
     listener.start()
-    
+
+    # keypress generator
+    prev_key_set = set()
+
     # create folder for data
-    folderName = strftime("%Y%m%d-%H%M%S")
-    os.makedirs(folderName)
-    os.chdir(folderName)
-    
+    topdir = os.path.abspath(os.getcwd())
+    folder = 'exp-'+strftime('%Y%m%d-%H%M%S')
+    exp_dir = os.path.join(topdir, folder)
+    os.makedirs(exp_dir)
+    trial_count = 0
+    trial_active = False
+
     # settings for UI
     tLoop = 1/24
     absJogVel = 0.05
 
-    # create the UI
-    cv2.namedWindow('image')
-    cv2.createTrackbar('threshold', 'image', 35, 254, nothing)
-    cv2.createTrackbar('imageType', 'image', 2, 2, nothing)    
-
     # Open connection to CNC rig
+    print('Homing CNC rig.')
+    cnc_home()
     cnc = CncThread()
     cnc.start()
+
+    # create the UI
+    cv2.namedWindow('image')
+    cv2.createTrackbar('threshold', 'image', 122, 254, nothing)
+    cv2.createTrackbar('imageType', 'image', 2, 2, nothing)
 
     # Open connection to camera
     cam = CamThread()
@@ -48,36 +56,72 @@ def main():
     # Start tracker thread
     tracker = TrackThread(cncThread=cnc, camThread=cam)
     tracker.start()
+    print('Moving CNC rig to center.')
+    tracker.move_to_center()
 
     # main program loop
     while keyboard.Key.esc not in keySet:
         # log start time of loop
         startTime = perf_counter()
 
+        # handle keypress events
+        new_keys = keySet - prev_key_set
+        prev_key_set = set(keySet)
+
+        # handle start of trials
+        if Key.enter in new_keys:
+            trial_count += 1
+            trial_active = True
+            print('Started trial '+str(trial_count))
+            folder = 'trial-'+str(trial_count)+'-'+strftime('%Y%m%d-%H%M%S')
+            trial_dir = os.path.join(exp_dir, folder)
+            os.makedirs(trial_dir)
+            cnc.startLogging(os.path.join(trial_dir, 'cnc.txt'))
+            cam.startLogging(os.path.join(trial_dir, 'cam.txt'), os.path.join(trial_dir, 'cam.avi'))
+            tracker.startTracking()
+
+        # handle centering
+        if KeyCode.from_char('c') in new_keys:
+            print('Centering CNC rig.')
+            tracker.move_to_center()
+
         # handle up/down keyboard input
-        if keyboard.Key.up in keySet:
-            velX = +absJogVel
-        elif keyboard.Key.down in keySet:
-            velX = -absJogVel
+        if Key.up in keySet:
+            manVelX = +absJogVel
+        elif Key.down in keySet:
+            manVelX = -absJogVel
         else:
-            velX = 0
+            manVelX = 0
 
         # handle left/right keyboard input
-        if keyboard.Key.right in keySet:
-            velY = +absJogVel
-        elif keyboard.Key.left in keySet:
-            velY = -absJogVel
+        if Key.right in keySet:
+            manVelY = +absJogVel
+        elif Key.left in keySet:
+            manVelY = -absJogVel
         else:
-            velY = 0
+            manVelY = 0
+
+        if ((Key.space in new_keys) or
+            (KeyCode.from_char('c') in new_keys) or
+            (manVelX != 0) or
+            (manVelY != 0)):
+
+            if trial_active:
+                print('Stopped trial '+str(trial_count))
+                trial_active = False
+
+            cnc.stopLogging()
+            cam.stopLogging()
+            tracker.stopTracking()
 
         # create manual control command
-        if velX != 0 or velY != 0:
-            manualControl = ManualControl(velX=velX, velY=velY)
+        if manVelX != 0 or manVelY != 0:
+            manualVelocity = ManualVelocity(velX=manVelX, velY=manVelY)
         else:
-            manualControl = None
+            manualVelocity = None
 
         # issue manual control command
-        tracker.manualControl = manualControl
+        tracker.manualVelocity = manualVelocity
         
         # compute new thresholds
         threshTrack = cv2.getTrackbarPos('threshold', 'image')
@@ -107,11 +151,12 @@ def main():
             flyContour = frameData.flyContour
 
             # draw the fly contour if status available
+            drawFrame = outFrame.copy()
             if flyContour is not None:
-                cv2.drawContours(outFrame, [flyContour], 0, (0, 255, 0), 2)
+                cv2.drawContours(drawFrame, [flyContour], 0, (0, 255, 0), 2)
                 
             # show the image
-            cv2.imshow('image', outFrame)
+            cv2.imshow('image', drawFrame)
 
         # display image
         cv2.waitKey(round(1e3*tLoop))

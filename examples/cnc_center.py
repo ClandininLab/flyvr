@@ -2,7 +2,7 @@ import time
 
 from math import pi
 
-from cnc import CncThread
+from flyvr.cnc import CncThread
 
 def clamp(v, minV=-0.03, maxV=0.03):
     if v < minV:
@@ -15,9 +15,6 @@ def clamp(v, minV=-0.03, maxV=0.03):
 def main():
     centerX = 0.401
     centerY = 0.405
-
-    #centerX = 0.01
-    #centerY = 0.01
 
     k = 2*pi
     tol = 1e-3

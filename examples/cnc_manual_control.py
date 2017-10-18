@@ -1,6 +1,7 @@
 import time
 import pygame
-from cnc import CNC
+
+from flyvr.cnc import CncThread
 
 def main():
     pygame.init()

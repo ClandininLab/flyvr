@@ -1,18 +1,15 @@
-import time
 import cv2
-import numpy as np
 
 from math import ceil
 
-from camera import CamThread, ImageType
+from flyvr.camera import CamThread
 
 def nothing(x):
     pass
 
 def main():
     # settings for UI
-    tPer = ceil(1e3/24)
-    typeDir = {0: ImageType.RAW, 1: ImageType.GRAY, 2: ImageType.THRESH}
+    tLoop = 1/24
 
     # launch the camera processing thread
     camThread = CamThread()
@@ -20,7 +17,7 @@ def main():
 
     # create the UI
     cv2.namedWindow('image')
-    cv2.createTrackbar('threshold', 'image', 150, 254, nothing)
+    cv2.createTrackbar('threshold', 'image', 122, 254, nothing)
     cv2.createTrackbar('imageType', 'image', 2, 2, nothing)        
 
     # loop until user presses ESC
@@ -31,21 +28,33 @@ def main():
 
         # adjust image type
         typeTrack = cv2.getTrackbarPos('imageType', 'image')
-        camThread.imageType = typeDir[typeTrack]
-        
-        # read status
-        status = camThread.status
+
+        frameData = camThread.frameData
 
         # draw the image if status available
-        if status is not None:
-            # draw fly contour if present
-            if status.flyPresent:
-                cv2.drawContours(status.outFrame, [status.flyContour], 0, (0, 255, 0), 2)
+        if frameData is not None:
+            # get the image to display
+            if typeTrack==0:
+                outFrame = frameData.inFrame
+            elif typeTrack==1:
+                outFrame = cv2.cvtColor(frameData.grayFrame, cv2.COLOR_GRAY2BGR)
+            elif typeTrack==2:
+                outFrame = cv2.cvtColor(frameData.threshFrame, cv2.COLOR_GRAY2BGR)
+            else:
+                raise Exception('Invalid image type.')
+
+            # get the fly contour
+            flyContour = frameData.flyContour
+
+            # draw the fly contour if status available
+            if flyContour is not None:
+                cv2.drawContours(outFrame, [flyContour], 0, (0, 255, 0), 2)
+
             # show the image
-            cv2.imshow('image', status.outFrame)
+            cv2.imshow('image', outFrame)
 
         # get user input, wait until next frame
-        key = cv2.waitKey(tPer)
+        key = cv2.waitKey(round(1e3*tLoop))
         if key==27:
             break        
 
@@ -56,7 +65,8 @@ def main():
     camThread.stop()
 
     # print out thread information
-    print('Camera FPS: ', 1/camThread.avePeriod)
+    print('frames per second:', 1/camThread.avePeriod)
+    print('number of iterations:', camThread.iterCount)
     
 if __name__=='__main__':
     main()

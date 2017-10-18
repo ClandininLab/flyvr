@@ -1,8 +1,7 @@
-from numpy import sign
-
-from time import perf_counter
-from math import pi, tan, radians
+from time import perf_counter, sleep
+from math import pi
 from threading import Lock
+from numpy import sign
 
 from flyvr.service import Service
 
@@ -15,20 +14,32 @@ class TrackThread(Service):
                  minAbsPos = 8.5e-3, # m
                  maxAbsVel = 0.75, # m/s
                  maxAbsAcc = 0.25, # m/s^2
+                 v_max_ctrl = 0.02, # m/s
+                 k_pctrl = 2*pi
                  ):
 
         # Store thread handles
         self.camThread = camThread
         self.cncThread = cncThread
 
-        # Create lock for handling manual control
-        self.manualCtrlLock = Lock()
-        self.manualControl = None
+        # Create lock for handling manual velocity
+        self.manualVelLock = Lock()
+        self._manualVelocity = None
+
+        # Create lock for handling manual position
+        self.manualPosLock = Lock()
+        self._manualPosition = None
+
+        # Variable sets whether track is enabled
+        self.trackingEnableLock = Lock()
+        self._trackingEnabled = False
 
         # Store settings
         self.minAbsPos = minAbsPos
         self.maxAbsVel = maxAbsVel
         self.maxAbsAcc = maxAbsAcc
+        self.k_pctrl = k_pctrl
+        self.v_max_pctrl = v_max_ctrl
 
         # Compute derived parameters of control loop
         wc = 2*pi*fc
@@ -64,12 +75,21 @@ class TrackThread(Service):
             flyPresent = False
 
         # get manual control information
-        manualControl = self.manualControl
+        manualVelocity = self.manualVelocity
+        manualPosition = self.manualPosition
 
-        if manualControl:
-            velX = manualControl.velX
-            velY = manualControl.velY
-        else:
+        if manualPosition is not None:
+            cncStatus = self.cncThread.status
+            velX = self.k_pctrl*(manualPosition.posX - cncStatus.posX)
+            velY = self.k_pctrl*(manualPosition.posY - cncStatus.posY)
+            if abs(velX) > self.v_max_pctrl:
+                velX = float(sign(velX)*self.v_max_pctrl)
+            if abs(velY) > self.v_max_pctrl:
+                velY = float(sign(velY)*self.v_max_pctrl)
+        elif manualVelocity is not None:
+            velX = manualVelocity.velX
+            velY = manualVelocity.velY
+        elif self.trackingEnabled:
             # update velocities from fly position
             if flyPresent:
                 velX = self.updateFromFlyPos(flyX)
@@ -77,6 +97,9 @@ class TrackThread(Service):
             else:
                 velX = 0
                 velY = 0
+        else:
+            velX = 0
+            velY = 0
 
         # update velocities based on velocity limits
         velX = self.updateFromMaxVel(velX)
@@ -140,16 +163,62 @@ class TrackThread(Service):
                 return 0
 
     @property
-    def manualControl(self):
-        with self.manualCtrlLock:
-            return self._manualControl
+    def manualVelocity(self):
+        with self.manualVelLock:
+            return self._manualVelocity
 
-    @manualControl.setter
-    def manualControl(self, val):
-        with self.manualCtrlLock:
-              self._manualControl = val
-    
-class ManualControl:
+    @manualVelocity.setter
+    def manualVelocity(self, val):
+        with self.manualVelLock:
+              self._manualVelocity = val
+
+    @property
+    def manualPosition(self):
+        with self.manualPosLock:
+            return self._manualPosition
+
+    @manualPosition.setter
+    def manualPosition(self, val):
+        with self.manualPosLock:
+              self._manualPosition = val
+
+    @property
+    def trackingEnabled(self):
+        with self.trackingEnableLock:
+            return self._trackingEnabled
+
+    @trackingEnabled.setter
+    def trackingEnabled(self, value):
+        with self.trackingEnableLock:
+            self._trackingEnabled = value
+
+    def startTracking(self):
+        self.trackingEnabled = True
+
+    def stopTracking(self):
+        self.trackingEnabled = False
+
+    def move_to_center(self):
+        self.move_to_pos(x=0.3007, y=0.218875)
+
+    def move_to_pos(self, x, y, tol=1e-3):
+        self.manualPosition = ManualPosition(x, y)
+
+        def isError():
+            cncStatus = self.cncThread.status
+            return (abs(x-cncStatus.posX) > tol) or (abs(y-cncStatus.posY) > tol)
+
+        while isError():
+            pass
+
+        self.manualPosition = None
+
+class ManualVelocity:
     def __init__(self, velX, velY):
         self.velX = velX
         self.velY = velY
+
+class ManualPosition:
+    def __init__(self, posX, posY):
+        self.posX = posX
+        self.posY = posY

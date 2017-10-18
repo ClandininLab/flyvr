@@ -1,14 +1,13 @@
-import numpy as np
 import cv2
 
+from math import pi
 from time import perf_counter
 from threading import Lock
-from enum import Enum, auto
 
 from flyvr.service import Service
 
 class CamThread(Service):
-    def __init__(self, defaultThresh=150, maxTime=10e-3, logging=True):
+    def __init__(self, defaultThresh=150, maxTime=10e-3):
         # Serial I/O interface to CNC
         self.cam = Camera()
 
@@ -25,10 +24,10 @@ class CamThread(Service):
         self.threshold = defaultThresh
 
         # File handle for logging
-        self.logging = logging
-        if self.logging:
-            self.fPtr = open('cam.txt', 'w')
-            self.fPtr.write('t,flyPresent,x,y\n')
+        self.logLock = Lock()
+        self.logFile = None
+        self.logVideo = None
+        self.logState = False
 
         # call constructor from parent        
         super().__init__(maxTime=maxTime)
@@ -48,12 +47,20 @@ class CamThread(Service):
         self.frameData = frameData
 
         # log status
-        if self.logging:
+        logState, logFile, logVideo = self.getLogState()
+        if logState:
+            # write to log file
             logStr = (str(perf_counter()) + ',' +
                       str(flyData.flyPresent) + ',' +
                       str(flyData.flyX) + ',' +
-                      str(flyData.flyY) + '\n')
-            self.fPtr.write(logStr)
+                      str(flyData.flyY) + ',' +
+                      str(flyData.ma) + ',' +
+                      str(flyData.MA) + ',' +
+                      str(flyData.angle) + '\n')
+            logFile.write(logStr)
+
+            # write to log video
+            logVideo.write(frameData.inFrame)
 
     @property
     def flyData(self):
@@ -85,11 +92,43 @@ class CamThread(Service):
         with self.threshLock:
             self._threshold = val
 
-class FlyData:
-    def __init__(self, flyX, flyY, flyPresent):
-        self.flyX = flyX
-        self.flyY = flyY
-        self.flyPresent = flyPresent
+    def startLogging(self, logFile, logVideo):
+        with self.logLock:
+            # save log state
+            self.logState = True
+
+            # close previous log file
+            if self.logFile is not None:
+                self.logFile.close()
+
+            # close previous log video
+            if self.logVideo is not None:
+                self.logVideo.release()
+
+            # open new log file
+            self.logFile = open(logFile, 'w')
+            self.logFile.write('t,flyPresent,x,y,ma,MA,angle\n')
+
+            # open new log video
+            fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+            self.logVideo = cv2.VideoWriter(logVideo, fourcc, 20.0, (640, 480))
+
+    def stopLogging(self):
+        with self.logLock:
+            # save log state
+            self.logState = False
+
+            # close previous log file
+            if self.logFile is not None:
+                self.logFile.close()
+
+            # close previous log video
+            if self.logVideo is not None:
+                self.logVideo.release()
+
+    def getLogState(self):
+        with self.logLock:
+            return self.logState, self.logFile, self.logVideo
 
 class FrameData:
     def __init__(self, inFrame, grayFrame, threshFrame, flyContour):
@@ -98,22 +137,57 @@ class FrameData:
         self.threshFrame = threshFrame
         self.flyContour = flyContour
 
+class Ellipse:
+    def __init__(self, cx, cy, ma, MA, angle):
+        self.cx = cx
+        self.cy = cy
+        self.ma = ma
+        self.MA = MA
+        self.angle = angle
+
+    @property
+    def area(self):
+        return pi*self.ma*self.MA
+
+class FlyData:
+    def __init__(self, flyX=0, flyY=0, ma=0, MA=0, angle=0, flyPresent=False):
+        self.flyX = flyX
+        self.flyY = flyY
+        self.ma = ma
+        self.MA = MA
+        self.angle = angle
+        self.flyPresent = flyPresent
+
 class Camera:
     def __init__(self,
                  px_per_m = 8548.96030065,
-                 minArea = 0.00000136827, # m^2
-                 maxArea = 0.00010262062 # m^2
+                 ma_min = 0.75e-3, # m
+                 ma_max = 3e-3, # m
+                 MA_min = 1.5e-3, # m
+                 MA_max = 7e-3, # m
+                 r_min = 0.1,
+                 r_max = 0.7
                  ):
         # Store the number of pixels per meter
         self.px_per_m = px_per_m
 
         # Compute minimum and maximum area in terms of pixel area
-        self.minAreaPx = minArea*px_per_m*px_per_m
-        self.maxAreaPx = maxArea*px_per_m*px_per_m
+        self.ma_min = ma_min
+        self.ma_max = ma_max
+        self.MA_min = MA_min
+        self.MA_max = MA_max
+
+        self.r_min = r_min
+        self.r_max = r_max
 
         # Open the capture stream
         self.cap = cv2.VideoCapture(0)
-        
+
+    def flyCandidate(self, ellipse):
+        return ((self.ma_min <= ellipse.ma <= self.ma_max) and
+                (self.MA_min <= ellipse.MA <= self.MA_max) and
+                (self.r_min <= ellipse.ma/ellipse.MA <= self.r_max))
+
     def processNext(self, threshold):
         # Capture a single frame
         ret, inFrame = self.cap.read()
@@ -123,40 +197,44 @@ class Camera:
 
         # Threshold image according
         ret, threshFrame = cv2.threshold(grayFrame, threshold, 255, cv2.THRESH_BINARY_INV)
+        rows, cols = threshFrame.shape
 
         # Find contours in image
         im2, contours, hierarchy = cv2.findContours(threshFrame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        # Set default fly readout
-        flyPresent = False
-        flyContour = None
-        flyX = 0
-        flyY = 0
-
         # remove invalid contours
-        results = [(cnt, cv2.contourArea(cnt)) for cnt in contours]
-        results = [(cnt, area) for cnt, area in results if self.minAreaPx <= area <= self.maxAreaPx]
+        results = []
+        for cnt in contours:
+            if len(cnt) < 5:
+                continue
+            (cx, cy), (d0, d1), angle = cv2.fitEllipse(cnt)
+            MA = max(d0, d1)
+            ma = min(d0, d1)
+            ellipse = Ellipse(cx=((cx-cols)/2.0)/self.px_per_m,
+                              cy=((cy-rows)/2.0)/self.px_per_m,
+                              ma=ma/self.px_per_m,
+                              MA=MA/self.px_per_m,
+                              angle=angle)
+            if self.flyCandidate(ellipse):
+                results.append((ellipse, cnt))
 
         # If there is a contour, compute its centroid and mark the fly as present
         if len(results) > 0:
-            # Find contour with largest area
-            flyContour = max(results, key = lambda x: x[1])[0]
+            bestResult = max(results, key=lambda x: x[0].area)
 
-            # Calculate moments of the largest contour
-            M = cv2.moments(flyContour)
+            ellipse = bestResult[0]
+            flyData = FlyData(flyX=ellipse.cx,
+                              flyY=ellipse.cy,
+                              ma=ellipse.ma,
+                              MA=ellipse.MA,
+                              angle=ellipse.angle)
 
-            # Calculate centoid of largest contour
-            if M['m00'] > 0:
-                flyPresent = True
-                
-                rows, cols = threshFrame.shape
-                flyX = (M['m10']/M['m00'] - cols/2)/self.px_per_m 
-                flyY = (M['m01']/M['m00'] - rows/2)/self.px_per_m
+            flyContour = bestResult[1]
+        else:
+            flyData = FlyData()
+            flyContour = None
 
         # wrap results
-        flyData = FlyData(flyPresent=flyPresent,
-                          flyX=flyX,
-                          flyY=flyY)
         frameData = FrameData(inFrame=inFrame,
                               grayFrame=grayFrame,
                               threshFrame=threshFrame,

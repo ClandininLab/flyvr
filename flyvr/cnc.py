@@ -1,29 +1,29 @@
 import serial
-import os.path
 
+from math import pi
 from time import sleep, perf_counter
 from threading import Lock
 
 from flyvr.service import Service
 
 class CncThread(Service):
-    def __init__(self, maxTime=10e-3, logging=True):
+    def __init__(self, maxTime=10e-3):
         # Serial I/O interface to CNC
         self.cnc = CNC()
 
         # Lock for communicating velocity changes to CNC
         self.cmdLock = Lock()
-        self.setVel(0, 0)
+        self.cmdX = 0
+        self.cmdY = 0
 
         # Lock for communicating status changes from CNC
         self.statusLock = Lock()
-        self.status = None
+        self._status = None
 
         # File handle for logging
-        self.logging = logging
-        if self.logging:
-            self.fPtr = open('cnc.txt', 'w')
-            self.fPtr.write('t,x,y\n')
+        self.logLock = Lock()
+        self.logFile = None
+        self.logState = False
 
         # call constructor from parent        
         super().__init__(maxTime=maxTime)
@@ -40,11 +40,12 @@ class CncThread(Service):
         self.status = status
 
         # log status
-        if self.logging:
+        logState, logFile = self.getLogState()
+        if logState:
             logStr = (str(perf_counter()) + ',' +
                       str(status.posX) + ',' +
                       str(status.posY) + '\n')
-            self.fPtr.write(logStr)
+            logFile.write(logStr)
 
     def setVel(self, cmdX, cmdY):
         with self.cmdLock:
@@ -62,7 +63,33 @@ class CncThread(Service):
     @status.setter
     def status(self, val):
         with self.statusLock:
-            self._status = val       
+            self._status = val
+
+    def startLogging(self, logFile):
+        with self.logLock:
+            # save log state
+            self.logState = True
+
+            # close previous log file
+            if self.logFile is not None:
+                self.logFile.close()
+
+            # open new log file if desired
+            self.logFile = open(logFile, 'w')
+            self.logFile.write('t,x,y\n')
+
+    def stopLogging(self):
+        with self.logLock:
+            # save log state
+            self.logState = False
+
+            # close previous log file
+            if self.logFile is not None:
+                self.logFile.close()
+
+    def getLogState(self):
+        with self.logLock:
+            return self.logState, self.logFile
 
 class CncStatus:
     def __init__(self, status):
@@ -169,3 +196,21 @@ class CNC:
             intVal |= signBit
 
         return intVal.to_bytes(self.bytesPerVel, byteorder='big', signed=False)
+
+def cnc_home(velX=-0.02, velY=-0.02):
+    cnc = CncThread()
+    cnc.start()
+
+    # wait for initial position report
+    sleep(0.1)
+
+    # move to edge
+    cnc.setVel(velX, velY)
+    while (not cnc.status.limS or not cnc.status.limW):
+        cnc.setVel(velX, velY)
+
+    # set velocity to zero and wait for it to take effect
+    cnc.setVel(0, 0)
+    sleep(0.1)
+
+    cnc.stop()

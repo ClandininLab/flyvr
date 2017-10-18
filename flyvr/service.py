@@ -16,7 +16,7 @@ class Service:
 
         # set up access to the thread-ending signal
         self.doneLock = Lock()
-        self.done = False
+        self._done = False
 
     def start(self):
         self.thread = Thread(target=self.loop)
@@ -61,17 +61,13 @@ class Service:
 
     @property
     def done(self):
-        self.doneLock.acquire()
-        val = self._done
-        self.doneLock.release()
-
-        return val
+        with self.doneLock:
+            return self._done
 
     @done.setter
     def done(self, val):
-        self.doneLock.acquire()
-        self._done = val
-        self.doneLock.release()
+        with self.doneLock:
+            self._done = val
 
     # subclasses should override loop body
     def loopBody(self):

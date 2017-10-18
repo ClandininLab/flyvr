@@ -1,5 +1,6 @@
 import time
-from cnc import CncThread
+
+from flyvr.cnc import CncThread
 
 def main():
     cncThread = CncThread()
@@ -9,8 +10,8 @@ def main():
         time.sleep(1e-3)
     cncThread.stop()
 
-    print(cncThread.avePeriod)
-    print(cncThread.iterCount)
+    print('average period:', cncThread.avePeriod)
+    print('number of iterations:', cncThread.iterCount)
                     
 if __name__=='__main__':
     main()
