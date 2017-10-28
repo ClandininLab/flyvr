@@ -48,7 +48,7 @@ def main():
     # create the UI
     cv2.namedWindow('image')
     cv2.createTrackbar('threshold', 'image', 66, 254, nothing)
-    cv2.createTrackbar('imageType', 'image', 0, 2, nothing)
+    cv2.createTrackbar('imageType', 'image', 2, 2, nothing)
 
     # Open connection to camera
     cam = CamThread()
@@ -88,19 +88,19 @@ def main():
 
         # handle up/down keyboard input
         if Key.up in keySet:
-            manVelX = +absJogVel
+            manVelY = -absJogVel
         elif Key.down in keySet:
-            manVelX = -absJogVel
+            manVelY = +absJogVel
         else:
-            manVelX = 0
+            manVelY = 0
 
         # handle left/right keyboard input
         if Key.right in keySet:
-            manVelY = +absJogVel
+            manVelX = +absJogVel
         elif Key.left in keySet:
-            manVelY = -absJogVel
+            manVelX = -absJogVel
         else:
-            manVelY = 0
+            manVelX = 0
 
         if ((Key.space in new_keys) or
             (KeyCode.from_char('c') in new_keys) or

@@ -14,7 +14,7 @@ class TrackThread(Service):
                  minAbsPos = 8.5e-3, # m
                  maxAbsVel = 0.75, # m/s
                  maxAbsAcc = 0.25, # m/s^2
-                 v_max_ctrl = 0.02, # m/s
+                 v_max_ctrl = 0.04, # m/s
                  k_pctrl = 2*pi
                  ):
 
