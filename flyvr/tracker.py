@@ -199,7 +199,7 @@ class TrackThread(Service):
         self.trackingEnabled = False
 
     def move_to_center(self):
-        self.move_to_pos(x=0.3007, y=0.218875)
+        self.move_to_pos(x=0.30685, y=0.31755)
 
     def move_to_pos(self, x, y, tol=1e-3):
         self.manualPosition = ManualPosition(x, y)

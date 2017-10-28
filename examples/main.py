@@ -9,6 +9,7 @@ from pynput.keyboard import Key, KeyCode
 from flyvr.cnc import CncThread, cnc_home
 from flyvr.camera import CamThread
 from flyvr.tracker import TrackThread, ManualVelocity
+from flyvr.display import Stimulus
 
 def nothing(x):
     pass
@@ -27,7 +28,7 @@ def main():
     prev_key_set = set()
 
     # create folder for data
-    topdir = os.path.abspath(os.getcwd())
+    topdir = r'E:\FlyVR'
     folder = 'exp-'+strftime('%Y%m%d-%H%M%S')
     exp_dir = os.path.join(topdir, folder)
     os.makedirs(exp_dir)
@@ -46,8 +47,8 @@ def main():
 
     # create the UI
     cv2.namedWindow('image')
-    cv2.createTrackbar('threshold', 'image', 122, 254, nothing)
-    cv2.createTrackbar('imageType', 'image', 2, 2, nothing)
+    cv2.createTrackbar('threshold', 'image', 66, 254, nothing)
+    cv2.createTrackbar('imageType', 'image', 0, 2, nothing)
 
     # Open connection to camera
     cam = CamThread()
@@ -77,7 +78,7 @@ def main():
             trial_dir = os.path.join(exp_dir, folder)
             os.makedirs(trial_dir)
             cnc.startLogging(os.path.join(trial_dir, 'cnc.txt'))
-            cam.startLogging(os.path.join(trial_dir, 'cam.txt'), os.path.join(trial_dir, 'cam.avi'))
+            cam.startLogging(os.path.join(trial_dir, 'cam.txt'), os.path.join(trial_dir, 'cam.mkv'))
             tracker.startTracking()
 
         # handle centering
@@ -122,7 +123,7 @@ def main():
 
         # issue manual control command
         tracker.manualVelocity = manualVelocity
-        
+
         # compute new thresholds
         threshTrack = cv2.getTrackbarPos('threshold', 'image')
         threshold = threshTrack + 1

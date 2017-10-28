@@ -7,7 +7,7 @@ from threading import Lock
 from flyvr.service import Service
 
 class CamThread(Service):
-    def __init__(self, defaultThresh=150, maxTime=10e-3):
+    def __init__(self, defaultThresh=150, maxTime=10e-3, bufX=50, bufY=50):
         # Serial I/O interface to CNC
         self.cam = Camera()
 
@@ -18,6 +18,8 @@ class CamThread(Service):
         # Lock for communicating debugging frame changes
         self.frameDataLock = Lock()
         self.frameData = None
+        self.bufX=bufX
+        self.bufY=bufY
 
         # Lock for communicating the threshold
         self.threshLock = Lock()
@@ -60,7 +62,17 @@ class CamThread(Service):
             logFile.write(logStr)
 
             # write to log video
-            logVideo.write(frameData.inFrame)
+            # reference: http://answers.opencv.org/question/29260/how-to-save-a-rectangular-roi/
+            if frameData.inFrame.shape != 0:
+                rows, cols, _ =  frameData.inFrame.shape
+                flyX_px = min(max(int(round(flyData.flyX_px)), self.bufX), cols - self.bufX - 1)
+                flyY_px = min(max(int(round(flyData.flyY_px)), self.bufY), rows - self.bufY - 1)
+
+                roi = frameData.inFrame[flyY_px-self.bufY: flyY_px+self.bufY+1,
+                                        flyX_px-self.bufX: flyX_px+self.bufX+1,
+                                        :]
+
+                logVideo.write(roi)
 
     @property
     def flyData(self):
@@ -110,8 +122,10 @@ class CamThread(Service):
             self.logFile.write('t,flyPresent,x,y,ma,MA,angle\n')
 
             # open new log video
-            fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
-            self.logVideo = cv2.VideoWriter(logVideo, fourcc, 20.0, (640, 480))
+            # fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+
+            fourcc = 0
+            self.logVideo = cv2.VideoWriter(logVideo, fourcc, 20.0, (2*self.bufX+1, 2*self.bufY+1))
 
     def stopLogging(self):
         with self.logLock:
@@ -138,7 +152,9 @@ class FrameData:
         self.flyContour = flyContour
 
 class Ellipse:
-    def __init__(self, cx, cy, ma, MA, angle):
+    def __init__(self, cx_px, cy_px, cx, cy, ma, MA, angle):
+        self.cx_px = cx_px
+        self.cy_px = cy_px
         self.cx = cx
         self.cy = cy
         self.ma = ma
@@ -150,7 +166,9 @@ class Ellipse:
         return pi*self.ma*self.MA
 
 class FlyData:
-    def __init__(self, flyX=0, flyY=0, ma=0, MA=0, angle=0, flyPresent=False):
+    def __init__(self, flyX_px=0, flyY_px=0, flyX=0, flyY=0, ma=0, MA=0, angle=0, flyPresent=False):
+        self.flyX_px = flyX_px
+        self.flyY_px = flyY_px
         self.flyX = flyX
         self.flyY = flyY
         self.ma = ma
@@ -210,8 +228,10 @@ class Camera:
             (cx, cy), (d0, d1), angle = cv2.fitEllipse(cnt)
             MA = max(d0, d1)
             ma = min(d0, d1)
-            ellipse = Ellipse(cx=((cx-cols)/2.0)/self.px_per_m,
-                              cy=((cy-rows)/2.0)/self.px_per_m,
+            ellipse = Ellipse(cx_px=cx,
+                              cy_px=cy,
+                              cx=(cx-(cols/2.0))/self.px_per_m,
+                              cy=(cy-(rows/2.0))/self.px_per_m,
                               ma=ma/self.px_per_m,
                               MA=MA/self.px_per_m,
                               angle=angle)
@@ -223,11 +243,14 @@ class Camera:
             bestResult = max(results, key=lambda x: x[0].area)
 
             ellipse = bestResult[0]
-            flyData = FlyData(flyX=ellipse.cx,
+            flyData = FlyData(flyX_px=ellipse.cx_px,
+                              flyY_px=ellipse.cy_px,
+                              flyX=ellipse.cx,
                               flyY=ellipse.cy,
                               ma=ellipse.ma,
                               MA=ellipse.MA,
-                              angle=ellipse.angle)
+                              angle=ellipse.angle,
+                              flyPresent=True)
 
             flyContour = bestResult[1]
         else:
