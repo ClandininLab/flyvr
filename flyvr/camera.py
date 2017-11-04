@@ -65,11 +65,11 @@ class CamThread(Service):
             # reference: http://answers.opencv.org/question/29260/how-to-save-a-rectangular-roi/
             if frameData.inFrame.shape != 0:
                 rows, cols, _ =  frameData.inFrame.shape
-                flyX_px = min(max(int(round(flyData.flyX_px)), self.bufX), cols - self.bufX - 1)
-                flyY_px = min(max(int(round(flyData.flyY_px)), self.bufY), rows - self.bufY - 1)
+                flyX_px = min(max(int(round(flyData.flyX_px)), self.bufX), cols - self.bufX)
+                flyY_px = min(max(int(round(flyData.flyY_px)), self.bufY), rows - self.bufY)
 
-                roi = frameData.inFrame[flyY_px-self.bufY: flyY_px+self.bufY+1,
-                                        flyX_px-self.bufX: flyX_px+self.bufX+1,
+                roi = frameData.inFrame[flyY_px-self.bufY: flyY_px+self.bufY,
+                                        flyX_px-self.bufX: flyX_px+self.bufX,
                                         :]
 
                 logVideo.write(roi)
@@ -125,7 +125,7 @@ class CamThread(Service):
             # fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
 
             fourcc = 0
-            self.logVideo = cv2.VideoWriter(logVideo, fourcc, 20.0, (2*self.bufX+1, 2*self.bufY+1))
+            self.logVideo = cv2.VideoWriter(logVideo, fourcc, 20.0, (2*self.bufX, 2*self.bufY))
 
     def stopLogging(self):
         with self.logLock:

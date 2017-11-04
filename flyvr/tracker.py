@@ -199,14 +199,17 @@ class TrackThread(Service):
         self.trackingEnabled = False
 
     def move_to_center(self):
-        self.move_to_pos(x=0.30685, y=0.31755)
+        self.move_to_pos(x=0.29655, y=0.31835)
 
     def move_to_pos(self, x, y, tol=1e-3):
         self.manualPosition = ManualPosition(x, y)
 
         def isError():
             cncStatus = self.cncThread.status
-            return (abs(x-cncStatus.posX) > tol) or (abs(y-cncStatus.posY) > tol)
+            if cncStatus is None:
+                return True
+            else:
+                return (abs(x-cncStatus.posX) > tol) or (abs(y-cncStatus.posY) > tol)
 
         while isError():
             pass
