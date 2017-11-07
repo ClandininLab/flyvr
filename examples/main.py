@@ -64,7 +64,9 @@ class TrialThread(Service):
         trial_dir = os.path.join(self.exp_dir, folder)
         os.makedirs(trial_dir)
         self.cnc.startLogging(os.path.join(trial_dir, 'cnc.txt'))
-        self.cam.startLogging(os.path.join(trial_dir, 'cam.txt'), os.path.join(trial_dir, 'cam.mkv'))
+        self.cam.startLogging(os.path.join(trial_dir, 'cam.txt'),
+                              os.path.join(trial_dir, 'cam_uncompr.mkv'),
+                              os.path.join(trial_dir, 'cam_compr.mkv'))
 
     def _stop_trial(self):
         print('Stopped trial.')
@@ -191,6 +193,7 @@ def main():
     # settings for UI
     tLoop = 1/24
     draw_contour = True
+    draw_details = False
     absJogVel = 0.05
 
     # create the UI
@@ -212,6 +215,8 @@ def main():
         new_keys = keySet - prev_key_set
         prev_key_set = set(keySet)
 
+        if KeyCode.from_char('f') in new_keys:
+            draw_details = not draw_details
         if KeyCode.from_char('d') in new_keys:
             draw_contour = not draw_contour
         if KeyCode.from_char('s') in new_keys:
@@ -282,7 +287,32 @@ def main():
             drawFrame = outFrame.copy()
             if draw_contour and (flyContour is not None):
                 cv2.drawContours(drawFrame, [flyContour], 0, (0, 255, 0), 2)
-                
+
+            # compute focus if needed
+            if draw_details:
+                flyData = cam.flyData
+                if (flyData is not None) and flyData.flyPresent:
+                    # compute center of region to use for focus calculation
+                    rows, cols = frameData.grayFrame.shape
+                    bufX = 50
+                    bufY = 50
+                    flyX_px = min(max(int(round(flyData.flyX_px)), bufX), cols - bufX)
+                    flyY_px = min(max(int(round(flyData.flyY_px)), bufY), rows - bufY)
+
+                    # select region to be used for focus calculation
+                    focus_roi = frameData.grayFrame[flyY_px - bufY: flyY_px + bufY,
+                                                    flyX_px - bufX: flyX_px + bufX]
+
+                    # compute focus figure of merit
+                    focus = cv2.Laplacian(focus_roi, cv2.CV_64F).var()
+                    focus_str = 'focus: {0:.3f}'.format(focus)
+
+                    # display focus information
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    x0 = 0
+                    y0 = 25
+                    cv2.putText(drawFrame, focus_str, (x0, y0), font, 1, (0, 0, 0))
+
             # show the image
             cv2.imshow('image', drawFrame)
 

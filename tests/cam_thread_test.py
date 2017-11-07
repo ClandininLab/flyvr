@@ -15,6 +15,8 @@ def main():
     camThread = CamThread()
     camThread.start()
 
+    camThread.startLogging('cam.txt', 'cam_uncompr.mkv', 'cam_compr.mkv')
+
     # create the UI
     cv2.namedWindow('image')
     cv2.createTrackbar('threshold', 'image', 122, 254, nothing)
@@ -47,11 +49,37 @@ def main():
             flyContour = frameData.flyContour
 
             # draw the fly contour if status available
+            drawFrame = outFrame.copy()
             if flyContour is not None:
-                cv2.drawContours(outFrame, [flyContour], 0, (0, 255, 0), 2)
+                cv2.drawContours(drawFrame, [flyContour], 0, (0, 255, 0), 2)
+
+            # compute focus if needed
+            flyData = camThread.flyData
+            if (flyData is not None) and flyData.flyPresent:
+                # compute center of region to use for focus calculation
+                rows, cols = frameData.grayFrame.shape
+                bufX = 50
+                bufY = 50
+                flyX_px = min(max(int(round(flyData.flyX_px)), bufX), cols - bufX)
+                flyY_px = min(max(int(round(flyData.flyY_px)), bufY), rows - bufY)
+
+                # select region to be used for focus calculation
+                focus_roi = frameData.grayFrame[flyY_px-bufY: flyY_px+bufY,
+                                                flyX_px-bufX: flyX_px+bufX]
+
+                # compute focus figure of merit
+                focus = cv2.Laplacian(focus_roi, cv2.CV_64F).var()
+                focus_str = 'focus: {0:.3f}'.format(focus)
+
+                # display focus information
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                x0 = 0
+                y0 = 25
+                dy = 35
+                cv2.putText(drawFrame, focus_str, (x0, y0), font, 1, (255, 255, 255))
 
             # show the image
-            cv2.imshow('image', outFrame)
+            cv2.imshow('image', drawFrame)
 
         # get user input, wait until next frame
         key = cv2.waitKey(round(1e3*tLoop))
