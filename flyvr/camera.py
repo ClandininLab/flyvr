@@ -29,6 +29,7 @@ class CamThread(Service):
         self.logLock = Lock()
         self.logFile = None
         self.logVideo = None
+        self.logFull = None
         self.logState = False
 
         # call constructor from parent        
@@ -49,7 +50,7 @@ class CamThread(Service):
         self.frameData = frameData
 
         # log status
-        logState, logFile, logVideo = self.getLogState()
+        logState, logFile, logVideo, logFull = self.getLogState()
         if logState:
             # write to log file
             logStr = (str(perf_counter()) + ',' +
@@ -61,9 +62,11 @@ class CamThread(Service):
                       str(flyData.angle) + '\n')
             logFile.write(logStr)
 
-            # write to log video
-            # reference: http://answers.opencv.org/question/29260/how-to-save-a-rectangular-roi/
+
             if frameData.inFrame.shape != 0:
+                # write to uncompressed log video
+                # reference: http://answers.opencv.org/question/29260/how-to-save-a-rectangular-roi/
+
                 rows, cols, _ =  frameData.inFrame.shape
                 flyX_px = min(max(int(round(flyData.flyX_px)), self.bufX), cols - self.bufX)
                 flyY_px = min(max(int(round(flyData.flyY_px)), self.bufY), rows - self.bufY)
@@ -73,6 +76,10 @@ class CamThread(Service):
                                         :]
 
                 logVideo.write(roi)
+
+                # write to compressed video
+
+                logFull.write(frameData.inFrame)
 
     @property
     def flyData(self):
@@ -104,7 +111,7 @@ class CamThread(Service):
         with self.threshLock:
             self._threshold = val
 
-    def startLogging(self, logFile, logVideo):
+    def startLogging(self, logFile, logVideo, logFull):
         with self.logLock:
             # save log state
             self.logState = True
@@ -117,15 +124,21 @@ class CamThread(Service):
             if self.logVideo is not None:
                 self.logVideo.release()
 
+            # close previous full log video
+            if self.logFull is not None:
+                self.logFull.release()
+
             # open new log file
             self.logFile = open(logFile, 'w')
             self.logFile.write('t,flyPresent,x,y,ma,MA,angle\n')
 
-            # open new log video
-            # fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+            # uncompressed cropped video
+            fourcc_uncompr = 0
+            self.logVideo = cv2.VideoWriter(logVideo, fourcc_uncompr, 124.2, (2*self.bufX, 2*self.bufY))
 
-            fourcc = 0
-            self.logVideo = cv2.VideoWriter(logVideo, fourcc, 20.0, (2*self.bufX, 2*self.bufY))
+            # compressed full video
+            fourcc_compr = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+            self.logFull = cv2.VideoWriter(logFull, fourcc_compr, 124.2, (640, 480))
 
     def stopLogging(self):
         with self.logLock:
@@ -140,9 +153,13 @@ class CamThread(Service):
             if self.logVideo is not None:
                 self.logVideo.release()
 
+            # close previous full log video
+            if self.logFull is not None:
+                self.logFull.release()
+
     def getLogState(self):
         with self.logLock:
-            return self.logState, self.logFile, self.logVideo
+            return self.logState, self.logFile, self.logVideo, self.logFull
 
 class FrameData:
     def __init__(self, inFrame, grayFrame, threshFrame, flyContour):
