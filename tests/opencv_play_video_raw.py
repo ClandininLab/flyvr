@@ -1,3 +1,4 @@
+from scipy.interpolate import interp1d
 import numpy as np
 import cv2
 
@@ -13,14 +14,10 @@ def main():
 
     fps = 20
     #fps = 1/np.median(np.diff(meas_times))
-    #print(fps)
 
     # calculate frame times
-    # todo: optimize search if speed is an issue
     frame_times = np.arange(0, meas_times[-1], 1/fps)
-    frame_idx = np.zeros(len(frame_times))
-    for k in range(len(frame_times)):
-        frame_idx[k] = np.abs(meas_times - frame_times[k]).argmin()
+    frame_idx = interp1d(meas_times, np.arange(len(meas_times)), kind='nearest', assume_sorted=True)(frame_times)
 
     # set up video reading
     vid_file = 'cam.mkv'
