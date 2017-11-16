@@ -2,6 +2,7 @@ import cv2
 import os
 import os.path
 import itertools
+import xmlrpc.client
 
 from time import strftime, perf_counter, time, sleep
 from pynput import keyboard
@@ -14,6 +15,15 @@ from flyvr.display import Stimulus
 from flyvr.service import Service
 
 from threading import Lock
+
+class Smooth:
+    def __init__(self, n):
+        self.n = n
+        self.hist = [0]*n
+
+    def update(self, value):
+        self.hist = [float(value)] + self.hist[:-1]
+        return sum(self.hist)/self.n
 
 def nothing(x):
     pass
@@ -36,6 +46,9 @@ class TrialThread(Service):
         self.manualLock = Lock()
         self._manualCmd = None
 
+        self.trialDirLock = Lock()
+        self._trial_dir = None
+
         # call constructor from parent
         super().__init__(minTime=loopTime, maxTime=loopTime)
 
@@ -57,16 +70,24 @@ class TrialThread(Service):
         self.tracker.stop()
         self.cnc.stop()
 
+    @property
+    def trial_dir(self):
+        with self.trialDirLock:
+            return self._trial_dir
+
     def _start_trial(self):
         trial_num = next(self.trial_count)
         print('Started trial ' + str(trial_num))
         folder = 'trial-' + str(trial_num) + '-' + strftime('%Y%m%d-%H%M%S')
-        trial_dir = os.path.join(self.exp_dir, folder)
-        os.makedirs(trial_dir)
-        self.cnc.startLogging(os.path.join(trial_dir, 'cnc.txt'))
-        self.cam.startLogging(os.path.join(trial_dir, 'cam.txt'),
-                              os.path.join(trial_dir, 'cam_uncompr.mkv'),
-                              os.path.join(trial_dir, 'cam_compr.mkv'))
+        _trial_dir = os.path.join(self.exp_dir, folder)
+        os.makedirs(_trial_dir)
+
+        self.cnc.startLogging(os.path.join(_trial_dir, 'cnc.txt'))
+        self.cam.startLogging(os.path.join(_trial_dir, 'cam.txt'),
+                              os.path.join(_trial_dir, 'cam_uncompr.mkv'),
+                              os.path.join(_trial_dir, 'cam_compr.mkv'))
+
+        self._trial_dir = _trial_dir
 
     def _stop_trial(self):
         print('Stopped trial.')
@@ -201,6 +222,10 @@ def main():
     cv2.createTrackbar('threshold', 'image', 66, 254, nothing)
     cv2.createTrackbar('imageType', 'image', 2, 2, nothing)
 
+    # level related settings
+    # cv2.createTrackbar('level', 'image', 128, 255, nothing)
+    # lastLevel = -1
+
     # Open connection to camera
     cam = CamThread()
     cam.start()
@@ -208,6 +233,13 @@ def main():
     # Run trial manager
     trialThread = TrialThread(exp_dir=exp_dir, cam=cam)
     trialThread.start()
+
+    focus_smoother = Smooth(12)
+
+    # open the connection to display service
+    # print('opening display proxy...')
+    # display_proxy = xmlrpc.client.ServerProxy("http://localhost:8000/")
+    # print('done.')
 
     # main program loop
     while keyboard.Key.esc not in keySet:
@@ -235,17 +267,17 @@ def main():
 
         # handle up/down keyboard input
         if Key.up in keySet:
-            manVelY = -absJogVel
-        elif Key.down in keySet:
             manVelY = +absJogVel
+        elif Key.down in keySet:
+            manVelY = -absJogVel
         else:
             manVelY = 0
 
         # handle left/right keyboard input
         if Key.right in keySet:
-            manVelX = +absJogVel
-        elif Key.left in keySet:
             manVelX = -absJogVel
+        elif Key.left in keySet:
+            manVelX = +absJogVel
         else:
             manVelX = 0
 
@@ -255,6 +287,18 @@ def main():
             manualCmd = trialThread.manualCmd
             if (manualCmd is not None) and manualCmd[0] == 'jog':
                 trialThread.manual('nojog')
+
+        # read out level
+        # levelTrack = cv2.getTrackbarPos('level', 'image')
+        # if levelTrack != lastLevel:
+        #     newLevel = levelTrack/255
+        #     display_proxy.set_level(newLevel)
+        # lastLevel = levelTrack
+        #
+        # trial_dir = trialThread.trial_dir
+        # if trial_dir is not None:
+        #     with open(os.path.join(trial_dir, 'display.txt'), 'a') as f:
+        #         f.write(str(perf_counter()) + ', ' + str(lastLevel) + '\n')
 
         # compute new thresholds
         threshTrack = cv2.getTrackbarPos('threshold', 'image')
@@ -304,7 +348,7 @@ def main():
                                                     flyX_px - bufX: flyX_px + bufX]
 
                     # compute focus figure of merit
-                    focus = cv2.Laplacian(focus_roi, cv2.CV_64F).var()
+                    focus = focus_smoother.update(cv2.Laplacian(focus_roi, cv2.CV_64F).var())
                     focus_str = 'focus: {0:.3f}'.format(focus)
 
                     # display focus information

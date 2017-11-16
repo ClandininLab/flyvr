@@ -5,7 +5,7 @@ import cv2
 import os.path
 
 def main():
-    folder = r'E:\FlyVR\exp-20171031-214433\trial-10-20171031-222302'
+    folder = r'E:\FlyVR\exp-20171031-214433\trial-18-20171031-232610'
     os.chdir(folder)
 
     # read measured frame times
