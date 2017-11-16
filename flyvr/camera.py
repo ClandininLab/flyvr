@@ -247,8 +247,8 @@ class Camera:
             ma = min(d0, d1)
             ellipse = Ellipse(cx_px=cx,
                               cy_px=cy,
-                              cx=(cx-(cols/2.0))/self.px_per_m,
-                              cy=(cy-(rows/2.0))/self.px_per_m,
+                              cx=-(cx-(cols/2.0))/self.px_per_m,
+                              cy=-(cy-(rows/2.0))/self.px_per_m,
                               ma=ma/self.px_per_m,
                               MA=MA/self.px_per_m,
                               angle=angle)
