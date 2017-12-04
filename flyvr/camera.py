@@ -4,6 +4,7 @@ import numpy as np
 from math import pi, sqrt
 from time import perf_counter
 from threading import Lock
+import numpy as np
 
 from flyvr.service import Service
 
@@ -321,9 +322,12 @@ class Camera:
 
         # Convert frame to grayscale
         grayFrame = cv2.cvtColor(inFrame, cv2.COLOR_BGR2GRAY)
+        grayFrame = cv2.GaussianBlur(grayFrame, (11, 11), 0)
 
         # Threshold image according
-        ret, threshFrame = cv2.threshold(grayFrame, threshold, 255, cv2.THRESH_BINARY_INV)
+        rel_level = float(threshold)/255
+        auto_thresh = int(round(np.mean(grayFrame)*rel_level))
+        ret, threshFrame = cv2.threshold(grayFrame, auto_thresh, 255, cv2.THRESH_BINARY_INV)
         rows, cols = threshFrame.shape
 
         # Find contours in image
