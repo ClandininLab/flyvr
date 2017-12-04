@@ -1,6 +1,7 @@
 import cv2
+import numpy as np
 
-from math import pi
+from math import pi, sqrt
 from time import perf_counter
 from threading import Lock
 
@@ -192,6 +193,97 @@ class FlyData:
         self.MA = MA
         self.angle = angle
         self.flyPresent = flyPresent
+
+class ImageProcResult:
+    def __init__(self, area_px, perim_px, ellipse):
+        self.area_px = area_px
+        self.perim_px = perim_px
+        self.ellipse = ellipse
+
+class ImageProcessor:
+    def __init__(self, px_per_m = 8548.96030065, blur_size=11, fly_area=6.486e-6, fly_perim=11.586e-3,
+                 fly_width=1.695e-3, fly_height=4.911e-3, tol=0.35, thresh_level=0.7):
+        # save settings
+        self.px_per_m = px_per_m
+        self.blur_size = blur_size
+        self.fly_area = fly_area
+        self.fly_perim = fly_perim
+        self.fly_width = fly_width
+        self.fly_height = fly_height
+        self.tol = tol
+        self.thresh_level = thresh_level
+
+        # fly bounding dimensions
+        self.fly_max_dim = max(fly_width, fly_height)
+        self.fly_min_dim = min(fly_width, fly_height)
+
+        # estimated fly parameters in pixels
+        self.fly_area_px2 = self.fly_area * (self.px_per_m ** 2)
+        self.fly_perim_px = self.fly_perim * self.px_per_m
+        self.fly_max_dim_px = self.fly_max_dim * self.px_per_m
+        self.fly_min_dim_px = self.fly_min_dim * self.px_per_m
+
+    def matches(self, val, orig):
+        return abs((val-orig)/orig) <= self.tol
+
+    def get_fly(self, inFrame):
+        # get all contours
+        contours = self.get_contours(inFrame)
+
+        # get all flies
+        flyFound = False
+        fly = None
+        for cnt in contours:
+            result = self.cnt2fly(cnt)
+            if result is not None:
+                if flyFound:
+                    raise Exception('Multiple flies found.')
+                else:
+                    flyFound = True
+                    fly = result
+
+        # check result
+        if fly is None:
+            raise Exception('No flies found.')
+
+        return fly
+
+    def cnt2fly(self, cnt):
+        if cnt.size <= 5:
+            return None
+
+        area_px = cv2.contourArea(cnt)
+        if not self.matches(area_px, self.fly_area_px2):
+            return None
+
+        perim_px = cv2.arcLength(cnt, True)
+        if not self.matches(perim_px, self.fly_perim_px):
+            return None
+
+        ellipse = cv2.fitEllipse(cnt)
+        (cx, cy), (sx, sy), angle = ellipse
+        if not self.matches(max(sx, sy), self.fly_max_dim_px):
+            return None
+        if not self.matches(min(sx, sy), self.fly_min_dim_px):
+            return None
+
+        return ImageProcResult(area_px=area_px, perim_px=perim_px, ellipse=ellipse)
+
+    def get_contours(self, inFrame):
+        # Convert frame to grayscale
+        _, _, grayFrame = cv2.split(inFrame)
+
+        # Blur frame
+        blurFrame = cv2.GaussianBlur(grayFrame, (self.blur_size, self.blur_size), 0)
+
+        # Threshold frame
+        thresh = int(round(np.mean(blurFrame)*self.thresh_level))
+        _, threshFrame = cv2.threshold(blurFrame, thresh, 255, cv2.THRESH_BINARY_INV)
+
+        # Get contours
+        _, contours, _ = cv2.findContours(threshFrame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        return contours
 
 class Camera:
     def __init__(self,
