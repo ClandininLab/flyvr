@@ -219,12 +219,12 @@ def main():
 
     # create the UI
     cv2.namedWindow('image')
-    cv2.createTrackbar('threshold', 'image', 66, 254, nothing)
+    cv2.createTrackbar('threshold', 'image', 115, 254, nothing)
     cv2.createTrackbar('imageType', 'image', 2, 2, nothing)
 
     # level related settings
-    # cv2.createTrackbar('level', 'image', 128, 255, nothing)
-    # lastLevel = -1
+    cv2.createTrackbar('level', 'image', 128, 255, nothing)
+    lastLevel = -1
 
     # Open connection to camera
     cam = CamThread()
@@ -237,9 +237,9 @@ def main():
     focus_smoother = Smooth(12)
 
     # open the connection to display service
-    # print('opening display proxy...')
-    # display_proxy = xmlrpc.client.ServerProxy("http://localhost:8000/")
-    # print('done.')
+    print('opening display proxy...')
+    display_proxy = xmlrpc.client.ServerProxy("http://127.0.0.1:54357/")
+    print('done.')
 
     # main program loop
     while keyboard.Key.esc not in keySet:
@@ -289,16 +289,16 @@ def main():
                 trialThread.manual('nojog')
 
         # read out level
-        # levelTrack = cv2.getTrackbarPos('level', 'image')
-        # if levelTrack != lastLevel:
-        #     newLevel = levelTrack/255
-        #     display_proxy.set_level(newLevel)
-        # lastLevel = levelTrack
-        #
-        # trial_dir = trialThread.trial_dir
-        # if trial_dir is not None:
-        #     with open(os.path.join(trial_dir, 'display.txt'), 'a') as f:
-        #         f.write(str(perf_counter()) + ', ' + str(lastLevel) + '\n')
+        levelTrack = cv2.getTrackbarPos('level', 'image')
+        if levelTrack != lastLevel:
+            newLevel = levelTrack/255
+            display_proxy.set_level(newLevel)
+        lastLevel = levelTrack
+
+        trial_dir = trialThread.trial_dir
+        if trial_dir is not None:
+            with open(os.path.join(trial_dir, 'display.txt'), 'a') as f:
+                f.write(str(perf_counter()) + ', ' + str(lastLevel) + '\n')
 
         # compute new thresholds
         threshTrack = cv2.getTrackbarPos('threshold', 'image')
