@@ -10,10 +10,11 @@ class TrackThread(Service):
                  camThread, # handle of the camera thread
                  cncThread, # handle of the CNC control thread
                  loopTime=5e-3, # target loop update rate
-                 fc = 1.2, # crossover frequency, Hz
-                 minAbsPos = 8.5e-3, # m
+                 fc = 1.2, # crossover frequency, Hz (original setting 1.2Hz)
+                 minAbsPos = 0.5e-3, # deadzone half-width in meters (original value 8.5mm)
                  maxAbsVel = 0.75, # m/s
-                 maxAbsAcc = 0.25, # m/s^2
+                 maxAbsAcc = 1, # m/s^2 (original value 0.25 m/s^2)
+
                  v_max_ctrl = 0.04, # m/s
                  k_pctrl = 2*pi
                  ):
@@ -199,7 +200,7 @@ class TrackThread(Service):
         self.trackingEnabled = False
 
     def move_to_center(self):
-        self.move_to_pos(x=0.340275, y=0.341)
+        self.move_to_pos(x=0.364975, y=0.33595)
 
     def move_to_pos(self, x, y, tol=1e-3):
         self.manualPosition = ManualPosition(x, y)

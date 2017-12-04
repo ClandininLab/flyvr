@@ -4,7 +4,7 @@ from math import pi
 
 from flyvr.cnc import CncThread
 
-def clamp(v, minV=-0.03, maxV=0.03):
+def clamp(v, minV=-0.04, maxV=0.04):
     if v < minV:
         return minV
     elif v > maxV:
