@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from time import perf_counter
 import numpy as np
 from tqdm import tqdm
+import os.path
 
 # modified from: https://www.learnopencv.com/image-alignment-ecc-in-opencv-c-python/
 
@@ -13,7 +14,10 @@ def main(new_rows=1024, new_cols=1024):
     #vidname = 'cammedian_uncompr_dead_fly.mkv'
     #vidname = 'cam_compr_dead_fly.mkv'
     #vidname = 'cam_compr_live_fly.mkv'
-    vidname = 'exposure_time_8000us_0dB_gain.avi'
+    folder = '/Users/sgherbst/Documents/Stanford/Fly VR/Data/exp-20171116'
+    file = 'exposure_time_8000us_0dB_gain.avi'
+
+    vidname = os.path.join(folder, file)
 
     cap = cv2.VideoCapture(vidname)
     proc = ImageProcessor(blur_size=11, thresh_level=0.7)
