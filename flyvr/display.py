@@ -1,38 +1,90 @@
 import pyglet
 from pyglet.gl import *
-from time import sleep
+from time import sleep, perf_counter
 from threading import Lock, Thread
 from xmlrpc.server import SimpleXMLRPCServer
+import numpy as np
 
-from flyvr.service import Service
-from pyglet import clock, font
+def Point(x, y, z):
+    return np.array([x,y,z])
 
-# class Hud(object):
-#
-#     def __init__(self, win):
-#         self.win = win
-#
-#         helv = font.load('Helvetica', self.win.width / 15.0)
-#         self.text = font.Text(
-#             helv,
-#             'Hello, World!',
-#             x=self.win.width / 2,
-#             y=self.win.height / 2,
-#             halign=font.Text.CENTER,
-#             valign=font.Text.CENTER,
-#             color=(1, 1, 1, 0.5),
-#         )
-#         self.fps = clock.ClockDisplay()
-#
-#     def draw(self):
-#         glClear(GL_COLOR_BUFFER_BIT)
-#         glMatrixMode(GL_PROJECTION)
-#         glLoadIdentity()
-#         gluOrtho2D(0, self.win.width, 0, self.win.height)
-#         glMatrixMode(GL_MODELVIEW)
-#         glLoadIdentity()
-#         self.text.draw()
-#         self.fps.draw()
+class TvScreen:
+    def __init__(self, dir, w=1.107, h=0.6226):
+
+        if dir=='west':
+            self.pa = Point(-w/2, -h/2, +w/2) # lower left
+            self.pb = Point(-w/2, -h/2, -w/2) # lower right
+            self.pc = Point(-w/2, +h/2, +w/2) # upper left
+        elif dir == 'north':
+            self.pa = Point(-w/2, -h/2, -w/2) # lower left
+            self.pb = Point(+w/2, -h/2, -w/2) # lower right
+            self.pc = Point(-w/2, +h/2, -w/2) # upper left
+        elif dir == 'east':
+            self.pa = Point(+w/2, -h/2, -w/2) # lower left
+            self.pb = Point(+w/2, -h/2, +w/2) # lower right
+            self.pc = Point(+w/2, +h/2, -w/2) # upper left
+        elif dir == 'south':
+            self.pa = Point(+w/2, -h/2, +w/2) # lower left
+            self.pb = Point(-w/2, -h/2, +w/2) # lower right
+            self.pc = Point(+w/2, +h/2, +w/2) # upper left
+        else:
+            raise ValueError('Invalid direction')
+
+        # determine screen unit vectors
+        self.vr = self.pb - self.pa
+        self.vr /= np.linalg.norm(self.vr)
+
+        self.vu = self.pc - self.pa
+        self.vu /= np.linalg.norm(self.vu)
+
+        self.vn = np.cross(self.vr, self.vu)
+        self.vn /= np.linalg.norm(self.vn)
+
+        # Rotation matrix
+        self.M = np.array([
+            [self.vr[0], self.vu[0], self.vn[0], 0],
+            [self.vr[1], self.vu[1], self.vn[1], 0],
+            [self.vr[2], self.vu[2], self.vn[2], 0],
+            [0, 0, 0, 1]])
+
+    def get_matrix(self, pe=None, n=1e-2, f=100):
+        # reference: http://csc.lsu.edu/~kooima/articles/genperspective/
+
+        # set defaults
+        if pe is None:
+            pe = Point(0, 0, 0)
+
+        # Determine frustum extents
+        va = self.pa - pe
+        vb = self.pb - pe
+        vc = self.pc - pe
+
+        # Determine distance to screen
+        d = -np.dot(self.vn, va)
+
+        # Compute screen coordinates
+        l = np.dot(self.vr, va) * n/d
+        r = np.dot(self.vr, vb) * n/d
+        b = np.dot(self.vu, va) * n/d
+        t = np.dot(self.vu, vc) * n/d
+
+        # Projection matrix
+        P = np.array([
+            [(2.0*n) / (r - l), 0, (r + l) / (r - l), 0],
+            [0, (2.0*n) / (t - b), (t + b) / (t - b), 0],
+            [0, 0, -(f + n) / (f - n), -(2.0*f*n) / (f - n)],
+            [0, 0, -1, 0]])
+
+        # Translation matrix
+        T = np.array([
+            [1, 0, 0, -pe[0]],
+            [0, 1, 0, -pe[1]],
+            [0, 0, 1, -pe[2]],
+            [0, 0, 0, 1]])
+
+        offAxis = np.dot(np.dot(P, self.M.T), T)
+
+        return offAxis
 
 class Stimulus:
     def __init__(self, level=0.5):
@@ -49,11 +101,12 @@ class Stimulus:
 
         # create dictionary of screens, indexed by direction
         self.screen_dict = {
-                            'west':  self.screens[1],
-                            'north': self.screens[2],
-                            'east':  self.screens[3],
-                            'south': self.screens[4]
+                            'west':  self.screens[2],
+                            'north': self.screens[1],
+                            'east':  self.screens[4],
+                            'south': self.screens[3]
                             }
+        self.tv_dict = {dir: TvScreen(dir) for dir in self.screen_dict.keys()}
 
         # create dictionary of windows
         self.window_dict = {dir: pyglet.window.Window(screen=screen, fullscreen=True, vsync=False)
@@ -61,38 +114,37 @@ class Stimulus:
 
         # set up window drawing routine
         for dir, win in self.window_dict.items():
+            fps_display = pyglet.window.FPSDisplay(win)
             @win.event
-            def on_draw(dir=dir, win=win):
-                level = self.level
-                glClearColor(level, level, level, 1)
-                win.clear()
+            def on_draw(dir=dir, win=win, fps_display=fps_display):
+                #level = self.level
+                #glClearColor(level, level, level, 1)
+                #win.clear()
 
-        # create a dictionary of cameras and huds
-        # self.hud_dict = {dir: Hud(win) for dir, win in self.window_dict.items()}
+                # clear screen
+                glClear(GL_COLOR_BUFFER_BIT)
 
-        # set FPS limit
-        # pyglet.clock.set_fps_limit(60)
+                # load projection matrix for this screen
+                np_mat = self.tv_dict[dir].get_matrix()
+                gl_mat = map(float, np_mat.T.flat)
+                gl_mat = (GLfloat * 16)(*gl_mat)
+                glMatrixMode(gl.GL_PROJECTION)
+                glLoadMatrixf(gl_mat)
+                glDisable(gl.GL_DEPTH_TEST)
 
-        # communicating level change
-    #    self.set_level(level)
+                glMatrixMode(gl.GL_MODELVIEW)
 
-    # def set_level(self, value):
-    #     for dir, win in self.window_dict.items():
-    #         win.switch_to()
-    #
-    #         win.set_visible(True)
-    #         glClearColor(value, value, value, 1)
-    #         glClear(GL_COLOR_BUFFER_BIT)
-    #
-    #         # win.dispatch_events()
-    #         # self.hud_dict[dir].draw()
-    #         # pyglet.clock.tick()
-    #
-    #         # sleep(1/60)
-    #
-    #         win.flip()
-    #
-    #     return True
+                glColor3f(0.25, 0, 0)
+
+                glBegin(GL_QUADS)
+                glVertex3f(-0.1, -3, -3)
+                glVertex3f(0.1, -3, -3)
+                glVertex3f(0.1, +3, -3)
+                glVertex3f(-0.1, +3, -3)
+                glEnd()
+
+                glLoadIdentity()
+                glRotatef(90, 0, 1, 0)
 
     def setup_server(self, port=54357):
         def set_level(value):
@@ -106,6 +158,9 @@ class Stimulus:
             server.serve_forever()
         Thread(target=server_func).start()
 
+    def update(self, dt):
+        pass
+
     @property
     def level(self):
         with self.levelLock:
@@ -118,7 +173,7 @@ class Stimulus:
 
 def main():
     stim = Stimulus()
-    pyglet.clock.schedule_interval(int, 1. / 60)
+    pyglet.clock.schedule_interval(stim.update, 1. / 1000)
     pyglet.app.run()
 
 if __name__=='__main__':
