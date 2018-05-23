@@ -4,6 +4,7 @@ from time import sleep, perf_counter
 from threading import Lock, Thread
 from xmlrpc.server import SimpleXMLRPCServer
 import numpy as np
+import sys
 
 def Point(x, y, z):
     return np.array([x,y,z])
@@ -87,10 +88,8 @@ class TvScreen:
         return offAxis
 
 class Stimulus:
-    def __init__(self, level=0.5):
-        # save settings
-        self.levelLock = Lock()
-        self._level = level
+    def __init__(self):
+        self.angle = 0
 
         # set up level server
         self.setup_server()
@@ -101,26 +100,26 @@ class Stimulus:
 
         # create dictionary of screens, indexed by direction
         self.screen_dict = {
-                            'west':  self.screens[2],
-                            'north': self.screens[1],
-                            'east':  self.screens[4],
-                            'south': self.screens[3]
+                            'west':  self.screens[1],
+                            'north': self.screens[2],
+                            'east':  self.screens[3],
+                            'south': self.screens[4]
                             }
         self.tv_dict = {dir: TvScreen(dir) for dir in self.screen_dict.keys()}
 
         # create dictionary of windows
-        self.window_dict = {dir: pyglet.window.Window(screen=screen, fullscreen=True, vsync=False)
+        self.window_dict = {dir: pyglet.window.Window(screen=screen, fullscreen=True, vsync=True)
                             for dir, screen in self.screen_dict.items()}
+
+        vertex_list = pyglet.graphics.vertex_list(4,
+         ('v3f', (-0.1, -3, -3, 0.1, -3, -3, 0.1, +3, -3, -0.1, +3, -3)),
+         ('c3B', (255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255))
+        )
 
         # set up window drawing routine
         for dir, win in self.window_dict.items():
-            fps_display = pyglet.window.FPSDisplay(win)
             @win.event
-            def on_draw(dir=dir, win=win, fps_display=fps_display):
-                #level = self.level
-                #glClearColor(level, level, level, 1)
-                #win.clear()
-
+            def on_draw(dir=dir):
                 # clear screen
                 glClear(GL_COLOR_BUFFER_BIT)
 
@@ -133,47 +132,43 @@ class Stimulus:
                 glDisable(gl.GL_DEPTH_TEST)
 
                 glMatrixMode(gl.GL_MODELVIEW)
-
-                glColor3f(0.25, 0, 0)
-
-                glBegin(GL_QUADS)
-                glVertex3f(-0.1, -3, -3)
-                glVertex3f(0.1, -3, -3)
-                glVertex3f(0.1, +3, -3)
-                glVertex3f(-0.1, +3, -3)
-                glEnd()
-
                 glLoadIdentity()
-                glRotatef(90, 0, 1, 0)
+                glRotatef(self.angle, 0.0, 1.0, 0.0)
+
+                vertex_list.draw(pyglet.gl.GL_QUADS)
 
     def setup_server(self, port=54357):
-        def set_level(value):
-            self.level = value
-            return True
-
         def server_func():
             server = SimpleXMLRPCServer(('localhost', port))
             print('Listening on port {}...'.format(port))
-            server.register_function(set_level, 'set_level')
+            sys.stdout.flush()
             server.serve_forever()
         Thread(target=server_func).start()
 
-    def update(self, dt):
-        pass
+class TickCounter:
+    def __init__(self, T=1):
+        self.start = None
+        self.count = 0
+        self.T = T
+    def tick(self):
+        t = perf_counter()
+        self.count += 1
+        if self.start is None:
+            self.start = t
+        elif t - self.start > self.T:
+            print((self.count-1)/(t - self.start))
+            sys.stdout.flush()
+            self.start = t
+            self.count = 1
 
-    @property
-    def level(self):
-        with self.levelLock:
-            return self._level
-
-    @level.setter
-    def level(self, value):
-        with self.levelLock:
-            self._level = value
+def benchmark(dt, tick_counter, stim):
+    tick_counter.tick()
+    stim.angle = (1.0*dt + stim.angle)%360
 
 def main():
     stim = Stimulus()
-    pyglet.clock.schedule_interval(stim.update, 1. / 1000)
+    tick_counter = TickCounter()
+    pyglet.clock.schedule(lambda dt: benchmark(dt=dt, tick_counter=tick_counter, stim=stim))
     pyglet.app.run()
 
 if __name__=='__main__':
