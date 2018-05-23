@@ -10,13 +10,16 @@ class TrackThread(Service):
                  camThread, # handle of the camera thread
                  cncThread, # handle of the CNC control thread
                  loopTime=5e-3, # target loop update rate
-                 fc = 1.2, # crossover frequency, Hz (original setting 1.2Hz)
+                 loop_gain_a = 10.0, # loop gain, in m/s per m offset from center (original value 2*pi*1.2)
                  minAbsPos = 0.5e-3, # deadzone half-width in meters (original value 8.5mm)
                  maxAbsVel = 0.75, # m/s
                  maxAbsAcc = 1, # m/s^2 (original value 0.25 m/s^2)
 
                  v_max_ctrl = 0.04, # m/s
-                 k_pctrl = 2*pi
+                 k_pctrl = 2*pi,
+
+                 center_pos_x = 0.331575,
+                 center_pos_y = 0.3401
                  ):
 
         # Store thread handles
@@ -43,8 +46,11 @@ class TrackThread(Service):
         self.v_max_pctrl = v_max_ctrl
 
         # Compute derived parameters of control loop
-        wc = 2*pi*fc
-        self.a = wc
+        self.a = loop_gain_a
+
+        # Set the center pos
+        self.center_pos_x = center_pos_x
+        self.center_pos_y = center_pos_y
 
         # Initialize the control loop
         self.prevVelX = 0
@@ -199,8 +205,14 @@ class TrackThread(Service):
     def stopTracking(self):
         self.trackingEnabled = False
 
+    def set_center_pos(self, posX, posY):
+        # TODO add locking
+        self.center_pos_x = posX
+        self.center_pos_y = posY
+
     def move_to_center(self):
-        self.move_to_pos(x=0.364975, y=0.33595)
+        # TODO add locking
+        self.move_to_pos(x=self.center_pos_x, y=self.center_pos_y)
 
     def move_to_pos(self, x, y, tol=1e-3):
         self.manualPosition = ManualPosition(x, y)

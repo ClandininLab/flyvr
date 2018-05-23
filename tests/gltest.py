@@ -1,83 +1,41 @@
-# modified from:
-# https://pythonprogramming.net/opengl-rotating-cube-example-pyopengl-tutorial/
-
-from time import perf_counter
-
-import pygame
-from pygame.locals import *
-
 from OpenGL.GL import *
+from OpenGL.GLUT import *
 from OpenGL.GLU import *
 
-verticies = (
-    (1, -1, -1),
-    (1, 1, -1),
-    (-1, 1, -1),
-    (-1, -1, -1),
-    (1, -1, 1),
-    (1, 1, 1),
-    (-1, -1, 1),
-    (-1, 1, 1)
-    )
+windows = [0]*4
 
-edges = (
-    (0,1),
-    (0,3),
-    (0,4),
-    (2,1),
-    (2,3),
-    (2,7),
-    (6,3),
-    (6,4),
-    (6,7),
-    (5,1),
-    (5,4),
-    (5,7)
-    )
+def initFun():
+    glClearColor(1.0, 1.0, 1.0, 0.0)
+    glColor3f(0.0, 0.0, 0.0)
+    glPointSize(4.0)
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluOrtho2D(0.0, 640.0, 0.0, 480.0)
 
 
-def Cube():
-    glBegin(GL_LINES)
-    for edge in edges:
-        for vertex in edge:
-            glVertex3fv(verticies[vertex])
+def displayFun():
+    glClear(GL_COLOR_BUFFER_BIT)
+    glBegin(GL_POINTS)
+    glVertex2i(100, 50)
+    glVertex2i(100, 130)
+    glVertex2i(150, 130)
     glEnd()
+    glFlush()
 
 
-def main():
-    pygame.init()
-    display = (800,600)
-    pygame.display.set_mode(display, DOUBLEBUF|OPENGL|pygame.FULLSCREEN)
+if __name__ == '__main__':
+    glutInit()
 
-    gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
+    offset = 1680
+    width = 1280
+    height = 720
 
-    glTranslatef(0.0,0.0, -5)
+    for k in range(4):
+        glutInitWindowSize(width, height)
+        glutInitWindowPosition(1680+width*k, 0)
+        glutCreateWindow(b'noobtuts.com')
+        glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB)
+        glutDisplayFunc(displayFun)
+    initFun()
 
-    startTime = perf_counter()
-    iterCount = 0
-    
-    while True:
-        done = False
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                stopTime = perf_counter()
-                pygame.quit()
-                done = True
-
-        if done:
-            break
-
-        glRotatef(1, 3, 1, 1)
-        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-        Cube()
-        pygame.display.flip()
-
-        iterCount += 1
-        
-        pygame.time.wait(5)
-
-    deltaT = stopTime-startTime
-    print('FPS: ' + str(iterCount/deltaT))
-
-if __name__=='__main__':
-    main()
+    glutMainLoop()

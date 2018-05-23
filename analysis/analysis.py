@@ -21,6 +21,7 @@ from scipy.interpolate import interp1d
 
 Path = '/Users/lukebrezovec/FlyTracker/Data/exp-20171031-214433'
 
+
 class Trial:
     def __init__ (self, dirName):
         self.cam = Cam(os.path.join(dirName, 'cam.txt'))
