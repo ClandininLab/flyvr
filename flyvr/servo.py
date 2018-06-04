@@ -3,7 +3,7 @@ from time import sleep
 
 class Servo:
     def __init__(self, port='COM3', baudrate=9600, init_pos=None, wakeup_delay=2):
-        self.ser = ser = Serial(port='COM3', baudrate=9600)
+        self.ser = ser = Serial(port=port, baudrate=baudrate)
         sleep(wakeup_delay)
         if init_pos is not None:
             self.write(init_pos)

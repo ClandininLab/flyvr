@@ -102,7 +102,7 @@ class TrialThread(Service):
             print('** startup **')
 
             # Open connection to servo
-            self.servo = ServoGate(debug=True)
+            # self.servo = ServoGate(debug=True)
 
             # Open connection to CNC rig
             cnc_home()
@@ -121,7 +121,7 @@ class TrialThread(Service):
             print('** manual **')
         elif self.state == 'started':
             if self.manualCmd is not None:
-                self.servo.close()
+                # self.servo.close()
                 self.state = 'manual'
                 print('** manual **')
             elif self.cam.flyData.flyPresent:
@@ -132,7 +132,7 @@ class TrialThread(Service):
                 self.tracker.startTracking()
         elif self.state == 'fly_found':
             if self.manualCmd is not None:
-                self.servo.close()
+                # self.servo.close()
                 self.tracker.stopTracking()
                 self.state = 'manual'
                 print('** manual **')
@@ -144,7 +144,7 @@ class TrialThread(Service):
                 self.tracker.move_to_center()
             elif (time() - self.timer_start) >= self.fly_found_timeout:
                 print('Fly found.')
-                self.servo.close()
+                # self.servo.close()
                 self._start_trial()
                 self.state = 'run'
                 print('** run **')
@@ -171,7 +171,7 @@ class TrialThread(Service):
                 print('Fly lost.')
                 self._stop_trial()
                 self.tracker.move_to_center()
-                self.servo.open()
+                # self.servo.open()
                 self.state = 'started'
                 print('** started **')
         elif self.state == 'manual':
@@ -180,7 +180,7 @@ class TrialThread(Service):
             if manualCmd is None:
                 pass
             elif manualCmd[0] == 'start':
-                self.servo.open()
+                # self.servo.open()
                 self.state = 'started'
                 print('** started **')
             elif manualCmd[0] == 'stop':
@@ -195,9 +195,11 @@ class TrialThread(Service):
                 manualVelocity = ManualVelocity(velX=manualCmd[1], velY=manualCmd[2])
                 self.tracker.manualVelocity = manualVelocity
             elif manualCmd[0] == 'open_servo':
-                self.servo.open()
+                # self.servo.open()
+                pass
             elif manualCmd[0] == 'close_servo':
-                self.servo.close()
+                # self.servo.close()
+                pass
             else:
                 raise Exception('Invalid manual command.')
 
@@ -240,10 +242,10 @@ def main():
     lastLevel = -1
 
     # servo settings
-    cv2.createTrackbar('open', 'image', 180, 180, nothing)
-    cv2.createTrackbar('closed', 'image', 130, 180, nothing)
-    lastOpenPos = 180
-    lastClosedPos = 130
+    # cv2.createTrackbar('open', 'image', 180, 180, nothing)
+    # cv2.createTrackbar('closed', 'image', 130, 180, nothing)
+    # lastOpenPos = 180
+    # lastClosedPos = 130
 
     # fly detection settings
     # cv2.createTrackbar('ma_min', 'image', 6, 25, nothing)
@@ -304,9 +306,11 @@ def main():
         if KeyCode.from_char('c') in new_keys:
             trialThread.manual('center')
         if KeyCode.from_char('o') in new_keys:
-            trialThread.manual('open_servo')
+            # trialThread.manual('open_servo')
+            pass
         if KeyCode.from_char('l') in new_keys:
-            trialThread.manual('close_servo')
+            # trialThread.manual('close_servo')
+            pass
 
         # handle up/down keyboard input
         if Key.up in keySet:
@@ -340,14 +344,14 @@ def main():
 
         # read out servo settings
         # TODO: add proper locking
-        openPos = cv2.getTrackbarPos('open', 'image')
-        if openPos != lastOpenPos:
-            trialThread.servo.opened_pos = openPos
-        lastOpenPos = openPos
-        closedPos = cv2.getTrackbarPos('closed', 'image')
-        if closedPos != lastClosedPos:
-            trialThread.servo.closed_pos = closedPos
-        lastClosedPos = closedPos
+        # openPos = cv2.getTrackbarPos('open', 'image')
+        # if openPos != lastOpenPos:
+        #    trialThread.servo.opened_pos = openPos
+        # lastOpenPos = openPos
+        # closedPos = cv2.getTrackbarPos('closed', 'image')
+        # if closedPos != lastClosedPos:
+        #    trialThread.servo.closed_pos = closedPos
+        # lastClosedPos = closedPos
 
         # set camera detection settings
         #ma_min=cv2.getTrackbarPos('ma_min', 'image')
