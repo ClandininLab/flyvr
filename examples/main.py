@@ -1,18 +1,21 @@
-import cv2
 import os
 import os.path
 import itertools
 import xmlrpc.client
 
 from time import strftime, perf_counter, time, sleep
-from pynput import keyboard
-from pynput.keyboard import Key, KeyCode
+from functools import partial
 
 from flyvr.cnc import CncThread, cnc_home
 from flyvr.camera import CamThread
 from flyvr.tracker import TrackThread, ManualVelocity
 from flyvr.service import Service
-from flyvr.servo import ServoGate
+
+import sys
+import types
+from PyQt5.QtWidgets import QApplication
+from PyQt5 import uic
+from PyQt5.QtCore import QBasicTimer
 
 from threading import Lock
 
@@ -25,18 +28,23 @@ class Smooth:
         self.hist = [float(value)] + self.hist[:-1]
         return sum(self.hist)/self.n
 
-def nothing(x):
-    pass
-
 class TrialThread(Service):
-    def __init__(self, exp_dir, cam, loopTime=10e-3, fly_lost_timeout=1, fly_found_timeout=1):
+    def __init__(self, exp_dir, loopTime=10e-3, fly_lost_timeout=1, fly_found_timeout=1):
         self.trial_count = itertools.count(1)
-        self.state = 'startup'
+        self.state = 'manual'
 
-        self.cam = cam
-        self.cnc = None
-        self.servo = None
-        self.tracker = None
+        # Camera thread
+        self.camLock = Lock()
+        self._cam = None
+
+        # CNC thread
+        self.cncLock = Lock()
+        self._cnc = None
+
+        # Tracker thread
+        self.trackLock = Lock()
+        self._tracker = None
+
         self.timer_start = None
 
         self.exp_dir = exp_dir
@@ -54,6 +62,36 @@ class TrialThread(Service):
         super().__init__(minTime=loopTime, maxTime=loopTime)
 
     @property
+    def cam(self):
+        with self.camLock:
+            return self._cam
+
+    @cam.setter
+    def cam(self, value):
+        with self.camLock:
+            self._cam = value
+
+    @property
+    def cnc(self):
+        with self.cncLock:
+            return self._cnc
+
+    @cnc.setter
+    def cnc(self, value):
+        with self.cncLock:
+            self._cnc = value
+
+    @property
+    def tracker(self):
+        with self.trackLock:
+            return self._tracker
+
+    @tracker.setter
+    def tracker(self, value):
+        with self.trackLock:
+            self._tracker = value
+
+    @property
     def manualCmd(self):
         with self.manualLock:
             return self._manualCmd
@@ -68,8 +106,6 @@ class TrialThread(Service):
 
     def stop(self):
         super().stop()
-        self.tracker.stop()
-        self.cnc.stop()
 
     @property
     def trial_dir(self):
@@ -83,45 +119,31 @@ class TrialThread(Service):
         _trial_dir = os.path.join(self.exp_dir, folder)
         os.makedirs(_trial_dir)
 
-        self.cnc.startLogging(os.path.join(_trial_dir, 'cnc.txt'))
-        self.cam.startLogging(os.path.join(_trial_dir, 'cam.txt'),
-                              os.path.join(_trial_dir, 'cam_uncompr.mkv'),
-                              os.path.join(_trial_dir, 'cam_compr.mkv'))
+        if self.cnc is not None:
+            self.cnc.startLogging(os.path.join(_trial_dir, 'cnc.txt'))
+
+        if self.cam is not None:
+            self.cam.startLogging(os.path.join(_trial_dir, 'cam.txt'),
+                                  os.path.join(_trial_dir, 'cam_uncompr.mkv'),
+                                  os.path.join(_trial_dir, 'cam_compr.mkv'))
 
         self._trial_dir = _trial_dir
 
     def _stop_trial(self):
         print('Stopped trial.')
 
-        self.cnc.stopLogging()
-        self.cam.stopLogging()
-        self.tracker.stopTracking()
+        if self.cnc is not None:
+            self.cnc.stopLogging()
+
+        if self.cam is not None:
+            self.cam.stopLogging()
+
+        if self.tracker is not None:
+            self.tracker.stopTracking()
 
     def loopBody(self):
-        if self.state == 'startup':
-            print('** startup **')
-
-            # Open connection to servo
-            # self.servo = ServoGate(debug=True)
-
-            # Open connection to CNC rig
-            cnc_home()
-            self.cnc = CncThread()
-            self.cnc.start()
-            sleep(0.1)
-
-            # Start tracker thread
-            self.tracker = TrackThread(cncThread=self.cnc, camThread=self.cam)
-            self.tracker.start()
-            self.tracker.move_to_center()
-
-            # go to the manual control state
-            self.resetManual()
-            self.state = 'manual'
-            print('** manual **')
-        elif self.state == 'started':
+        if self.state == 'started':
             if self.manualCmd is not None:
-                # self.servo.close()
                 self.state = 'manual'
                 print('** manual **')
             elif self.cam.flyData.flyPresent:
@@ -129,22 +151,23 @@ class TrialThread(Service):
                 self.timer_start = time()
                 self.state = 'fly_found'
                 print('** fly_found **')
-                self.tracker.startTracking()
+                if self.tracker is not None:
+                    self.tracker.startTracking()
         elif self.state == 'fly_found':
             if self.manualCmd is not None:
-                # self.servo.close()
-                self.tracker.stopTracking()
+                if self.tracker is not None:
+                    self.tracker.stopTracking()
                 self.state = 'manual'
                 print('** manual **')
             elif not self.cam.flyData.flyPresent:
                 print('Fly lost.')
                 self.state = 'started'
                 print('** started **')
-                self.tracker.stopTracking()
-                self.tracker.move_to_center()
+                if self.tracker is not None:
+                    self.tracker.stopTracking()
+                    self.tracker.move_to_center()
             elif (time() - self.timer_start) >= self.fly_found_timeout:
                 print('Fly found.')
-                # self.servo.close()
                 self._start_trial()
                 self.state = 'run'
                 print('** run **')
@@ -170,8 +193,8 @@ class TrialThread(Service):
             elif (time() - self.timer_start) >= self.fly_lost_timeout:
                 print('Fly lost.')
                 self._stop_trial()
-                self.tracker.move_to_center()
-                # self.servo.open()
+                if self.tracker is not None:
+                    self.tracker.move_to_center()
                 self.state = 'started'
                 print('** started **')
         elif self.state == 'manual':
@@ -180,26 +203,22 @@ class TrialThread(Service):
             if manualCmd is None:
                 pass
             elif manualCmd[0] == 'start':
-                # self.servo.open()
                 self.state = 'started'
                 print('** started **')
             elif manualCmd[0] == 'stop':
                 print('** manual: stop **')
             elif manualCmd[0] == 'center':
                 print('** manual: center **')
-                self.tracker.move_to_center()
+                if self.tracker is not None:
+                    self.tracker.move_to_center()
             elif manualCmd[0] == 'nojog':
                 print('** manual: nojog **')
-                self.tracker.manualVelocity = None
+                if self.tracker is not None:
+                    self.tracker.manualVelocity = None
             elif manualCmd[0] == 'jog':
-                manualVelocity = ManualVelocity(velX=manualCmd[1], velY=manualCmd[2])
-                self.tracker.manualVelocity = manualVelocity
-            elif manualCmd[0] == 'open_servo':
-                # self.servo.open()
-                pass
-            elif manualCmd[0] == 'close_servo':
-                # self.servo.close()
-                pass
+                if self.tracker is not None:
+                    manualVelocity = ManualVelocity(velX=manualCmd[1], velY=manualCmd[2])
+                    self.tracker.manualVelocity = manualVelocity
             else:
                 raise Exception('Invalid manual command.')
 
@@ -209,17 +228,6 @@ class TrialThread(Service):
             raise Exception('Invalid state.')
 
 def main():
-    # handler for key events
-    keySet = set()
-    def on_press(key):
-        keySet.add(key)
-    def on_release(key):
-        keySet.remove(key)
-    listener = keyboard.Listener(on_press=on_press, on_release=on_release)
-    listener.start()
-
-    prev_key_set = set()
-
     # create folder for data
     topdir = r'E:\FlyVR'
     folder = 'exp-'+strftime('%Y%m%d-%H%M%S')
@@ -227,240 +235,113 @@ def main():
     os.makedirs(exp_dir)
 
     # settings for UI
-    tLoop = 1/24
-    draw_contour = True
-    draw_details = False
+    tUpdate = 0.1
     absJogVel = 0.01
 
-    # create the UI
-    cv2.namedWindow('image')
-    cv2.createTrackbar('threshold', 'image', 115, 254, nothing)
-    cv2.createTrackbar('imageType', 'image', 0, 2, nothing)
+    # load the UI
+    app = QApplication(sys.argv)
 
-    # level related settings
-    cv2.createTrackbar('level', 'image', 0, 255, nothing)
-    lastLevel = -1
-
-    # servo settings
-    # cv2.createTrackbar('open', 'image', 180, 180, nothing)
-    # cv2.createTrackbar('closed', 'image', 130, 180, nothing)
-    # lastOpenPos = 180
-    # lastClosedPos = 130
-
-    # fly detection settings
-    # cv2.createTrackbar('ma_min', 'image', 6, 25, nothing)
-    # cv2.createTrackbar('ma_max', 'image', 11, 25, nothing)
-    # cv2.createTrackbar('MA_min', 'image', 22, 50, nothing)
-    # cv2.createTrackbar('MA_max', 'image', 33, 50, nothing)
-    cv2.createTrackbar('r_min', 'image', 2, 10, nothing)
-    cv2.createTrackbar('r_max', 'image', 5, 10, nothing)
-
-    # loop gain settings
-    cv2.createTrackbar('loop_gain', 'image', 100, 750, nothing)
-
-    # Open connection to camera
-    cam = CamThread()
-    cam.start()
+    this_file_path = os.path.realpath(os.path.expanduser(__file__))
+    qt_dir = os.path.join(os.path.dirname(os.path.dirname(this_file_path)), 'qt')
+    gui = uic.loadUi(os.path.join(qt_dir, 'main.ui'))
 
     # Run trial manager
-    trialThread = TrialThread(exp_dir=exp_dir, cam=cam)
+    trialThread = TrialThread(exp_dir=exp_dir)
     trialThread.start()
 
-    focus_smoother = Smooth(12)
-    ma_smoother = Smooth(12)
-    MA_smoother = Smooth(12)
+    # Other threads
+    cam = None
+    cnc = None
+    tracker = None
 
-    # open the connection to display service
-    print('opening display proxy...')
-    display_proxy = xmlrpc.client.ServerProxy("http://127.0.0.1:54357/")
-    print('done.')
+    # jogging
+    def jog(manVelX, manVelY):
+        trialThread.manual('jog', manVelX, manVelY)
+    def nojog():
+        trialThread.manual('nojog')
 
-    # main program loop
-    while keyboard.Key.esc not in keySet:
-        # handle keypress events
-        new_keys = keySet - prev_key_set
-        prev_key_set = set(keySet)
+    gui.cnc_up_button.pressed.connect(partial(jog, 0, +absJogVel))
+    gui.cnc_down_button.pressed.connect(partial(jog, 0, -absJogVel))
+    gui.cnc_right_button.pressed.connect(partial(jog, -absJogVel, 0))
+    gui.cnc_left_button.pressed.connect(partial(jog, +absJogVel, 0))
 
-        if KeyCode.from_char('f') in new_keys:
-            draw_details = not draw_details
-        if KeyCode.from_char('d') in new_keys:
-            draw_contour = not draw_contour
-        if KeyCode.from_char('r') in new_keys:
-            cncStatus = trialThread.cnc.status
-            if cncStatus is not None:
-                posX, posY = cncStatus.posX, cncStatus.posY
-                trialThread.tracker.set_center_pos(posX=posX, posY=posY)
-            print('new center position set...')
-        if KeyCode.from_char('s') in new_keys:
-            if trialThread.cnc is not None:
-                cncStatus = trialThread.cnc.status
-                if cncStatus is not None:
-                    print('cncX: {}, cncY: {}'.format(cncStatus.posX, cncStatus.posY))
+    gui.cnc_up_button.released.connect(nojog)
+    gui.cnc_down_button.released.connect(nojog)
+    gui.cnc_right_button.released.connect(nojog)
+    gui.cnc_left_button.released.connect(nojog)
 
+    # Live GUI updates
+    def timerEvent(self, e):
+        # display CNC status
+        cncStatus = cnc.status if cnc else None
+        gui.cnc_x_label.setText(str(cncStatus.posX * 1e3) if (cncStatus is not None) else 'N/A')
+        gui.cnc_y_label.setText(str(cncStatus.posY * 1e3) if cncStatus else 'N/A')
 
-        # manual control options
-        if Key.space in new_keys:
-            trialThread.manual('stop')
-        if Key.enter in new_keys:
-            trialThread.manual('start')
-        if KeyCode.from_char('c') in new_keys:
-            trialThread.manual('center')
-        if KeyCode.from_char('o') in new_keys:
-            # trialThread.manual('open_servo')
-            pass
-        if KeyCode.from_char('l') in new_keys:
-            # trialThread.manual('close_servo')
-            pass
+        # display fly status
+        flyData = cam.flyData if cam else None
+        gui.fly_minor_axis_label.setText(str(flyData.ma * 1e3) if (flyData is not None) else 'N/A')
+        gui.fly_major_axis_label.setText(str(flyData.MA * 1e3) if (flyData is not None) else 'N/A')
+        gui.fly_aspect_ratio_label.setText(str(flyData.ma / flyData.MA) if (flyData is not None) else 'N/A')
+        gui.fly_x_label.setText(str(flyData.flyX * 1e3) if (flyData is not None) else 'N/A')
+        gui.fly_y_label.setText(str(flyData.flyY * 1e3) if (flyData is not None) else 'N/A')
 
-        # handle up/down keyboard input
-        if Key.up in keySet:
-            manVelY = +absJogVel
-        elif Key.down in keySet:
-            manVelY = -absJogVel
-        else:
-            manVelY = 0
+    gui.timerEvent = types.MethodType(timerEvent, gui)
+    timer = QBasicTimer()
+    timer.start(int(tUpdate*1e3), gui)
 
-        # handle left/right keyboard input
-        if Key.right in keySet:
-            manVelX = -absJogVel
-        elif Key.left in keySet:
-            manVelX = +absJogVel
-        else:
-            manVelX = 0
+    # mark center position
+    def mark_center():
+        cncStatus = cnc.status if cnc else None
+        if cncStatus is not None:
+            posX, posY = cncStatus.posX, cncStatus.posY
+            trialThread.tracker.set_center_pos(posX=posX, posY=posY)
 
-        if (manVelX != 0) or (manVelY != 0):
-            trialThread.manual('jog', manVelX, manVelY)
-        else:
-            manualCmd = trialThread.manualCmd
-            if (manualCmd is not None) and manualCmd[0] == 'jog':
-                trialThread.manual('nojog')
+    gui.cnc_mark_center_button.clicked.connect(mark_center)
 
-        # read out level
-        levelTrack = cv2.getTrackbarPos('level', 'image')
-        if levelTrack != lastLevel:
-            newLevel = levelTrack/255
-            display_proxy.set_level(newLevel)
-        lastLevel = levelTrack
+    # move to center
+    gui.cnc_move_center_button.clicked.connect(partial(trialThread.manual, 'center'))
 
-        # read out servo settings
-        # TODO: add proper locking
-        # openPos = cv2.getTrackbarPos('open', 'image')
-        # if openPos != lastOpenPos:
-        #    trialThread.servo.opened_pos = openPos
-        # lastOpenPos = openPos
-        # closedPos = cv2.getTrackbarPos('closed', 'image')
-        # if closedPos != lastClosedPos:
-        #    trialThread.servo.closed_pos = closedPos
-        # lastClosedPos = closedPos
+    # start / stop trial
+    gui.start_trial_button.clicked.connect(partial(trialThread.manual, 'start'))
+    gui.stop_trial_button.clicked.connect(partial(trialThread.manual, 'stop'))
 
-        # set camera detection settings
-        #ma_min=cv2.getTrackbarPos('ma_min', 'image')
-        #ma_max=cv2.getTrackbarPos('ma_max', 'image')
-        #MA_min=cv2.getTrackbarPos('MA_min', 'image')
-        #MA_max=cv2.getTrackbarPos('MA_max', 'image')
-        r_min=cv2.getTrackbarPos('r_min', 'image')
-        r_max=cv2.getTrackbarPos('r_max', 'image')
-        # cam.cam.ma_min=ma_min
-        # cam.cam.ma_max = ma_max
-        # cam.cam.MA_min = MA_min
-        # cam.cam.MA_max = MA_max
-        cam.cam.r_min = r_min/10.0
-        cam.cam.r_max = r_max/10.0
+    # threshold slider
+    def thresh_action(pos):
+        if cam is not None:
+            cam.threshold = pos + 1
+        gui.thresh_label.setText(str(pos))
+    gui.thresh_slider.valueChanged.connect(thresh_action)
+    gui.thresh_slider.setValue(115)
 
-        # read out tracker settings
-        loop_gain = 0.1 * cv2.getTrackbarPos('loop_gain', 'image')
+    # aspect ratio (min)
+    def r_min_action(pos):
+        if (cam is not None) and (cam.cam is not None):
+            cam.cam.r_min = pos/10.0
+        gui.r_min_label.setText(str(pos))
+    gui.r_min_slider.valueChanged.connect(r_min_action)
+    gui.r_min_slider.setValue(2)
+
+    # aspect ratio (max)
+    def r_max_action(pos):
+        if (cam is not None) and (cam.cam is not None):
+            cam.cam.r_max = pos/10.0
+        gui.r_max_label.setText(str(pos))
+    gui.r_max_slider.valueChanged.connect(r_max_action)
+    gui.r_max_slider.setValue(5)
+
+    # loop gain
+    def loop_gain_action(pos):
         if trialThread.tracker is not None:
-            # check needed since tracker may not have been initialized yet
-            trialThread.tracker.a = loop_gain
+            trialThread.tracker.a = 0.1*pos
+        gui.loop_gain_label.setText(str(pos))
+    gui.loop_gain_slider.valueChanged.connect(loop_gain_action)
+    gui.loop_gain_slider.setValue(100)
 
-        trial_dir = trialThread.trial_dir
-        if trial_dir is not None:
-            with open(os.path.join(trial_dir, 'display.txt'), 'a') as f:
-                f.write(str(perf_counter()) + ', ' + str(lastLevel) + '\n')
+    # display the GUI
+    gui.show()
 
-        # compute new thresholds
-        threshTrack = cv2.getTrackbarPos('threshold', 'image')
-        threshold = threshTrack + 1
-
-        # issue threshold command
-        cam.threshold = threshold
-
-        # determine the type of image that should be displayed
-        typeTrack = cv2.getTrackbarPos('imageType', 'image')
-
-        # get raw fly position
-        frameData = cam.frameData
-        
-        if frameData is not None:
-            # get the image to display
-            if typeTrack==0:
-                outFrame = frameData.inFrame
-            elif typeTrack==1:
-                outFrame = cv2.cvtColor(frameData.grayFrame, cv2.COLOR_GRAY2BGR)
-            elif typeTrack==2:
-                outFrame = cv2.cvtColor(frameData.threshFrame, cv2.COLOR_GRAY2BGR)
-            else:
-                raise Exception('Invalid image type.')
-
-            # get the fly contour
-            flyContour = frameData.flyContour
-
-            # draw the fly contour if status available
-            drawFrame = outFrame.copy()
-            if draw_contour and (flyContour is not None):
-                cv2.drawContours(drawFrame, [flyContour], 0, (0, 255, 0), 2)
-
-            # compute focus if needed
-            if draw_details:
-                flyData = cam.flyData
-                if (flyData is not None) and flyData.flyPresent:
-                    # compute center of region to use for focus calculation
-                    rows, cols = frameData.grayFrame.shape
-                    bufX = 50
-                    bufY = 50
-                    flyX_px = min(max(int(round(flyData.flyX_px)), bufX), cols - bufX)
-                    flyY_px = min(max(int(round(flyData.flyY_px)), bufY), rows - bufY)
-
-                    # select region to be used for focus calculation
-                    focus_roi = frameData.grayFrame[flyY_px - bufY: flyY_px + bufY,
-                                                    flyX_px - bufX: flyX_px + bufX]
-
-                    # compute focus figure of merit
-                    focus = focus_smoother.update(cv2.Laplacian(focus_roi, cv2.CV_64F).var())
-                    focus_str = 'focus: {0:.3f}'.format(focus)
-
-                    # display focus information
-                    font = cv2.FONT_HERSHEY_SIMPLEX
-                    x0 = 0
-                    y0 = 25
-                    dy = 50
-                    cv2.putText(drawFrame, focus_str, (x0, y0), font, 1, (0, 0, 0))
-
-                    # display minor/major axis information
-                    ma = ma_smoother.update(flyData.ma)
-                    MA = MA_smoother.update(flyData.MA)
-                    r = ma/MA
-                    ellipse_str = '{:.1f}, {:.1f}, {:.3f}'.format(1e3*ma, 1e3*MA, r)
-                    cv2.putText(drawFrame, ellipse_str, (x0, y0+dy), font, 1, (0, 0, 0))
-
-            # show the image
-            cv2.imshow('image', drawFrame)
-
-        # display image
-        cv2.waitKey(int(round(1e3*tLoop)))
-
-    # stop the trial thread manager
-    trialThread.stop()
-
-    # stop camera thread
-    cam.stop()
-    print('Camera FPS: ', 1/cam.avePeriod)
-
-    # close UI window
-    cv2.destroyAllWindows()
-
-    # close the keyboard listener
-    listener.stop()
+    # run the application
+    sys.exit(app.exec_())
         
 if __name__ == '__main__':
     main()
