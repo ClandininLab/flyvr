@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>731</width>
-    <height>616</height>
+    <height>615</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -25,6 +25,12 @@
    <layout class="QGridLayout" name="gridLayout">
     <item row="1" column="1">
      <widget class="QSlider" name="thresh_slider">
+      <property name="maximum">
+       <number>254</number>
+      </property>
+      <property name="value">
+       <number>0</number>
+      </property>
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
@@ -67,6 +73,12 @@
     </item>
     <item row="4" column="1">
      <widget class="QSlider" name="loop_gain_slider">
+      <property name="maximum">
+       <number>750</number>
+      </property>
+      <property name="value">
+       <number>0</number>
+      </property>
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
@@ -74,6 +86,12 @@
     </item>
     <item row="2" column="1">
      <widget class="QSlider" name="r_min_slider">
+      <property name="maximum">
+       <number>10</number>
+      </property>
+      <property name="value">
+       <number>0</number>
+      </property>
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
@@ -81,6 +99,12 @@
     </item>
     <item row="3" column="1">
      <widget class="QSlider" name="r_max_slider">
+      <property name="maximum">
+       <number>10</number>
+      </property>
+      <property name="value">
+       <number>0</number>
+      </property>
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
@@ -180,7 +204,7 @@
     <item row="3" column="0">
      <widget class="QLabel" name="label_13">
       <property name="text">
-       <string>Minor Axis</string>
+       <string>Major Axis</string>
       </property>
      </widget>
     </item>
@@ -372,10 +396,71 @@
      <x>380</x>
      <y>50</y>
      <width>341</width>
-     <height>153</height>
+     <height>171</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_5">
+    <item row="4" column="2">
+     <widget class="QPushButton" name="stim_stop_button">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="text">
+       <string>Stop</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="1">
+     <widget class="QPushButton" name="dispenser_start_button">
+      <property name="text">
+       <string>Start</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="2">
+     <widget class="QPushButton" name="camera_stop_button">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="text">
+       <string>Stop</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="1">
+     <widget class="QPushButton" name="stim_start_button">
+      <property name="text">
+       <string>Start</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QPushButton" name="camera_start_button">
+      <property name="text">
+       <string>Start</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="2">
+     <widget class="QPushButton" name="dispenser_stop_button">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="text">
+       <string>Stop</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0" colspan="3">
+     <widget class="QLabel" name="label_42">
+      <property name="text">
+       <string>&lt;b&gt;Services&lt;/b&gt;</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+    </item>
     <item row="2" column="1">
      <widget class="QPushButton" name="cnc_start_button">
       <property name="text">
@@ -421,59 +506,25 @@
       </property>
      </widget>
     </item>
-    <item row="1" column="0" colspan="3">
-     <widget class="QLabel" name="label_42">
+    <item row="6" column="0">
+     <widget class="QLabel" name="label_40">
       <property name="text">
-       <string>&lt;b&gt;Services&lt;/b&gt;</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
+       <string>Tracker</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
-     <widget class="QPushButton" name="camera_start_button">
-      <property name="text">
-       <string>Start</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="2">
-     <widget class="QPushButton" name="camera_stop_button">
+    <item row="6" column="1">
+     <widget class="QPushButton" name="tracker_start_button">
       <property name="enabled">
        <bool>false</bool>
       </property>
       <property name="text">
-       <string>Stop</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="1">
-     <widget class="QPushButton" name="stim_start_button">
-      <property name="text">
        <string>Start</string>
       </property>
      </widget>
     </item>
-    <item row="4" column="2">
-     <widget class="QPushButton" name="stim_stop_button">
-      <property name="enabled">
-       <bool>false</bool>
-      </property>
-      <property name="text">
-       <string>Stop</string>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="1">
-     <widget class="QPushButton" name="dispenser_start_button">
-      <property name="text">
-       <string>Start</string>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="2">
-     <widget class="QPushButton" name="dispenser_stop_button">
+    <item row="6" column="2">
+     <widget class="QPushButton" name="tracker_stop_button">
       <property name="enabled">
        <bool>false</bool>
       </property>
@@ -488,20 +539,20 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>230</y>
+     <y>250</y>
      <width>341</width>
-     <height>102</height>
+     <height>81</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_6">
-    <item row="4" column="0">
+    <item row="3" column="0">
      <widget class="QPushButton" name="cnc_mark_center_button">
       <property name="text">
        <string>Mark as Center</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="0">
+    <item row="2" column="0">
      <widget class="QPushButton" name="cnc_move_center_button">
       <property name="text">
        <string>Move to Center</string>
@@ -515,16 +566,6 @@
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="0">
-     <widget class="QCheckBox" name="track_enable_checkbox">
-      <property name="text">
-       <string>Tracking enabled</string>
-      </property>
-      <property name="checked">
-       <bool>true</bool>
       </property>
      </widget>
     </item>
@@ -586,7 +627,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>430</y>
+     <y>420</y>
      <width>341</width>
      <height>102</height>
     </rect>
@@ -661,7 +702,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>410</y>
+     <y>400</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -674,7 +715,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>210</y>
+     <y>230</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -687,7 +728,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>540</y>
+     <y>530</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -700,7 +741,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>560</y>
+     <y>550</y>
      <width>331</width>
      <height>51</height>
     </rect>
