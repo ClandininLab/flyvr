@@ -7,8 +7,6 @@ from flyvr.service import Service
 
 class TrackThread(Service):
     def __init__(self,
-                 camThread, # handle of the camera thread
-                 cncThread, # handle of the CNC control thread
                  loopTime=5e-3, # target loop update rate
                  loop_gain_a = 10.0, # loop gain, in m/s per m offset from center (original value 2*pi*1.2)
                  minAbsPos = 0.5e-3, # deadzone half-width in meters (original value 8.5mm)
@@ -22,9 +20,13 @@ class TrackThread(Service):
                  center_pos_y = 0.3401
                  ):
 
-        # Store thread handles
-        self.camThread = camThread
-        self.cncThread = cncThread
+        # Camera thread
+        self.camLock = Lock()
+        self._cam = None
+
+        # CNC thread
+        self.cncLock = Lock()
+        self._cnc = None
 
         # Create lock for handling manual velocity
         self.manualVelLock = Lock()
@@ -62,6 +64,26 @@ class TrackThread(Service):
         # call constructor from parent        
         super().__init__(minTime=loopTime, maxTime=loopTime)
 
+    @property
+    def cam(self):
+        with self.camLock:
+            return self._cam
+
+    @cam.setter
+    def cam(self, value):
+        with self.camLock:
+            self._cam = value
+
+    @property
+    def cnc(self):
+        with self.cncLock:
+            return self._cnc
+
+    @cnc.setter
+    def cnc(self, value):
+        with self.cncLock:
+            self._cnc = value
+
     # overriding method from parent...
     def loopBody(self):
         # read current time
@@ -69,7 +91,7 @@ class TrackThread(Service):
         dt = thisTime - self.lastTime
 
         # get latest camera data
-        flyData = self.camThread.flyData
+        flyData = self.cam.flyData if (self.cam is not None) else None
 
         # store fly position information            
         if flyData is not None:
@@ -85,8 +107,10 @@ class TrackThread(Service):
         manualVelocity = self.manualVelocity
         manualPosition = self.manualPosition
 
-        if manualPosition is not None:
-            cncStatus = self.cncThread.status
+        # get CNC status
+        cncStatus = self.cnc.status if (self.cnc is not None) else None
+
+        if (manualPosition is not None) and (cncStatus is not None):
             velX = self.k_pctrl*(manualPosition.posX - cncStatus.posX)
             velY = self.k_pctrl*(manualPosition.posY - cncStatus.posY)
             if abs(velX) > self.v_max_pctrl:
@@ -117,7 +141,8 @@ class TrackThread(Service):
         velY = self.updateFromMaxAcc(velY, self.prevVelY, dt)
 
         # update CNC velocity
-        self.cncThread.setVel(velX, velY)
+        if self.cnc is not None:
+            self.cnc.setVel(velX, velY)
 
         # save history variables
         self.lastTime = thisTime
@@ -218,7 +243,7 @@ class TrackThread(Service):
         self.manualPosition = ManualPosition(x, y)
 
         def isError():
-            cncStatus = self.cncThread.status
+            cncStatus = self.cnc.status if (self.cnc is not None) else None
             if cncStatus is None:
                 return True
             else:
