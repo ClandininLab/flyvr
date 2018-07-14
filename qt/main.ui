@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>731</width>
-    <height>615</height>
+    <width>728</width>
+    <height>591</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -396,12 +396,12 @@
      <x>380</x>
      <y>50</y>
      <width>341</width>
-     <height>171</height>
+     <height>141</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_5">
-    <item row="4" column="2">
-     <widget class="QPushButton" name="stim_stop_button">
+    <item row="3" column="2">
+     <widget class="QPushButton" name="camera_stop_button">
       <property name="enabled">
        <bool>false</bool>
       </property>
@@ -417,8 +417,8 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="2">
-     <widget class="QPushButton" name="camera_stop_button">
+    <item row="4" column="2">
+     <widget class="QPushButton" name="stim_stop_button">
       <property name="enabled">
        <bool>false</bool>
       </property>
@@ -434,13 +434,6 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
-     <widget class="QPushButton" name="camera_start_button">
-      <property name="text">
-       <string>Start</string>
-      </property>
-     </widget>
-    </item>
     <item row="5" column="2">
      <widget class="QPushButton" name="dispenser_stop_button">
       <property name="enabled">
@@ -448,6 +441,13 @@
       </property>
       <property name="text">
        <string>Stop</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QPushButton" name="camera_start_button">
+      <property name="text">
+       <string>Start</string>
       </property>
      </widget>
     </item>
@@ -468,27 +468,6 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="0">
-     <widget class="QLabel" name="label_30">
-      <property name="text">
-       <string>Camera</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="0">
-     <widget class="QLabel" name="label_33">
-      <property name="text">
-       <string>Stimulus</string>
-      </property>
-     </widget>
-    </item>
-    <item row="5" column="0">
-     <widget class="QLabel" name="label_34">
-      <property name="text">
-       <string>Dispenser</string>
-      </property>
-     </widget>
-    </item>
     <item row="2" column="2">
      <widget class="QPushButton" name="cnc_stop_button">
       <property name="enabled">
@@ -499,6 +478,20 @@
       </property>
      </widget>
     </item>
+    <item row="3" column="0">
+     <widget class="QLabel" name="label_30">
+      <property name="text">
+       <string>Camera</string>
+      </property>
+     </widget>
+    </item>
+    <item row="5" column="0">
+     <widget class="QLabel" name="label_34">
+      <property name="text">
+       <string>Dispenser</string>
+      </property>
+     </widget>
+    </item>
     <item row="2" column="0">
      <widget class="QLabel" name="label_29">
       <property name="text">
@@ -506,30 +499,10 @@
       </property>
      </widget>
     </item>
-    <item row="6" column="0">
-     <widget class="QLabel" name="label_40">
+    <item row="4" column="0">
+     <widget class="QLabel" name="label_33">
       <property name="text">
-       <string>Tracker</string>
-      </property>
-     </widget>
-    </item>
-    <item row="6" column="1">
-     <widget class="QPushButton" name="tracker_start_button">
-      <property name="enabled">
-       <bool>false</bool>
-      </property>
-      <property name="text">
-       <string>Start</string>
-      </property>
-     </widget>
-    </item>
-    <item row="6" column="2">
-     <widget class="QPushButton" name="tracker_stop_button">
-      <property name="enabled">
-       <bool>false</bool>
-      </property>
-      <property name="text">
-       <string>Stop</string>
+       <string>Stimulus</string>
       </property>
      </widget>
     </item>
@@ -539,7 +512,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>250</y>
+     <y>220</y>
      <width>341</width>
      <height>81</height>
     </rect>
@@ -575,7 +548,7 @@
    <property name="geometry">
     <rect>
      <x>510</x>
-     <y>340</y>
+     <y>310</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -588,7 +561,7 @@
    <property name="geometry">
     <rect>
      <x>510</x>
-     <y>380</y>
+     <y>350</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -601,7 +574,7 @@
    <property name="geometry">
     <rect>
      <x>430</x>
-     <y>360</y>
+     <y>330</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -614,7 +587,7 @@
    <property name="geometry">
     <rect>
      <x>590</x>
-     <y>360</y>
+     <y>330</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -627,7 +600,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>420</y>
+     <y>390</y>
      <width>341</width>
      <height>102</height>
     </rect>
@@ -635,6 +608,9 @@
    <layout class="QGridLayout" name="gridLayout_7">
     <item row="3" column="0">
      <widget class="QPushButton" name="stop_trial_button">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
       <property name="text">
        <string>Stop Trial</string>
       </property>
@@ -702,7 +678,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>400</y>
+     <y>370</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -715,7 +691,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>230</y>
+     <y>200</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -728,7 +704,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>530</y>
+     <y>500</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -741,7 +717,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>550</y>
+     <y>520</y>
      <width>331</width>
      <height>51</height>
     </rect>
@@ -803,30 +779,6 @@
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;&lt;span style=&quot; font-size:14pt; font-weight:600;&quot;&gt;FlyVR Big Rig&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </widget>
-  <zorder>thresh_label</zorder>
-  <zorder>gridLayoutWidget</zorder>
-  <zorder>thresh_slider</zorder>
-  <zorder>gridLayoutWidget_2</zorder>
-  <zorder>label_10</zorder>
-  <zorder>label_10</zorder>
-  <zorder>label_10</zorder>
-  <zorder>gridLayoutWidget_3</zorder>
-  <zorder>gridLayoutWidget_4</zorder>
-  <zorder>gridLayoutWidget_5</zorder>
-  <zorder>gridLayoutWidget_6</zorder>
-  <zorder>cnc_up_button</zorder>
-  <zorder>cnc_down_button</zorder>
-  <zorder>cnc_left_button</zorder>
-  <zorder>cnc_right_button</zorder>
-  <zorder>gridLayoutWidget_7</zorder>
-  <zorder>line</zorder>
-  <zorder>line_2</zorder>
-  <zorder>line_3</zorder>
-  <zorder>line_4</zorder>
-  <zorder>line_5</zorder>
-  <zorder>line_6</zorder>
-  <zorder>gridLayoutWidget_8</zorder>
-  <zorder>label_43</zorder>
  </widget>
  <resources/>
  <connections/>

@@ -33,6 +33,10 @@ class TrialThread(Service):
         self.trial_count = itertools.count(1)
         self.state = 'manual'
 
+        # start the tracker thread
+        self.tracker = TrackThread()
+        self.tracker.start()
+
         # Camera thread
         self.camLock = Lock()
         self._cam = None
@@ -41,9 +45,13 @@ class TrialThread(Service):
         self.cncLock = Lock()
         self._cnc = None
 
-        # Tracker thread
-        self.trackLock = Lock()
-        self._tracker = None
+        # Stimulus thread
+        self.stimLock = Lock()
+        self._stim = None
+
+        # Dispenser thread
+        self.dispLock = Lock()
+        self._dispenser = None
 
         self.timer_start = None
 
@@ -70,6 +78,7 @@ class TrialThread(Service):
     def cam(self, value):
         with self.camLock:
             self._cam = value
+        self.tracker.cam = value
 
     @property
     def cnc(self):
@@ -80,16 +89,27 @@ class TrialThread(Service):
     def cnc(self, value):
         with self.cncLock:
             self._cnc = value
+        self.tracker.cnc = value
 
     @property
-    def tracker(self):
-        with self.trackLock:
-            return self._tracker
+    def stim(self):
+        with self.stimLock:
+            return self._stim
 
-    @tracker.setter
-    def tracker(self, value):
-        with self.trackLock:
-            self._tracker = value
+    @stim.setter
+    def stim(self, value):
+        with self.stimLock:
+            self._stim = value
+
+    @property
+    def dispenser(self):
+        with self.dispLock:
+            return self._dispenser
+
+    @dispenser.setter
+    def dispenser(self, value):
+        with self.dispLock:
+            self._dispenser = value
 
     @property
     def manualCmd(self):
@@ -106,6 +126,7 @@ class TrialThread(Service):
 
     def stop(self):
         super().stop()
+        self.tracker.stop()
 
     @property
     def trial_dir(self):
@@ -138,34 +159,31 @@ class TrialThread(Service):
         if self.cam is not None:
             self.cam.stopLogging()
 
-        if self.tracker is not None:
-            self.tracker.stopTracking()
-
     def loopBody(self):
+        flyData = self.cam.flyData if (self.cam is not None) else None
+        flyPresent = flyData.flyPresent if (flyData is not None) else None
+
         if self.state == 'started':
             if self.manualCmd is not None:
                 self.state = 'manual'
                 print('** manual **')
-            elif self.cam.flyData.flyPresent:
+            elif flyPresent:
                 print('Fly possibly found...')
                 self.timer_start = time()
                 self.state = 'fly_found'
                 print('** fly_found **')
-                if self.tracker is not None:
-                    self.tracker.startTracking()
+                self.tracker.startTracking()
         elif self.state == 'fly_found':
             if self.manualCmd is not None:
-                if self.tracker is not None:
-                    self.tracker.stopTracking()
+                self.tracker.stopTracking()
                 self.state = 'manual'
                 print('** manual **')
-            elif not self.cam.flyData.flyPresent:
+            elif not flyPresent:
                 print('Fly lost.')
                 self.state = 'started'
                 print('** started **')
-                if self.tracker is not None:
-                    self.tracker.stopTracking()
-                    self.tracker.move_to_center()
+                self.tracker.stopTracking()
+                self.tracker.move_to_center()
             elif (time() - self.timer_start) >= self.fly_found_timeout:
                 print('Fly found.')
                 self._start_trial()
@@ -176,7 +194,7 @@ class TrialThread(Service):
                 self._stop_trial()
                 self.state = 'manual'
                 print('** manual **')
-            elif not self.cam.flyData.flyPresent:
+            elif not flyPresent:
                 print('Fly possibly lost...')
                 self.timer_start = time()
                 self.state = 'fly_lost'
@@ -186,15 +204,14 @@ class TrialThread(Service):
                 self._stop_trial()
                 self.state = 'manual'
                 print('** manual **')
-            elif self.cam.flyData.flyPresent:
+            elif flyPresent:
                 print('Fly located again.')
                 self.state = 'run'
                 print('** run **')
             elif (time() - self.timer_start) >= self.fly_lost_timeout:
                 print('Fly lost.')
                 self._stop_trial()
-                if self.tracker is not None:
-                    self.tracker.move_to_center()
+                self.tracker.move_to_center()
                 self.state = 'started'
                 print('** started **')
         elif self.state == 'manual':
@@ -209,16 +226,13 @@ class TrialThread(Service):
                 print('** manual: stop **')
             elif manualCmd[0] == 'center':
                 print('** manual: center **')
-                if self.tracker is not None:
-                    self.tracker.move_to_center()
+                self.tracker.move_to_center()
             elif manualCmd[0] == 'nojog':
                 print('** manual: nojog **')
-                if self.tracker is not None:
-                    self.tracker.manualVelocity = None
+                self.tracker.manualVelocity = None
             elif manualCmd[0] == 'jog':
-                if self.tracker is not None:
-                    manualVelocity = ManualVelocity(velX=manualCmd[1], velY=manualCmd[2])
-                    self.tracker.manualVelocity = manualVelocity
+                manualVelocity = ManualVelocity(velX=manualCmd[1], velY=manualCmd[2])
+                self.tracker.manualVelocity = manualVelocity
             else:
                 raise Exception('Invalid manual command.')
 
@@ -252,7 +266,8 @@ def main():
     # Other threads
     cam = None
     cnc = None
-    tracker = None
+    stim = None
+    dispenser = None
 
     # jogging
     def jog(manVelX, manVelY):
@@ -273,9 +288,10 @@ def main():
     # Live GUI updates
     def timerEvent(self, e):
         # display CNC status
-        cncStatus = cnc.status if cnc else None
+        cncStatus = cnc.status if (cnc is not None) else None
+        print(cncStatus)
         gui.cnc_x_label.setText(str(cncStatus.posX * 1e3) if (cncStatus is not None) else 'N/A')
-        gui.cnc_y_label.setText(str(cncStatus.posY * 1e3) if cncStatus else 'N/A')
+        gui.cnc_y_label.setText(str(cncStatus.posY * 1e3) if (cncStatus is not None) else 'N/A')
 
         # display fly status
         flyData = cam.flyData if cam else None
@@ -301,22 +317,36 @@ def main():
     # move to center
     gui.cnc_move_center_button.clicked.connect(partial(trialThread.manual, 'center'))
 
-    # start / stop trial
-    gui.start_trial_button.clicked.connect(partial(trialThread.manual, 'start'))
-    gui.stop_trial_button.clicked.connect(partial(trialThread.manual, 'stop'))
+    # start trial
+    def start_trial():
+        trialThread.manual('start')
+        gui.start_trial_button.setEnabled(False)
+        gui.stop_trial_button.setEnabled(True)
+    gui.start_trial_button.clicked.connect(start_trial)
+
+    # stop trial
+    def stop_trial():
+        trialThread.manual('stop')
+        gui.start_trial_button.setEnabled(True)
+        gui.stop_trial_button.setEnabled(False)
+    gui.stop_trial_button.clicked.connect(stop_trial)
 
     # threshold slider
+    def slider_to_thresh(pos):
+        return pos + 1
     def thresh_action(pos):
         if cam is not None:
-            cam.threshold = pos + 1
+            cam.threshold = slider_to_thresh(pos)
         gui.thresh_label.setText(str(pos))
     gui.thresh_slider.valueChanged.connect(thresh_action)
     gui.thresh_slider.setValue(115)
 
     # aspect ratio (min)
+    def slider_to_aspect_ratio(pos):
+        return pos/10.0
     def r_min_action(pos):
         if (cam is not None) and (cam.cam is not None):
-            cam.cam.r_min = pos/10.0
+            cam.cam.r_min = slider_to_aspect_ratio(pos)
         gui.r_min_label.setText(str(pos))
     gui.r_min_slider.valueChanged.connect(r_min_action)
     gui.r_min_slider.setValue(2)
@@ -324,24 +354,52 @@ def main():
     # aspect ratio (max)
     def r_max_action(pos):
         if (cam is not None) and (cam.cam is not None):
-            cam.cam.r_max = pos/10.0
+            cam.cam.r_max = slider_to_aspect_ratio(pos)
         gui.r_max_label.setText(str(pos))
     gui.r_max_slider.valueChanged.connect(r_max_action)
     gui.r_max_slider.setValue(5)
 
     # loop gain
+    def slider_to_loop_gain(pos):
+        return 0.1*pos
     def loop_gain_action(pos):
-        if trialThread.tracker is not None:
-            trialThread.tracker.a = 0.1*pos
+        trialThread.tracker.a = slider_to_loop_gain(pos)
         gui.loop_gain_label.setText(str(pos))
     gui.loop_gain_slider.valueChanged.connect(loop_gain_action)
     gui.loop_gain_slider.setValue(100)
+
+    # CNC service
+    def start_cnc():
+        gui.cnc_start_button.setEnabled(False)
+        cnc_home()
+        cnc = CncThread()
+        cnc.start()
+        trialThread.cnc = cnc
+        gui.cnc_stop_button.setEnabled(True)
+    gui.cnc_start_button.clicked.connect(start_cnc)
+
+    def stop_cnc():
+        gui.cnc_stop_button.setEnabled(False)
+        trialThread.cnc = None
+        cnc.stop()
+        gui.cnc_start_button.setEnabled(True)
+    gui.cnc_stop_button.clicked.connect(stop_cnc)
 
     # display the GUI
     gui.show()
 
     # run the application
-    sys.exit(app.exec_())
+    exit_code = app.exec_()
+
+    trialThread.stop()
+
+    if cnc is not None:
+        cnc.stop()
+
+    if cam is not None:
+        cam.stop()
+
+    sys.exit(exit_code)
         
 if __name__ == '__main__':
     main()
