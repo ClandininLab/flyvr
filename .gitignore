@@ -3,3 +3,4 @@ __pycache__
 .idea
 examples/display.txt
 .DS_Store
+qt/main.ui

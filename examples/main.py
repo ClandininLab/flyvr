@@ -3,6 +3,8 @@ import os
 import os.path
 import itertools
 import xmlrpc.client
+import subprocess
+import sys
 
 from time import strftime, perf_counter, time, sleep
 from pynput import keyboard
@@ -12,7 +14,7 @@ from flyvr.cnc import CncThread, cnc_home
 from flyvr.camera import CamThread
 from flyvr.tracker import TrackThread, ManualVelocity
 from flyvr.service import Service
-from flyvr.servo import ServoGate
+from flyvr.rpc import Client, request
 
 from threading import Lock
 
@@ -29,13 +31,13 @@ def nothing(x):
     pass
 
 class TrialThread(Service):
-    def __init__(self, exp_dir, cam, loopTime=10e-3, fly_lost_timeout=1, fly_found_timeout=1):
+    def __init__(self, exp_dir, cam, dispenser, loopTime=10e-3, fly_lost_timeout=1, fly_found_timeout=1):
         self.trial_count = itertools.count(1)
         self.state = 'startup'
 
         self.cam = cam
+        self.dispenser = dispenser
         self.cnc = None
-        self.servo = None
         self.tracker = None
         self.timer_start = None
 
@@ -101,9 +103,6 @@ class TrialThread(Service):
         if self.state == 'startup':
             print('** startup **')
 
-            # Open connection to servo
-            # self.servo = ServoGate(debug=True)
-
             # Open connection to CNC rig
             cnc_home()
             self.cnc = CncThread()
@@ -121,7 +120,6 @@ class TrialThread(Service):
             print('** manual **')
         elif self.state == 'started':
             if self.manualCmd is not None:
-                # self.servo.close()
                 self.state = 'manual'
                 print('** manual **')
             elif self.cam.flyData.flyPresent:
@@ -132,7 +130,6 @@ class TrialThread(Service):
                 self.tracker.startTracking()
         elif self.state == 'fly_found':
             if self.manualCmd is not None:
-                # self.servo.close()
                 self.tracker.stopTracking()
                 self.state = 'manual'
                 print('** manual **')
@@ -144,7 +141,6 @@ class TrialThread(Service):
                 self.tracker.move_to_center()
             elif (time() - self.timer_start) >= self.fly_found_timeout:
                 print('Fly found.')
-                # self.servo.close()
                 self._start_trial()
                 self.state = 'run'
                 print('** run **')
@@ -171,7 +167,10 @@ class TrialThread(Service):
                 print('Fly lost.')
                 self._stop_trial()
                 self.tracker.move_to_center()
-                # self.servo.open()
+                try:
+                    self.dispenser.write(request('releaseFly'))
+                except OSError:
+                    print('Please dispense fly (could not release it automatically)')
                 self.state = 'started'
                 print('** started **')
         elif self.state == 'manual':
@@ -180,7 +179,10 @@ class TrialThread(Service):
             if manualCmd is None:
                 pass
             elif manualCmd[0] == 'start':
-                # self.servo.open()
+                try:
+                    self.dispenser.write(request('releaseFly'))
+                except OSError:
+                    print('Please dispense fly (could not release it automatically)')
                 self.state = 'started'
                 print('** started **')
             elif manualCmd[0] == 'stop':
@@ -194,12 +196,11 @@ class TrialThread(Service):
             elif manualCmd[0] == 'jog':
                 manualVelocity = ManualVelocity(velX=manualCmd[1], velY=manualCmd[2])
                 self.tracker.manualVelocity = manualVelocity
-            elif manualCmd[0] == 'open_servo':
-                # self.servo.open()
-                pass
-            elif manualCmd[0] == 'close_servo':
-                # self.servo.close()
-                pass
+            elif manualCmd[0] == 'release_fly':
+                try:
+                    self.dispenser.write(request('releaseFly'))
+                except OSError:
+                    print('Please dispense fly (could not release it automatically)')
             else:
                 raise Exception('Invalid manual command.')
 
@@ -262,8 +263,18 @@ def main():
     cam = CamThread()
     cam.start()
 
+    # Try to connect to the dispenser server
+    # ref: https://stackoverflow.com/questions/37863476/why-use-both-os-path-abspath-and-os-path-realpath/40311142
+    file_path_full = os.path.realpath(os.path.expanduser(__file__))
+    dir_path_full = os.path.dirname(os.path.dirname(file_path_full))
+    dispenser_full_path = os.path.join(dir_path_full, 'flyvr', 'gate_control.py')
+    python_full_path = os.path.realpath(os.path.expanduser(sys.executable))
+
+    p = subprocess.Popen([python_full_path, dispenser_full_path], stdin=subprocess.PIPE)
+    dispenser = Client(p.stdin)
+
     # Run trial manager
-    trialThread = TrialThread(exp_dir=exp_dir, cam=cam)
+    trialThread = TrialThread(exp_dir=exp_dir, cam=cam, dispenser=dispenser)
     trialThread.start()
 
     focus_smoother = Smooth(12)
@@ -271,9 +282,7 @@ def main():
     MA_smoother = Smooth(12)
 
     # open the connection to display service
-    print('opening display proxy...')
     display_proxy = xmlrpc.client.ServerProxy("http://127.0.0.1:54357/")
-    print('done.')
 
     # main program loop
     while keyboard.Key.esc not in keySet:
@@ -339,7 +348,10 @@ def main():
         levelTrack = cv2.getTrackbarPos('level', 'image')
         if levelTrack != lastLevel:
             newLevel = levelTrack/255
-            display_proxy.set_level(newLevel)
+            try:
+                display_proxy.set_level(newLevel)
+            except ConnectionRefusedError:
+                pass
         lastLevel = levelTrack
 
         # read out servo settings
