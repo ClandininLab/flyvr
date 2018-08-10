@@ -52,6 +52,13 @@ class TrialThread(Service):
         self.trialDirLock = Lock()
         self._trial_dir = None
 
+        # start logging to dispenser
+        if self.dispenser:
+            self.dispenser.write(request('startLogging',
+                                        os.path.join(self.exp_dir, 'raw_gate_data.txt'),
+                                        os.path.join(self.exp_dir, 'open_gate_data.txt'),
+                                        os.path.join(self.exp_dir, 'close_gate_data.txt')))
+
         # call constructor from parent
         super().__init__(minTime=loopTime, maxTime=loopTime)
 
@@ -97,6 +104,7 @@ class TrialThread(Service):
 
         self.cnc.stopLogging()
         self.cam.stopLogging()
+
         self.tracker.stopTracking()
 
     def loopBody(self):
@@ -270,7 +278,7 @@ def main():
     dispenser_full_path = os.path.join(dir_path_full, 'flyvr', 'gate_control.py')
     python_full_path = os.path.realpath(os.path.expanduser(sys.executable))
 
-    p = subprocess.Popen([python_full_path, dispenser_full_path], stdin=subprocess.PIPE)
+    p = subprocess.Popen([python_full_path, dispenser_full_path], stdin=subprocess.PIPE, stdout=sys.stdout)
     dispenser = Client(p.stdin)
 
     # Run trial manager
