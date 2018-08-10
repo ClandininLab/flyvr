@@ -19,6 +19,13 @@ import platform
 from flyvr.rpc import Server
 from jsonrpc import Dispatcher
 
+def format_values(values, delimeter='\t', line_ending='\n'):
+    retval = [str(value) for value in values]
+    retval = delimeter.join(retval)
+    retval += line_ending
+
+    return retval
+
 class FlyDispenser:
     def __init__(self):
         self.t0=time.time()
@@ -39,8 +46,12 @@ class FlyDispenser:
         self.num_needed_pixels = 2
         self.half_gate_width = 7
         self.gate_thresh = 100
-        self.open_times = []
-        self.close_times = []
+
+        self.logLock = Lock()
+        self.shouldLog = False
+        self.raw_data_file = None
+        self.open_times_file = None
+        self.close_time_file = None
 
         self.flyReleaseLock = Lock()
 
@@ -77,6 +88,9 @@ class FlyDispenser:
         self.serialConnection.write(bytes([1])) #open gate
         time.sleep(3) #wait to stabilize (3sec is overkill)
         self.background_open = np.median(np.asarray(self.all_data)[-3:,:],axis=0) #save frame
+
+        # close the gate again
+        self.serialConnection.write(bytes([0]))  # close gate
 
         #find gate
         self.gate_difference = self.background_open - self.background_close
@@ -132,7 +146,10 @@ class FlyDispenser:
                     pixel = self.serialConnection.read(1)
                     self.rawData[i] = int(pixel[0])
                 self.current_frame = np.asarray(np.ndarray.tolist(self.rawData))
+
                 self.all_data.append(self.current_frame)
+                self.log_raw_data(self.current_frame)
+
                 self.diff = self.current_frame - self.previous_frame
                 self.previous_frame = self.current_frame
                 self.t1=time.time()
@@ -146,11 +163,18 @@ class FlyDispenser:
 
             self.found_fly = False
             self.serialConnection.write(bytes([1])) # open gate
-            self.open_times.append(time.time()-self.t0) # for posthoc performance analysis
+
+            open_time = time.time()-self.t0
+            self.log_open_time(open_time)
+
             time.sleep(1)
             self.look_for_fly() # look for fly
+
             self.serialConnection.write(bytes([0])) # close gate
-            self.close_times.append(time.time()-self.t0) # for posthoc performance analysis
+
+            close_time = time.time()-self.t0
+            self.log_close_time(close_time)
+
             time.sleep(self.delay_length) #temp wait for testing
 
             self.flyReleaseLock.release()
@@ -164,13 +188,56 @@ class FlyDispenser:
         print(np.shape(self.all_data))
         print(self.time1-self.t0)
         self.isRun = False
-        np.save('raw_gate_data', np.asarray(self.all_data))
-        np.savetxt('open_data.txt', self.open_times)
-        np.savetxt('close_data.txt', self.close_times)
         self.camera_thread.join()
         self.serialConnection.write(bytes([0]))
         self.serialConnection.close()
         print('Disconnected...')
+
+    def log_raw_data(self, raw_data):
+        with self.logLock:
+            if self.shouldLog and self.raw_data_file:
+                self.raw_data_file.write(format_values(raw_data))
+                self.raw_data_file.flush()
+
+    def log_open_time(self, open_time):
+        with self.logLock:
+            if self.shouldLog and self.open_times_file:
+                self.open_times_file.write(format_values([open_time]))
+                self.open_times_file.flush()
+                print('done logging open time')
+
+    def log_close_time(self, close_time):
+        with self.logLock:
+            if self.shouldLog and self.close_times_file:
+                self.close_times_file.write(format_values([close_time]))
+                self.close_times_file.flush()
+                print('done logging close time')
+
+    def startLogging(self, raw_data_file_name, open_times_file_name, close_times_file_name):
+        with self.logLock:
+            self.shouldLog = True
+
+            if self.open_times_file:
+                self.open_times_file.close()
+            if self.close_time_file:
+                self.close_time_file.close()
+            if self.raw_data_file:
+                self.raw_data_file.close()
+
+            self.open_times_file = open(open_times_file_name, 'w')
+            self.close_times_file = open(close_times_file_name, 'w')
+            self.raw_data_file = open(raw_data_file_name, 'w')
+
+    def stopLogging(self):
+        with self.logLock:
+            self.shouldLog = False
+
+            if self.open_times_file:
+                self.open_times_file.close()
+            if self.close_time_file:
+                self.close_time_file.close()
+            if self.raw_data_file:
+                self.raw_data_file.close()
 
 def main():
     if len(sys.argv) > 1:
@@ -186,6 +253,8 @@ def main():
 
         dispatcher = Dispatcher()
         dispatcher.add_method(s.releaseFly)
+        dispatcher.add_method(s.startLogging)
+        dispatcher.add_method(s.stopLogging)
         server = Server(dispatcher)
 
         while True:
