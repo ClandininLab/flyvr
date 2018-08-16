@@ -125,16 +125,10 @@ class FlyDispenser:
             if (self.gate_clear == True) and (self.fly_passed == True):
                 self.found_fly = True
 
-    def getSerialData(self, frame, lines1, lines2):
-
-
+    def getSerialData(self, frame, lines1):
         self.to_display1 = np.roll(self.to_display1, 1, axis = 0)
         self.to_display1[0] = self.current_frame
         lines1.set_data(self.to_display1)
-
-        self.to_display2 = np.roll(self.to_display2, 1, axis = 0)
-        self.to_display2[0] = np.abs(self.diff)
-        lines2.set_data(self.to_display2)
 
     def backgroundThreadCamera(self):    # retrieve data
         time.sleep(1.0)  # give some buffer time for retrieving data
@@ -271,10 +265,10 @@ def main():
         xmax = 256
         ymin = -(1)
         ymax = 256
-        fig, (ax1, ax2) = plt.subplots(1,2,sharey=True)
-        line1 = ax1.matshow(np.random.rand(128,128)*255)
-        line2 = ax2.matshow(np.random.rand(128,128)*255)
-        anim = animation.FuncAnimation(fig, s.getSerialData, fargs=(line1,line2), interval=pltInterval)    # fargs has to be a tuple
+        fig = plt.figure()
+        ax = plt.gca()
+        line1 = ax.matshow(np.random.rand(128,128)*255)
+        anim = animation.FuncAnimation(fig, s.getSerialData, fargs=(line1,), interval=pltInterval)    # fargs has to be a tuple
 
         try:
             plt.show()
