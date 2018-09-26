@@ -15,6 +15,7 @@ from flyvr.camera import CamThread
 from flyvr.tracker import TrackThread, ManualVelocity
 from flyvr.service import Service
 from flyvr.rpc import Client, request
+from flyvr.mrstim import MrDisplay
 
 from threading import Lock
 
@@ -31,12 +32,13 @@ def nothing(x):
     pass
 
 class TrialThread(Service):
-    def __init__(self, exp_dir, cam, dispenser, loopTime=10e-3, fly_lost_timeout=1, fly_found_timeout=1):
+    def __init__(self, exp_dir, cam, dispenser, mrstim, loopTime=10e-3, fly_lost_timeout=1, fly_found_timeout=1):
         self.trial_count = itertools.count(1)
         self.state = 'startup'
 
         self.cam = cam
         self.dispenser = dispenser
+        self.mrstim = mrstim
         self.cnc = None
         self.tracker = None
         self.timer_start = None
@@ -189,6 +191,7 @@ class TrialThread(Service):
             elif manualCmd[0] == 'start':
                 try:
                     self.dispenser.write(request('releaseFly'))
+                    self.mrstim.nextStim()
                 except OSError:
                     print('Please dispense fly (could not release it automatically)')
                 self.state = 'started'
@@ -230,7 +233,7 @@ def main():
     prev_key_set = set()
 
     # create folder for data
-    topdir = r'E:\FlyVR'
+    topdir = r'F:\FlyVR'
     folder = 'exp-'+strftime('%Y%m%d-%H%M%S')
     exp_dir = os.path.join(topdir, folder)
     os.makedirs(exp_dir)
@@ -280,9 +283,16 @@ def main():
 
     p = subprocess.Popen([python_full_path, dispenser_full_path], stdin=subprocess.PIPE, stdout=sys.stdout)
     dispenser = Client(p.stdin)
+    print('dispenser: ', dispenser)
+
+    #do same for mrstim - luke added this
+    # mrstim_full_path = os.path.join(dir_path_full, 'flyvr', 'mrstim.py')
+    # m = subprocess.Popen([python_full_path, mrstim_full_path], stdin=subprocess.PIPE, stdout=sys.stdout)
+    mrstim = MrDisplay()
+    print('mrstim: ', mrstim)
 
     # Run trial manager
-    trialThread = TrialThread(exp_dir=exp_dir, cam=cam, dispenser=dispenser)
+    trialThread = TrialThread(exp_dir=exp_dir, cam=cam, dispenser=dispenser, mrstim=mrstim)
     trialThread.start()
 
     focus_smoother = Smooth(12)
