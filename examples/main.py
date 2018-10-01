@@ -32,9 +32,10 @@ def nothing(x):
     pass
 
 class TrialThread(Service):
-    def __init__(self, exp_dir, cam, dispenser, mrstim, loopTime=10e-3, fly_lost_timeout=1, fly_found_timeout=1):
+    def __init__(self, exp_dir, cam, dispenser, mrstim, loopTime=10e-3, fly_lost_timeout=1, fly_detected_timeout=1):
         self.trial_count = itertools.count(1)
         self.state = 'startup'
+        self.prev_state = 'startup'
 
         self.cam = cam
         self.dispenser = dispenser
@@ -45,7 +46,7 @@ class TrialThread(Service):
 
         self.exp_dir = exp_dir
         self.fly_lost_timeout = fly_lost_timeout
-        self.fly_found_timeout = fly_found_timeout
+        self.fly_detected_timeout = fly_detected_timeout
 
         # set up access to the thread-ending signal
         self.manualLock = Lock()
@@ -55,11 +56,13 @@ class TrialThread(Service):
         self._trial_dir = None
 
         # start logging to dispenser
-        if self.dispenser:
+        try:
             self.dispenser.write(request('startLogging',
                                         os.path.join(self.exp_dir, 'raw_gate_data.txt'),
                                         os.path.join(self.exp_dir, 'open_gate_data.txt'),
                                         os.path.join(self.exp_dir, 'close_gate_data.txt')))
+        except OSError:
+            print('Could not set up dispenser logging.')
 
         # call constructor from parent
         super().__init__(minTime=loopTime, maxTime=loopTime)
@@ -100,6 +103,7 @@ class TrialThread(Service):
                               os.path.join(_trial_dir, 'cam_compr.mkv'))
 
         self._trial_dir = _trial_dir
+        self.mrstim.nextStim(self._trial_dir)
 
     def _stop_trial(self):
         print('Stopped trial.')
@@ -135,25 +139,27 @@ class TrialThread(Service):
             elif self.cam.flyData.flyPresent:
                 print('Fly possibly found...')
                 self.timer_start = time()
-                self.state = 'fly_found'
-                print('** fly_found **')
+                self.state = 'fly detected'
                 self.tracker.startTracking()
-        elif self.state == 'fly_found':
+        elif self.state == 'fly detected':
             if self.manualCmd is not None:
                 self.tracker.stopTracking()
+                self.prev_state = 'fly detected'
                 self.state = 'manual'
                 print('** manual **')
+            elif (time() - self.timer_start) >= self.fly_detected_timeout:
+                print('Fly found!')
+                self.tracker.startTracking()
+                self._start_trial()
+                self.prev_state = 'fly detected'
+                self.state = 'run'
+                #print('** run **')
             elif not self.cam.flyData.flyPresent:
                 print('Fly lost.')
-                self.state = 'started'
-                print('** started **')
+                self.timer_start = time()
+                self.prev_state = 'fly detected'
+                self.state = 'fly lost'
                 self.tracker.stopTracking()
-                self.tracker.move_to_center()
-            elif (time() - self.timer_start) >= self.fly_found_timeout:
-                print('Fly found.')
-                self._start_trial()
-                self.state = 'run'
-                print('** run **')
         elif self.state == 'run':
             if self.manualCmd is not None:
                 self._stop_trial()
@@ -162,27 +168,33 @@ class TrialThread(Service):
             elif not self.cam.flyData.flyPresent:
                 print('Fly possibly lost...')
                 self.timer_start = time()
-                self.state = 'fly_lost'
-                print('** fly_lost **')
-        elif self.state == 'fly_lost':
+                self.prev_state = 'run'
+                self.state = 'fly lost'
+        elif self.state == 'fly lost':
             if self.manualCmd is not None:
                 self._stop_trial()
+                self.prev_state = 'fly lost'
                 self.state = 'manual'
                 print('** manual **')
             elif self.cam.flyData.flyPresent:
                 print('Fly located again.')
-                self.state = 'run'
-                print('** run **')
+                self.timer_start = time()
+                self.tracker.startTracking()
+                if self.prev_state == 'run':
+                    self.state = 'run'
+                elif self.prev_state == 'fly detected':
+                    self.state = 'fly detected'
             elif (time() - self.timer_start) >= self.fly_lost_timeout:
-                print('Fly lost.')
-                self._stop_trial()
+                if self.prev_state == 'run':
+                    print('Fly is gone.')
+                    self._stop_trial()
                 self.tracker.move_to_center()
                 try:
                     self.dispenser.write(request('releaseFly'))
                 except OSError:
                     print('Please dispense fly (could not release it automatically)')
+                self.prev_state = 'fly lost'
                 self.state = 'started'
-                print('** started **')
         elif self.state == 'manual':
             manualCmd = self.manualCmd
 
@@ -191,7 +203,6 @@ class TrialThread(Service):
             elif manualCmd[0] == 'start':
                 try:
                     self.dispenser.write(request('releaseFly'))
-                    self.mrstim.nextStim()
                 except OSError:
                     print('Please dispense fly (could not release it automatically)')
                 self.state = 'started'
@@ -285,9 +296,7 @@ def main():
     dispenser = Client(p.stdin)
     print('dispenser: ', dispenser)
 
-    #do same for mrstim - luke added this
-    # mrstim_full_path = os.path.join(dir_path_full, 'flyvr', 'mrstim.py')
-    # m = subprocess.Popen([python_full_path, mrstim_full_path], stdin=subprocess.PIPE, stdout=sys.stdout)
+    #Create Stimulus object
     mrstim = MrDisplay()
     print('mrstim: ', mrstim)
 

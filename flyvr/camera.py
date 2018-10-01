@@ -77,7 +77,7 @@ class CamThread(Service):
                                         flyX_px-self.bufX: flyX_px+self.bufX,
                                         :]
 
-                logVideo.write(roi)
+                #logVideo.write(roi) #uncomment for uncompressed video (luke turned this off)
 
                 # write to compressed video
 
@@ -135,15 +135,15 @@ class CamThread(Service):
             self.logFile.write('t,flyPresent,x,y,ma,MA,angle\n')
 
             # uncompressed cropped video
-            fourcc_uncompr = 0
-            self.logVideo = cv2.VideoWriter(logVideo, fourcc_uncompr, 124.2, (2*self.bufX, 2*self.bufY))
+            #fourcc_uncompr = 0
+            #self.logVideo = cv2.VideoWriter(logVideo, fourcc_uncompr, 124.2, (2*self.bufX, 2*self.bufY)) #uncomment for uncompressed video (luke turned this off)
 
             # compressed full video
             fourcc_compr = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
             cam_width = int(self.cam.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             cam_height = int(self.cam.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            print('cam_width', cam_width)
-            print('cam_height', cam_height)
+            #print('cam_width', cam_width)
+            #print('cam_height', cam_height)
             self.logFull = cv2.VideoWriter(logFull, fourcc_compr, 124.2, (cam_width, cam_height))
 
     def stopLogging(self):
