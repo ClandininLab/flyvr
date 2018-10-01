@@ -3,21 +3,14 @@
 from threading import Thread, Lock
 import serial
 import time
-import collections
-import struct
 import numpy as np
-import scipy
 import sys
-from scipy import ndimage
-from scipy import signal
-import skimage
-from skimage import filters
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import platform
 
-from flyvr.rpc import Server
-from jsonrpc import Dispatcher
+from flyrpc.transceiver import MySocketServer
+from flyrpc.util import start_daemon_thread
 
 def format_values(values, delimeter='\t', line_ending='\n'):
     retval = [str(value) for value in values]
@@ -126,7 +119,7 @@ class FlyDispenser:
             if (self.gate_clear == True) and (self.fly_passed == True):
                 self.found_fly = True
 
-    def getSerialData(self, frame, lines1):
+    def getSerialData(self, lines1):
         self.to_display1 = np.roll(self.to_display1, 1, axis = 0)
         self.to_display1[0] = self.current_frame
         lines1.set_data(self.to_display1)
@@ -242,43 +235,30 @@ def main():
 
     s = FlyDispenser()   # create serial object
     s.readSerialStart()   # starts background threads
+    s.setup_gate()
 
-    def fly_release_target():
-        s.setup_gate()
+    server = MySocketServer(port=50432)
+    server.register_function(s.releaseFly)
+    server.register_function(s.startLogging)
+    server.register_function(s.stopLogging)
 
-        dispatcher = Dispatcher()
-        dispatcher.add_method(s.releaseFly)
-        dispatcher.add_method(s.startLogging)
-        dispatcher.add_method(s.stopLogging)
-        server = Server(dispatcher)
+    pltInterval = 10 # Period at which the plot animation updates [ms]
+    plt.figure()
+    ax = plt.gca()
+    line1 = ax.matshow(np.random.rand(128,128)*255)
 
-        while True:
-            server.process()
-            time.sleep(0.01)
+    while server.should_run:
+        s.getSerialData(line1)
+        plt.draw()
+        plt.pause(pltInterval * 1e-3)
 
-    fly_release_thread = Thread(target=fly_release_target)
-    fly_release_thread.setDaemon(True)
-    fly_release_thread.start()
+        server.process_queue()
 
-    if plot == 'True': #optional plotting code
-        pltInterval = 10 # Period at which the plot animation updates [ms]
-        xmin = 0
-        xmax = 256
-        ymin = -(1)
-        ymax = 256
-        fig = plt.figure()
-        ax = plt.gca()
-        line1 = ax.matshow(np.random.rand(128,128)*255)
-        anim = animation.FuncAnimation(fig, s.getSerialData, fargs=(line1,), interval=pltInterval)    # fargs has to be a tuple
-
-        try:
-            plt.show()
-        except AttributeError:
-            print('TODO: Fix AttributeError that occurs during FuncAnimation shutdown.')
+    sys.exit(0)
 
     #####To do: flyvr triggers close sequence
     #time.sleep(60) #delay for testing - remove when flyvr has control
-    s.close()
+    #s.close()
 
 if __name__ == '__main__':
     main()
