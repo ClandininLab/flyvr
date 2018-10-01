@@ -65,7 +65,8 @@ class FlyDispenser:
             self.serialConnection = serial.Serial(self.port, self.baud, timeout=4)
             print('Connected to ' + str(self.port) + ' at ' + str(self.baud) + ' BAUD.')
         except:
-            raise Exception("Failed to connect with " + str(self.port) + ' at ' + str(self.baud) + ' BAUD.')
+            print("Failed to connect with " + str(self.port) + ' at ' + str(self.baud) + ' BAUD.')
+            sys.exit(0)
  
     def readSerialStart(self):
         if self.camera_thread == None:
