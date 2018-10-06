@@ -1,4 +1,4 @@
-from time import perf_counter, sleep
+from time import time, sleep
 from warnings import warn
 from threading import Thread, Lock
 
@@ -31,14 +31,14 @@ class Service:
         self.iterCount = 0
 
         # record service starting time
-        self.startTime = perf_counter()
+        self.startTime = time()
 
         # main logic of loop control
         while not self.done:
             # run the loop body and measure how long it takes
-            loopStart = perf_counter()
+            loopStart = time()
             self.loopBody()
-            loopStop = perf_counter()
+            loopStop = time()
 
             # if the loop body finished too early, delay until
             # the minimum loop time passes.  otherwise, if the loop
@@ -53,7 +53,7 @@ class Service:
             self.iterCount += 1
 
         # record service stopping time
-        self.stopTime = perf_counter()
+        self.stopTime = time()
 
     @property
     def avePeriod(self):

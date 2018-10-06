@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 from math import pi, sqrt
-from time import perf_counter
+from time import time
 from threading import Lock
 import numpy as np
 
@@ -55,7 +55,7 @@ class CamThread(Service):
         logState, logFile, logVideo, logFull = self.getLogState()
         if logState:
             # write to log file
-            logStr = (str(perf_counter()) + ',' +
+            logStr = (str(time()) + ',' +
                       str(flyData.flyPresent) + ',' +
                       str(flyData.flyX) + ',' +
                       str(flyData.flyY) + ',' +
@@ -329,7 +329,7 @@ class Camera:
 
         # Convert frame to grayscale
         grayFrame = cv2.cvtColor(inFrame, cv2.COLOR_BGR2GRAY)
-        #grayFrame = cv2.bitwise_not(grayFrame)
+        grayFrame = cv2.bitwise_not(grayFrame)   #TURN ON FOR IR SINCE FLY IS BRIGHT
         grayFrame = cv2.GaussianBlur(grayFrame, (11, 11), 0)
 
         # Threshold image according
