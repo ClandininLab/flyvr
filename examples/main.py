@@ -302,7 +302,6 @@ def main():
     print('dispenser: ', dispenser)
 
     #Create Stimulus object
-    mrstim = MrDisplay()
     print('mrstim: ', mrstim)
 
     # Run trial manager

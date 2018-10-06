@@ -14,8 +14,9 @@ def pretty_json(d):
     return json.dumps(d, indent=2, sort_keys=True)
 
 class MrDisplay:
-    def __init__(self, mode='random_direction', pause_duration=2.0, stim_duration=2.0):
+    def __init__(self, mode='random_direction', pause_duration=2.0, stim_duration=2.0, use_stimuli=False):
         try:
+            assert use_stimuli
             self.manager = launch_server(flystim.stim_server, setup_name='bigrig')
             self.manager.hide_corner_square()
         except:
