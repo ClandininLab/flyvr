@@ -1,7 +1,7 @@
 import serial
 
 from math import pi
-from time import sleep, perf_counter
+from time import sleep, time
 from threading import Lock
 
 from flyvr.service import Service
@@ -42,7 +42,7 @@ class CncThread(Service):
         # log status
         logState, logFile = self.getLogState()
         if logState:
-            logStr = (str(perf_counter()) + ',' +
+            logStr = (str(time()) + ',' +
                       str(status.posX) + ',' +
                       str(status.posY) + '\n')
             logFile.write(logStr)

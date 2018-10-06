@@ -6,7 +6,7 @@ import xmlrpc.client
 import subprocess
 import sys
 
-from time import strftime, perf_counter, time, sleep
+from time import strftime, time, sleep
 from pynput import keyboard
 from pynput.keyboard import Key, KeyCode
 
@@ -32,7 +32,8 @@ def nothing(x):
     pass
 
 class TrialThread(Service):
-    def __init__(self, exp_dir, cam, dispenser, mrstim, loopTime=10e-3, fly_lost_timeout=1, fly_detected_timeout=1):
+    def __init__(self, exp_dir, cam, dispenser, mrstim, loopTime=10e-3, fly_lost_timeout=1, fly_detected_timeout=1,
+                 auto_change_rate=None):
         self.trial_count = itertools.count(1)
         self.state = 'startup'
         self.prev_state = 'startup'
@@ -47,6 +48,7 @@ class TrialThread(Service):
         self.exp_dir = exp_dir
         self.fly_lost_timeout = fly_lost_timeout
         self.fly_detected_timeout = fly_detected_timeout
+        self.auto_change_rate = auto_change_rate
 
         # set up access to the thread-ending signal
         self.manualLock = Lock()
@@ -110,10 +112,13 @@ class TrialThread(Service):
 
         self.cnc.stopLogging()
         self.cam.stopLogging()
+        self.mrstim.stopStim(self._trial_dir)
 
         self.tracker.stopTracking()
 
     def loopBody(self):
+        self.mrstim.updateStim(self._trial_dir)
+
         if self.state == 'startup':
             print('** startup **')
 
@@ -413,9 +418,6 @@ def main():
             trialThread.tracker.a = loop_gain
 
         trial_dir = trialThread.trial_dir
-        if trial_dir is not None:
-            with open(os.path.join(trial_dir, 'display.txt'), 'a') as f:
-                f.write(str(perf_counter()) + ', ' + str(lastLevel) + '\n')
 
         # compute new thresholds
         threshTrack = cv2.getTrackbarPos('threshold', 'image')

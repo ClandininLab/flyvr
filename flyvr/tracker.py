@@ -1,4 +1,4 @@
-from time import perf_counter, sleep
+from time import time, sleep
 from math import pi
 from threading import Lock
 from numpy import sign
@@ -18,8 +18,8 @@ class TrackThread(Service):
                  v_max_ctrl = 0.04, # m/s
                  k_pctrl = 2*pi,
 
-                 center_pos_x = 0.331575,
-                 center_pos_y = 0.3401
+                 center_pos_x = 0.348625,
+                 center_pos_y = 0.332775
                  ):
 
         # Store thread handles
@@ -57,7 +57,7 @@ class TrackThread(Service):
         self.prevVelY = 0
 
         # Set the starting time
-        self.lastTime = perf_counter()
+        self.lastTime = time()
                  
         # call constructor from parent        
         super().__init__(minTime=loopTime, maxTime=loopTime)
@@ -65,7 +65,7 @@ class TrackThread(Service):
     # overriding method from parent...
     def loopBody(self):
         # read current time
-        thisTime = perf_counter()
+        thisTime = time()
         dt = thisTime - self.lastTime
 
         # get latest camera data

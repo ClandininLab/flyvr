@@ -99,6 +99,10 @@ class FlyDispenser:
         self.gate_start = self.gate_center-self.half_gate_width
         self.gate_end = self.gate_center+self.half_gate_width
 
+        #BAD --- REMOVE!!!
+        self.gate_start = 30
+        self.gate_end = 43
+
         #for fly detection later
         self.gate_region = self.background_open[self.gate_start:self.gate_end]
 
