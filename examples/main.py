@@ -3,19 +3,20 @@ import os
 import os.path
 import itertools
 import xmlrpc.client
-import subprocess
-import sys
 
 from time import strftime, time, sleep
 from pynput import keyboard
 from pynput.keyboard import Key, KeyCode
 
+from flyrpc.launch import launch_server
+
 from flyvr.cnc import CncThread, cnc_home
 from flyvr.camera import CamThread
 from flyvr.tracker import TrackThread, ManualVelocity
 from flyvr.service import Service
-from flyvr.rpc import Client, request
 from flyvr.mrstim import MrDisplay
+
+import flyvr.gate_control
 
 from threading import Lock
 
@@ -59,10 +60,7 @@ class TrialThread(Service):
 
         # start logging to dispenser
         try:
-            self.dispenser.write(request('startLogging',
-                                        os.path.join(self.exp_dir, 'raw_gate_data.txt'),
-                                        os.path.join(self.exp_dir, 'open_gate_data.txt'),
-                                        os.path.join(self.exp_dir, 'close_gate_data.txt')))
+            self.dispenser.start_logging(self.exp_dir)
         except OSError:
             print('Could not set up dispenser logging.')
 
@@ -195,7 +193,7 @@ class TrialThread(Service):
                     self._stop_trial()
                 self.tracker.move_to_center()
                 try:
-                    self.dispenser.write(request('releaseFly'))
+                    self.dispenser.release_fly()
                 except OSError:
                     print('Please dispense fly (could not release it automatically)')
                 self.prev_state = 'fly lost'
@@ -207,7 +205,7 @@ class TrialThread(Service):
                 pass
             elif manualCmd[0] == 'start':
                 try:
-                    self.dispenser.write(request('releaseFly'))
+                    self.dispenser.release_fly()
                 except OSError:
                     print('Please dispense fly (could not release it automatically)')
                 self.state = 'started'
@@ -225,7 +223,7 @@ class TrialThread(Service):
                 self.tracker.manualVelocity = manualVelocity
             elif manualCmd[0] == 'release_fly':
                 try:
-                    self.dispenser.write(request('releaseFly'))
+                    self.dispenser.release_fly()
                 except OSError:
                     print('Please dispense fly (could not release it automatically)')
             else:
@@ -269,17 +267,6 @@ def main():
     cv2.createTrackbar('level', 'image', 0, 255, nothing)
     lastLevel = -1
 
-    # servo settings
-    # cv2.createTrackbar('open', 'image', 180, 180, nothing)
-    # cv2.createTrackbar('closed', 'image', 130, 180, nothing)
-    # lastOpenPos = 180
-    # lastClosedPos = 130
-
-    # fly detection settings
-    # cv2.createTrackbar('ma_min', 'image', 6, 25, nothing)
-    # cv2.createTrackbar('ma_max', 'image', 11, 25, nothing)
-    # cv2.createTrackbar('MA_min', 'image', 22, 50, nothing)
-    # cv2.createTrackbar('MA_max', 'image', 33, 50, nothing)
     cv2.createTrackbar('r_min', 'image', 2, 10, nothing)
     cv2.createTrackbar('r_max', 'image', 5, 10, nothing)
 
@@ -292,16 +279,11 @@ def main():
 
     # Try to connect to the dispenser server
     # ref: https://stackoverflow.com/questions/37863476/why-use-both-os-path-abspath-and-os-path-realpath/40311142
-    file_path_full = os.path.realpath(os.path.expanduser(__file__))
-    dir_path_full = os.path.dirname(os.path.dirname(file_path_full))
-    dispenser_full_path = os.path.join(dir_path_full, 'flyvr', 'gate_control.py')
-    python_full_path = os.path.realpath(os.path.expanduser(sys.executable))
-
-    p = subprocess.Popen([python_full_path, dispenser_full_path], stdin=subprocess.PIPE, stdout=sys.stdout)
-    dispenser = Client(p.stdin)
+    dispenser = launch_server(flyvr.gate_control)
     print('dispenser: ', dispenser)
 
     #Create Stimulus object
+    mrstim = MrDisplay()
     print('mrstim: ', mrstim)
 
     # Run trial manager
@@ -385,28 +367,8 @@ def main():
                 pass
         lastLevel = levelTrack
 
-        # read out servo settings
-        # TODO: add proper locking
-        # openPos = cv2.getTrackbarPos('open', 'image')
-        # if openPos != lastOpenPos:
-        #    trialThread.servo.opened_pos = openPos
-        # lastOpenPos = openPos
-        # closedPos = cv2.getTrackbarPos('closed', 'image')
-        # if closedPos != lastClosedPos:
-        #    trialThread.servo.closed_pos = closedPos
-        # lastClosedPos = closedPos
-
-        # set camera detection settings
-        #ma_min=cv2.getTrackbarPos('ma_min', 'image')
-        #ma_max=cv2.getTrackbarPos('ma_max', 'image')
-        #MA_min=cv2.getTrackbarPos('MA_min', 'image')
-        #MA_max=cv2.getTrackbarPos('MA_max', 'image')
         r_min=cv2.getTrackbarPos('r_min', 'image')
         r_max=cv2.getTrackbarPos('r_max', 'image')
-        # cam.cam.ma_min=ma_min
-        # cam.cam.ma_max = ma_max
-        # cam.cam.MA_min = MA_min
-        # cam.cam.MA_max = MA_max
         cam.cam.r_min = r_min/10.0
         cam.cam.r_max = r_max/10.0
 

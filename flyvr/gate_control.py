@@ -1,23 +1,14 @@
 #!/usr/bin/env python
- 
-from threading import Thread, Lock
-import serial
-import time
-import collections
-import struct
-import numpy as np
-import scipy
-import sys
-from scipy import ndimage
-from scipy import signal
-import skimage
-from skimage import filters
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-import platform
 
-from flyvr.rpc import Server
-from jsonrpc import Dispatcher
+import serial, platform, os.path
+import numpy as np
+import matplotlib.pyplot as plt
+
+from threading import Thread, Lock, Event
+from time import time, sleep
+
+from flyrpc.transceiver import MySocketServer
+from flyrpc.util import get_kwargs
 
 def format_values(values, delimeter='\t', line_ending='\n'):
     retval = [str(value) for value in values]
@@ -27,77 +18,146 @@ def format_values(values, delimeter='\t', line_ending='\n'):
     return retval
 
 class FlyDispenser:
-    def __init__(self):
-        self.t0=time.time()
-        self.baud = 115200
-        self.rawData = np.zeros(128)
-        self.current_frame = np.zeros(128)
-        self.previous_frame = np.ones(128)
-        self.all_data = []
-        self.to_display1 = np.random.rand(128,128)*255
-        self.to_display2 = np.random.rand(128,128)*255
-        self.isRun = True
-        self.isReceiving = False
-        self.camera_thread = None
-        self.num_pixels = 128
-        self.delay_length = 1
-        self.first_delay_length = 5
-        self.fly_threshold = 5
-        self.num_needed_pixels = 2
-        self.half_gate_width = 7
-        self.gate_thresh = 100
+    def __init__(self, serial_port=None, serial_baud=None, serial_timeout=None, shutdown_flag=None):
+        # set defaults
+        if serial_port is None:
+            if platform.system() == 'Darwin':
+                serial_port = '/dev/tty.usbmodem1411'
+            else:
+                serial_port = 'COM4'
 
-        self.logLock = Lock()
-        self.shouldLog = False
+        if serial_baud is None:
+            serial_baud = 115200
+
+        if serial_timeout is None:
+            serial_timeout = 4
+
+        if shutdown_flag is None:
+            shutdown_flag = Event()
+
+        # save settings
+        self.serial_port = serial_port
+        self.serial_baud = serial_baud
+        self.serial_timeout = serial_timeout
+        self.shutdown_flag = shutdown_flag
+
+        # save parameters
+        self.num_pixels = 128
+
+        # serial connection
+        self.conn = None
+
+        # dispenser state
+        self.state = 'Reset'
+        self.timer_ref = None
+
+        # history of last few frames
+        self.hist = np.zeros((3, self.num_pixels))
+
+        # manual command locking
+        self.should_release_lock = Lock()
+        self._should_release = False
+
+        # frame locking
+        self.display_frame_lock = Lock()
+        self._display_frame = None
+
+        # log file management
+        self.log_lock = Lock()
+        self.log_time_ref = None
         self.raw_data_file = None
         self.open_times_file = None
-        self.close_time_file = None
+        self.close_times_file = None
 
-        self.flyReleaseLock = Lock()
+    @property
+    def should_release(self):
+        with self.should_release_lock:
+            return self._should_release
 
-        if platform.system() == 'Darwin':
-            self.port = '/dev/tty.usbmodem1411'
-        else:
-            self.port = 'COM4'
+    @should_release.setter
+    def should_release(self, value):
+        with self.should_release_lock:
+            self._should_release = value
 
-        print('Trying to connect to: ' + str(self.port) + ' at ' + str(self.baud) + ' BAUD.')
+    @property
+    def display_frame(self):
+        with self.display_frame_lock:
+            return self._display_frame
+
+    @display_frame.setter
+    def display_frame(self, value):
+        with self.display_frame_lock:
+            self._display_frame = value
+
+    def loop(self):
+        # save the start time
+        self.log_time_ref = time()
+
+        # try to connect to the serial port
         try:
-            self.serialConnection = serial.Serial(self.port, self.baud, timeout=4)
-            print('Connected to ' + str(self.port) + ' at ' + str(self.baud) + ' BAUD.')
+            self.conn = serial.Serial(self.serial_port, self.serial_baud, timeout=self.serial_timeout)
+            print('Connected to {} at {} baud.'.format(self.serial_port, self.serial_baud))
         except:
-            print("Failed to connect with " + str(self.port) + ' at ' + str(self.baud) + ' BAUD.')
-            sys.exit(0)
- 
-    def readSerialStart(self):
-        if self.camera_thread == None:
+            print('Failed to connect with {} at {} baud.'.format(self.serial_port, self.serial_baud))
+            return
 
-            #Start camera thread
-            self.camera_thread = Thread(target=self.backgroundThreadCamera)
-            self.camera_thread.start()
+        # make sure the serial buffer is initialized properly
+        sleep(1.0)
+        self.conn.reset_input_buffer()
 
-            # Block until we start receiving values
-            while self.isReceiving != True:
-                time.sleep(0.1)
+        # main loop
+        while not self.shutdown_flag.is_set():
+            self.loop_body()
 
-    def setup_gate(self):
-        #estabilsh closed gate appearance
-        self.serialConnection.write(bytes([0])) #close gate
-        time.sleep(3) #wait to stabilize (3sec is overkill)
-        self.background_close = np.median(np.asarray(self.all_data)[-3:,:],axis=0) #save frame
+        # cleanup tasks
+        self.close_gate()
+        self.conn.close()
 
-        #estabilsh open gate appearance
-        self.serialConnection.write(bytes([1])) #open gate
-        time.sleep(3) #wait to stabilize (3sec is overkill)
-        self.background_open = np.median(np.asarray(self.all_data)[-3:,:],axis=0) #save frame
+    def loop_body(self):
+        self.read_frame()
 
-        # close the gate again
-        self.serialConnection.write(bytes([0]))  # close gate
+        if self.state == 'Reset':
+            self.close_gate()
+            self.start_timer()
+            self.state = 'ClosedGateStabilize'
+        elif self.state == 'ClosedGateStabilize':
+            if self.timer_done(3):
+                self.background_close = np.mean(self.hist, axis=0)
+                self.open_gate()
+                self.start_timer()
+                self.state = 'OpenGateStabilize'
+        elif self.state == 'OpenGateStabilize':
+            if self.timer_done(3):
+                self.background_open = np.mean(self.hist, axis=0)
+                self.close_gate()
+                self.detect_gate()
+                self.state = 'Idle'
+        elif self.state == 'Idle':
+            if self.should_release:
+                self.open_gate()
+                self.start_timer()
+                self.state = 'PreReleaseDelay'
+        elif self.state == 'PreReleaseDelay':
+            if self.timer_done(1):
+                self.state = 'LookForFly'
+        elif self.state == 'LookForFly':
+            if self.gate_clear and self.fly_passed:
+                self.close_gate()
+                self.start_timer()
+                self.state = 'PostReleaseDelay'
+        elif self.state == 'PostReleaseDelay':
+            if self.timer_done(1):
+                self.should_release = False
+                self.state = 'Idle'
+        else:
+            raise Exception('Invalid state.')
 
-        #find gate
+    def detect_gate(self, half_gate_width=7):
+        # find gate
         self.gate_difference = self.background_open - self.background_close
         self.gate_center = np.argmax(self.gate_difference)
-        self.gate_start = self.gate_center-self.half_gate_width
-        self.gate_end = self.gate_center+self.half_gate_width
+        self.gate_start = self.gate_center-half_gate_width
+        self.gate_end = self.gate_center+half_gate_width
 
         #BAD --- REMOVE!!!
         self.gate_start = 30
@@ -107,182 +167,129 @@ class FlyDispenser:
         self.gate_region = self.background_open[self.gate_start:self.gate_end]
 
         print('gate start: ', self.gate_start)
-        print('gate end', self.gate_end)
+        print('gate end: ', self.gate_end)
 
-    def check_gate(self):
-        gate_difference = self.gate_region-self.current_frame[self.gate_start:self.gate_end]
-        gate_sum = np.sum(gate_difference)
-        self.gate_clear = gate_sum<self.gate_thresh
+    def read_frame(self):
+        while True:
+            start_byte = self.conn.read(1)[0]
 
-    def check_fly_passed(self):
-        if (np.sum(np.abs(self.diff[self.gate_end:]) > self.fly_threshold)>self.num_needed_pixels):
-            self.fly_passed = True
-        else:
-            self.fly_passed = False
+            if int(start_byte) == 0:
+                # read raw data into a list
+                frame = self.conn.read(self.num_pixels)
+                frame = list(frame)
 
-    def look_for_fly(self):
-        while(self.isRun and self.found_fly == False):
-            time.sleep(0.01)
+                # write frame to variable for matplotlib display
+                self.display_frame = frame
 
-            self.check_gate()
-            self.check_fly_passed()
+                # write frame to file
+                self.log(self.raw_data_file, frame)
 
-            if (self.gate_clear == True) and (self.fly_passed == True):
-                self.found_fly = True
+                # add frame to history
+                self.hist = np.vstack(([frame], self.hist[0:-1, :]))
 
-    def getSerialData(self, frame, lines1):
-        self.to_display1 = np.roll(self.to_display1, 1, axis = 0)
-        self.to_display1[0] = self.current_frame
-        lines1.set_data(self.to_display1)
-
-    def backgroundThreadCamera(self):    # retrieve data
-        time.sleep(1.0)  # give some buffer time for retrieving data
-        self.serialConnection.reset_input_buffer()
-        while (self.isRun):
-            start_byte = self.serialConnection.read(1)
-            if int(start_byte[0]) == 0:
-                for i in range(self.num_pixels):
-                    pixel = self.serialConnection.read(1)
-                    self.rawData[i] = int(pixel[0])
-                self.current_frame = np.asarray(np.ndarray.tolist(self.rawData))
-
-                self.all_data.append(self.current_frame)
-                self.log_raw_data(self.current_frame)
-
-                self.diff = self.current_frame - self.previous_frame
-                self.previous_frame = self.current_frame
-                self.t1=time.time()
-            self.isReceiving = True
-
-    def releaseFly(self):
-
-        def target():
-            if not self.flyReleaseLock.acquire(blocking=False):
                 return
 
-            self.found_fly = False
-            self.serialConnection.write(bytes([1])) # open gate
+    @property
+    def gate_clear(self, gate_thresh=100):
+        gate_difference = self.gate_region-self.hist[0, self.gate_start:self.gate_end]
+        gate_sum = np.sum(gate_difference)
+        return (gate_sum < gate_thresh)
 
-            open_time = time.time()-self.t0
-            self.log_open_time(open_time)
+    @property
+    def fly_passed(self, fly_threshold=5, num_needed_pixels=2):
+        diff = self.hist[0, self.gate_end:] - self.hist[1, self.gate_end:]
+        return np.sum(np.abs(diff) > fly_threshold) > num_needed_pixels
 
-            time.sleep(1)
-            self.look_for_fly() # look for fly
+    def start_timer(self):
+        self.timer_ref = time()
 
-            self.serialConnection.write(bytes([0])) # close gate
+    def timer_done(self, duration):
+        return (time() - self.timer_ref) > duration
 
-            close_time = time.time()-self.t0
-            self.log_close_time(close_time)
+    def log_time(self):
+        return time() - self.log_time_ref
 
-            time.sleep(self.delay_length) #temp wait for testing
+    def open_gate(self):
+        self.conn.write(bytes([1]))
+        self.log(self.open_times_file, [self.log_time()])
 
-            self.flyReleaseLock.release()
+    def close_gate(self):
+        self.conn.write(bytes([0]))
+        self.log(self.close_times_file, [self.log_time()])
 
-        thread = Thread(target=target)
-        thread.setDaemon(True)
-        thread.start()
+    def release_fly(self):
+        self.manual_command = 'ReleaseFly'
 
-    def close(self):
-        self.time1 = time.time()
-        print(np.shape(self.all_data))
-        print(self.time1-self.t0)
-        self.isRun = False
-        self.camera_thread.join()
-        self.serialConnection.write(bytes([0]))
-        self.serialConnection.close()
-        print('Disconnected...')
+    def close_all_open_files(self):
+        for f in [self.raw_data_file, self.open_times_file, self.close_times_file]:
+            if f is not None:
+                f.close()
 
-    def log_raw_data(self, raw_data):
-        with self.logLock:
-            if self.shouldLog and self.raw_data_file:
-                self.raw_data_file.write(format_values(raw_data))
-                self.raw_data_file.flush()
+    def log(self, f, values):
+        with self.log_lock:
+            if f is not None:
+                f.write(format_values(values))
+                f.flush()
 
-    def log_open_time(self, open_time):
-        with self.logLock:
-            if self.shouldLog and self.open_times_file:
-                self.open_times_file.write(format_values([open_time]))
-                self.open_times_file.flush()
-                print('done logging open time')
+    def start_logging(self, exp_dir):
+        with self.log_lock:
+            self.close_all_open_files()
 
-    def log_close_time(self, close_time):
-        with self.logLock:
-            if self.shouldLog and self.close_times_file:
-                self.close_times_file.write(format_values([close_time]))
-                self.close_times_file.flush()
-                print('done logging close time')
+            self.raw_data_file = os.path.join(exp_dir, 'raw_gate_data.txt')
+            self.open_times_file = os.path.join(exp_dir, 'open_gate_data.txt')
+            self.close_times_file = os.path.join(exp_dir, 'close_gate_data.txt')
 
-    def startLogging(self, raw_data_file_name, open_times_file_name, close_times_file_name):
-        with self.logLock:
-            self.shouldLog = True
+    def stop_logging(self):
+        with self.log_lock:
+            self.close_all_open_files()
 
-            if self.open_times_file:
-                self.open_times_file.close()
-            if self.close_time_file:
-                self.close_time_file.close()
-            if self.raw_data_file:
-                self.raw_data_file.close()
-
-            self.open_times_file = open(open_times_file_name, 'w')
-            self.close_times_file = open(close_times_file_name, 'w')
-            self.raw_data_file = open(raw_data_file_name, 'w')
-
-    def stopLogging(self):
-        with self.logLock:
-            self.shouldLog = False
-
-            if self.open_times_file:
-                self.open_times_file.close()
-            if self.close_time_file:
-                self.close_time_file.close()
-            if self.raw_data_file:
-                self.raw_data_file.close()
+            self.raw_data_file = None
+            self.open_times_file = None
+            self.close_times_file = None
 
 def main():
-    if len(sys.argv) > 1:
-        plot = sys.argv[1]
-    else:
-        plot = 'True'
+    # start the server
+    kwargs = get_kwargs()
+    server = MySocketServer(host=kwargs['host'], port=kwargs['port'], name='DispenseServer', threaded=True)
 
-    s = FlyDispenser()   # create serial object
-    s.readSerialStart()   # starts background threads
+    # create fly dispenser object
+    dispenser = FlyDispenser(serial_port=kwargs['serial_port'], serial_baud=kwargs['serial_baud'],
+                             serial_timeout=kwargs['serial_timeout'], shutdown_flag = server.shutdown_flag)
 
-    def fly_release_target():
-        s.setup_gate()
+    # start the dispener loop
+    t = Thread(target=dispenser.loop)
+    t.start()
 
-        dispatcher = Dispatcher()
-        dispatcher.add_method(s.releaseFly)
-        dispatcher.add_method(s.startLogging)
-        dispatcher.add_method(s.stopLogging)
-        server = Server(dispatcher)
+    # register methods
+    server.register_function(dispenser.start_logging)
+    server.register_function(dispenser.stop_logging)
+    server.register_function(dispenser.release_fly)
 
-        while True:
-            server.process()
-            time.sleep(0.01)
+    # run the main event loop using matplotlib
 
-    fly_release_thread = Thread(target=fly_release_target)
-    fly_release_thread.setDaemon(True)
-    fly_release_thread.start()
+    should_plot = kwargs.get('should_plot', True)
+    plot_interval = kwargs.get('plot_interval', 0.01)
 
-    if plot == 'True': #optional plotting code
-        pltInterval = 10 # Period at which the plot animation updates [ms]
-        xmin = 0
-        xmax = 256
-        ymin = -(1)
-        ymax = 256
-        fig = plt.figure()
-        ax = plt.gca()
-        line1 = ax.matshow(np.random.rand(128,128)*255)
-        anim = animation.FuncAnimation(fig, s.getSerialData, fargs=(line1,), interval=pltInterval)    # fargs has to be a tuple
+    if should_plot:
+        plot_data = np.zeros((dispenser.num_pixels, dispenser.num_pixels))
+        lines = plt.matshow(plot_data, vmin=0, vmax=255)
 
-        try:
-            plt.show()
-        except AttributeError:
-            print('TODO: Fix AttributeError that occurs during FuncAnimation shutdown.')
+    # run the main event loop using matplotlib
+    while not server.shutdown_flag.is_set():
+        if should_plot:
+            display_frame = dispenser.display_frame
+            if display_frame is not None:
+                plot_data = np.vstack(([display_frame], plot_data[0:-1, :]))
+                lines.set_data(plot_data)
 
-    #####To do: flyvr triggers close sequence
-    #time.sleep(60) #delay for testing - remove when flyvr has control
-    s.close()
+        server.process_queue()
+
+        # pause function is required to actually update the display and provide GUI functionality
+        plt.pause(plot_interval)
+
+    # wait for dispenser thread to finish
+    t.join()
+
 
 if __name__ == '__main__':
     main()
