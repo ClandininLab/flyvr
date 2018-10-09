@@ -15,6 +15,7 @@ from skimage import filters
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import platform
+import serial.tools.list_ports
 
 from flyvr.rpc import Server
 from jsonrpc import Dispatcher
@@ -57,6 +58,14 @@ class FlyDispenser:
 
         if platform.system() == 'Darwin':
             self.port = '/dev/tty.usbmodem1411'
+        elif platform.system() == 'Linux':
+            for port in serial.tools.list_ports.comports(include_links=True):
+                if port.serial_number == '557393232373516180D1':
+                    self.port = '/dev/' + port.description
+                    break
+            else:
+                print("Could not find Arduino for dispenser hardware.")
+                sys.exit(0)
         else:
             self.port = 'COM4'
 

@@ -1,5 +1,6 @@
 import cv2
 import os
+import platform
 import os.path
 import itertools
 import xmlrpc.client
@@ -7,8 +8,6 @@ import subprocess
 import sys
 
 from time import strftime, time, sleep
-from pynput import keyboard
-from pynput.keyboard import Key, KeyCode
 
 from flyvr.cnc import CncThread, cnc_home
 from flyvr.camera import CamThread
@@ -101,7 +100,6 @@ class TrialThread(Service):
 
         self.cnc.startLogging(os.path.join(_trial_dir, 'cnc.txt'))
         self.cam.startLogging(os.path.join(_trial_dir, 'cam.txt'),
-                              os.path.join(_trial_dir, 'cam_uncompr.mkv'),
                               os.path.join(_trial_dir, 'cam_compr.mkv'))
 
         self._trial_dir = _trial_dir
@@ -236,20 +234,21 @@ class TrialThread(Service):
         else:
             raise Exception('Invalid state.')
 
-def main():
-    # handler for key events
-    keySet = set()
-    def on_press(key):
-        keySet.add(key)
-    def on_release(key):
-        keySet.remove(key)
-    listener = keyboard.Listener(on_press=on_press, on_release=on_release)
-    listener.start()
+def trace(frame, event, arg):
+    print("{}, {}:{}".format(event, frame.f_code.co_filename, frame.f_lineno))
+    return trace
 
-    prev_key_set = set()
+def main():
+    #sys.settrace(trace)
 
     # create folder for data
-    topdir = r'F:\FlyVR'
+    if platform.system() == 'Windows':
+        topdir = r'F:\FlyVR'
+    elif platform.system() == 'Linux':
+        topdir = '/mnt/fly-data/FlyVR'
+    else:
+        raise Exception('Invalid platform.')
+
     folder = 'exp-'+strftime('%Y%m%d-%H%M%S')
     exp_dir = os.path.join(topdir, folder)
     os.makedirs(exp_dir)
@@ -269,17 +268,6 @@ def main():
     cv2.createTrackbar('level', 'image', 0, 255, nothing)
     lastLevel = -1
 
-    # servo settings
-    # cv2.createTrackbar('open', 'image', 180, 180, nothing)
-    # cv2.createTrackbar('closed', 'image', 130, 180, nothing)
-    # lastOpenPos = 180
-    # lastClosedPos = 130
-
-    # fly detection settings
-    # cv2.createTrackbar('ma_min', 'image', 6, 25, nothing)
-    # cv2.createTrackbar('ma_max', 'image', 11, 25, nothing)
-    # cv2.createTrackbar('MA_min', 'image', 22, 50, nothing)
-    # cv2.createTrackbar('MA_max', 'image', 33, 50, nothing)
     cv2.createTrackbar('r_min', 'image', 2, 10, nothing)
     cv2.createTrackbar('r_max', 'image', 5, 10, nothing)
 
@@ -302,6 +290,7 @@ def main():
     print('dispenser: ', dispenser)
 
     #Create Stimulus object
+    mrstim = MrDisplay()
     print('mrstim: ', mrstim)
 
     # Run trial manager
@@ -315,55 +304,52 @@ def main():
     # open the connection to display service
     display_proxy = xmlrpc.client.ServerProxy("http://127.0.0.1:54357/")
 
-    # main program loop
-    while keyboard.Key.esc not in keySet:
-        # handle keypress events
-        new_keys = keySet - prev_key_set
-        prev_key_set = set(keySet)
+    key = 0
 
-        if KeyCode.from_char('f') in new_keys:
+    # main program loop
+    while key != 27:
+        if key == ord('f'):
             draw_details = not draw_details
-        if KeyCode.from_char('d') in new_keys:
+        if key == ord('d'):
             draw_contour = not draw_contour
-        if KeyCode.from_char('r') in new_keys:
+        if key == ord('r'):
             cncStatus = trialThread.cnc.status
             if cncStatus is not None:
                 posX, posY = cncStatus.posX, cncStatus.posY
                 trialThread.tracker.set_center_pos(posX=posX, posY=posY)
             print('new center position set...')
-        if KeyCode.from_char('s') in new_keys:
+        if key == ord('s'):
             if trialThread.cnc is not None:
                 cncStatus = trialThread.cnc.status
                 if cncStatus is not None:
                     print('cncX: {}, cncY: {}'.format(cncStatus.posX, cncStatus.posY))
 
-
         # manual control options
-        if Key.space in new_keys:
+        if key == 32:
             trialThread.manual('stop')
-        if Key.enter in new_keys:
+        if key == 13:
             trialThread.manual('start')
-        if KeyCode.from_char('c') in new_keys:
+        if key == ord('c'):
             trialThread.manual('center')
-        if KeyCode.from_char('o') in new_keys:
+        if key == ord('o'):
             # trialThread.manual('open_servo')
             pass
-        if KeyCode.from_char('l') in new_keys:
+        if key == ord('l'):
             # trialThread.manual('close_servo')
             pass
 
         # handle up/down keyboard input
-        if Key.up in keySet:
+        if key == 56:
             manVelY = +absJogVel
-        elif Key.down in keySet:
+        elif key == 50:
             manVelY = -absJogVel
         else:
             manVelY = 0
 
         # handle left/right keyboard input
-        if Key.right in keySet:
+        if key == 54:
             manVelX = -absJogVel
-        elif Key.left in keySet:
+        elif key == 52:
             manVelX = +absJogVel
         else:
             manVelX = 0
@@ -385,28 +371,8 @@ def main():
                 pass
         lastLevel = levelTrack
 
-        # read out servo settings
-        # TODO: add proper locking
-        # openPos = cv2.getTrackbarPos('open', 'image')
-        # if openPos != lastOpenPos:
-        #    trialThread.servo.opened_pos = openPos
-        # lastOpenPos = openPos
-        # closedPos = cv2.getTrackbarPos('closed', 'image')
-        # if closedPos != lastClosedPos:
-        #    trialThread.servo.closed_pos = closedPos
-        # lastClosedPos = closedPos
-
-        # set camera detection settings
-        #ma_min=cv2.getTrackbarPos('ma_min', 'image')
-        #ma_max=cv2.getTrackbarPos('ma_max', 'image')
-        #MA_min=cv2.getTrackbarPos('MA_min', 'image')
-        #MA_max=cv2.getTrackbarPos('MA_max', 'image')
         r_min=cv2.getTrackbarPos('r_min', 'image')
         r_max=cv2.getTrackbarPos('r_max', 'image')
-        # cam.cam.ma_min=ma_min
-        # cam.cam.ma_max = ma_max
-        # cam.cam.MA_min = MA_min
-        # cam.cam.MA_max = MA_max
         cam.cam.r_min = r_min/10.0
         cam.cam.r_max = r_max/10.0
 
@@ -487,7 +453,9 @@ def main():
             cv2.imshow('image', drawFrame)
 
         # display image
-        cv2.waitKey(int(round(1e3*tLoop)))
+        key = cv2.waitKey(int(round(1e3*tLoop)))
+        if (key != -1):
+            print('key: {}'.format(key))
 
     # stop the trial thread manager
     trialThread.stop()
@@ -498,9 +466,6 @@ def main():
 
     # close UI window
     cv2.destroyAllWindows()
-
-    # close the keyboard listener
-    listener.stop()
         
 if __name__ == '__main__':
     main()
