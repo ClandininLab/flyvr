@@ -1,8 +1,9 @@
-import serial
+import serial, platform
 
 from math import pi
 from time import sleep, time
 from threading import Lock
+import serial.tools.list_ports
 
 from flyvr.service import Service
 
@@ -142,11 +143,23 @@ class CncStatus:
 
 class CNC:
     def __init__(self,
-                 com='COM5', 
+                 com=None, 
                  baud=115200,
                  maxSpeed=0.75, # m/s
                  bytesPerVel=3
                  ):
+        # set defaults
+        if com is None:
+            if platform.system() == 'Linux':
+                for port in serial.tools.list_ports.comports(include_links=True):
+                    if port.serial_number == '75330303035351E081A1':
+                        com = '/dev/' + port.description
+                        break
+                else:
+                    raise Exception('Could not find Arduino associated with CNC.')
+            else:
+                com = 'COM5'
+
         # store settings
         self.maxSpeed = maxSpeed
         self.bytesPerVel = bytesPerVel

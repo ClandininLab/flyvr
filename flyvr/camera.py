@@ -1,6 +1,8 @@
 import cv2
+import copy
 import numpy as np
 
+from pypylon import pylon
 from math import pi, sqrt
 from time import time
 from threading import Lock
@@ -30,7 +32,6 @@ class CamThread(Service):
         # File handle for logging
         self.logLock = Lock()
         self.logFile = None
-        self.logVideo = None
         self.logFull = None
         self.logState = False
 
@@ -51,37 +52,22 @@ class CamThread(Service):
         # update the debugging frame variable
         self.frameData = frameData
 
-        # log status
-        logState, logFile, logVideo, logFull = self.getLogState()
-        if logState:
-            # write to log file
-            logStr = (str(time()) + ',' +
-                      str(flyData.flyPresent) + ',' +
-                      str(flyData.flyX) + ',' +
-                      str(flyData.flyY) + ',' +
-                      str(flyData.ma) + ',' +
-                      str(flyData.MA) + ',' +
-                      str(flyData.angle) + '\n')
-            logFile.write(logStr)
+        # prepare string for logging
+        logStr = (str(time()) + ',' +
+                  str(flyData.flyPresent) + ',' +
+                  str(flyData.flyX) + ',' +
+                  str(flyData.flyY) + ',' +
+                  str(flyData.ma) + ',' +
+                  str(flyData.MA) + ',' +
+                  str(flyData.angle) + '\n')
 
+        # write logs
+        with self.logLock:
+            if self.logState:
+                self.logFile.write(logStr)
 
-            if frameData.inFrame.shape != 0:
-                # write to uncompressed log video
-                # reference: http://answers.opencv.org/question/29260/how-to-save-a-rectangular-roi/
-
-                rows, cols, _ =  frameData.inFrame.shape
-                flyX_px = min(max(int(round(flyData.flyX_px)), self.bufX), cols - self.bufX)
-                flyY_px = min(max(int(round(flyData.flyY_px)), self.bufY), rows - self.bufY)
-
-                roi = frameData.inFrame[flyY_px-self.bufY: flyY_px+self.bufY,
-                                        flyX_px-self.bufX: flyX_px+self.bufX,
-                                        :]
-
-                #logVideo.write(roi) #uncomment for uncompressed video (luke turned this off)
-
-                # write to compressed video
-
-                logFull.write(frameData.inFrame)
+                if frameData.inFrame.shape != 0:
+                    self.logFull.write(frameData.inFrame)
 
     @property
     def flyData(self):
@@ -113,7 +99,7 @@ class CamThread(Service):
         with self.threshLock:
             self._threshold = val
 
-    def startLogging(self, logFile, logVideo, logFull):
+    def startLogging(self, logFile, logFull):
         with self.logLock:
             # save log state
             self.logState = True
@@ -121,10 +107,6 @@ class CamThread(Service):
             # close previous log file
             if self.logFile is not None:
                 self.logFile.close()
-
-            # close previous log video
-            if self.logVideo is not None:
-                self.logVideo.release()
 
             # close previous full log video
             if self.logFull is not None:
@@ -134,16 +116,13 @@ class CamThread(Service):
             self.logFile = open(logFile, 'w')
             self.logFile.write('t,flyPresent,x,y,ma,MA,angle\n')
 
-            # uncompressed cropped video
-            #fourcc_uncompr = 0
-            #self.logVideo = cv2.VideoWriter(logVideo, fourcc_uncompr, 124.2, (2*self.bufX, 2*self.bufY)) #uncomment for uncompressed video (luke turned this off)
-
             # compressed full video
             fourcc_compr = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
-            cam_width = int(self.cam.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            cam_height = int(self.cam.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            #print('cam_width', cam_width)
-            #print('cam_height', cam_height)
+
+            # get camera image width/height
+            cam_width = self.cam.grab_width
+            cam_height = self.cam.grab_height
+
             self.logFull = cv2.VideoWriter(logFull, fourcc_compr, 124.2, (cam_width, cam_height))
 
     def stopLogging(self):
@@ -155,17 +134,9 @@ class CamThread(Service):
             if self.logFile is not None:
                 self.logFile.close()
 
-            # close previous log video
-            if self.logVideo is not None:
-                self.logVideo.release()
-
             # close previous full log video
             if self.logFull is not None:
                 self.logFull.release()
-
-    def getLogState(self):
-        with self.logLock:
-            return self.logState, self.logFile, self.logVideo, self.logFull
 
 class FrameData:
     def __init__(self, inFrame, grayFrame, threshFrame, flyContour):
@@ -205,92 +176,6 @@ class ImageProcResult:
         self.perim_px = perim_px
         self.ellipse = ellipse
 
-# Code in progress from laptop work...
-# class ImageProcessor:
-#     def __init__(self, px_per_m = 8548.96030065, blur_size=11, fly_area=6.486e-6, fly_perim=11.586e-3,
-#                  fly_width=1.695e-3, fly_height=4.911e-3, tol=0.35, thresh_level=0.7):
-#         # save settings
-#         self.px_per_m = px_per_m
-#         self.blur_size = blur_size
-#         self.fly_area = fly_area
-#         self.fly_perim = fly_perim
-#         self.fly_width = fly_width
-#         self.fly_height = fly_height
-#         self.tol = tol
-#         self.thresh_level = thresh_level
-#
-#         # fly bounding dimensions
-#         self.fly_max_dim = max(fly_width, fly_height)
-#         self.fly_min_dim = min(fly_width, fly_height)
-#
-#         # estimated fly parameters in pixels
-#         self.fly_area_px2 = self.fly_area * (self.px_per_m ** 2)
-#         self.fly_perim_px = self.fly_perim * self.px_per_m
-#         self.fly_max_dim_px = self.fly_max_dim * self.px_per_m
-#         self.fly_min_dim_px = self.fly_min_dim * self.px_per_m
-#
-#     def matches(self, val, orig):
-#         return abs((val-orig)/orig) <= self.tol
-#
-#     def get_fly(self, inFrame):
-#         # get all contours
-#         contours = self.get_contours(inFrame)
-#
-#         # get all flies
-#         flyFound = False
-#         fly = None
-#         for cnt in contours:
-#             result = self.cnt2fly(cnt)
-#             if result is not None:
-#                 if flyFound:
-#                     raise Exception('Multiple flies found.')
-#                 else:
-#                     flyFound = True
-#                     fly = result
-#
-#         # check result
-#         if fly is None:
-#             raise Exception('No flies found.')
-#
-#         return fly
-#
-#     def cnt2fly(self, cnt):
-#         if cnt.size <= 5:
-#             return None
-#
-#         area_px = cv2.contourArea(cnt)
-#         if not self.matches(area_px, self.fly_area_px2):
-#             return None
-#
-#         perim_px = cv2.arcLength(cnt, True)
-#         if not self.matches(perim_px, self.fly_perim_px):
-#             return None
-#
-#         ellipse = cv2.fitEllipse(cnt)
-#         (cx, cy), (sx, sy), angle = ellipse
-#         if not self.matches(max(sx, sy), self.fly_max_dim_px):
-#             return None
-#         if not self.matches(min(sx, sy), self.fly_min_dim_px):
-#             return None
-#
-#         return ImageProcResult(area_px=area_px, perim_px=perim_px, ellipse=ellipse)
-#
-#     def get_contours(self, inFrame):
-#         # Convert frame to grayscale
-#         _, _, grayFrame = cv2.split(inFrame)
-#
-#         # Blur frame
-#         blurFrame = cv2.GaussianBlur(grayFrame, (self.blur_size, self.blur_size), 0)
-#
-#         # Threshold frame
-#         thresh = int(round(np.mean(blurFrame)*self.thresh_level))
-#         _, threshFrame = cv2.threshold(blurFrame, thresh, 255, cv2.THRESH_BINARY_INV)
-#
-#         # Get contours
-#         _, contours, _ = cv2.findContours(threshFrame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-#
-#         return contours
-
 class Camera:
     def __init__(self,
                  px_per_m = 37023.1016957, # calibrated for 2x on 2/6/2018
@@ -314,9 +199,20 @@ class Camera:
         self.r_max = r_max
 
         # Open the capture stream
-        self.cap = cv2.VideoCapture(0)
-#        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 275)
-#        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 275)
+        self.camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
+        self.camera.StartGrabbing(pylon.GrabStrategy_LatestImageOnly)
+
+        # Grab a dummy frame to get the width and height
+        grabResult = self.camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+        self.grab_width = int(grabResult.Width)
+        self.grab_height = int(grabResult.Height)
+        grabResult.Release()
+        print('Camera grab dimensions: ({}, {})'.format(self.grab_width, self.grab_height))
+
+        # Set up image converter
+        self.converter = pylon.ImageFormatConverter()
+        self.converter.OutputPixelFormat = pylon.PixelType_BGR8packed
+        self.converter.OutputBitAlignment = pylon.OutputBitAlignment_MsbAligned
 
     def flyCandidate(self, ellipse):
         return ((self.ma_min <= ellipse.ma <= self.ma_max) and
@@ -325,11 +221,14 @@ class Camera:
 
     def processNext(self, threshold):
         # Capture a single frame
-        ret, inFrame = self.cap.read()
+        grabResult = self.camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+        image = self.converter.Convert(grabResult)
+        inFrame = image.GetArray().copy()
+        grabResult.Release()
 
         # Convert frame to grayscale
         grayFrame = cv2.cvtColor(inFrame, cv2.COLOR_BGR2GRAY)
-        grayFrame = cv2.bitwise_not(grayFrame)   #TURN ON FOR IR SINCE FLY IS BRIGHT
+        #grayFrame = cv2.bitwise_not(grayFrame)   #TURN ON FOR IR SINCE FLY IS BRIGHT
         grayFrame = cv2.GaussianBlur(grayFrame, (11, 11), 0)
 
         # Threshold image according
@@ -389,4 +288,4 @@ class Camera:
 
     def __del__(self):
         # When everything done, release the capture handle
-        self.cap.release()
+        self.camera.StopGrabbing()
