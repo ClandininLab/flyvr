@@ -178,7 +178,7 @@ class FlyDispenser:
             time.sleep(1)
             self.look_for_fly() # look for fly
 
-            self.serialConnection.write(bytes([0])) # close gate
+            #self.serialConnection.write(bytes([0])) # close gate
 
             close_time = time.time()-self.t0
             self.log_close_time(close_time)
@@ -190,6 +190,12 @@ class FlyDispenser:
         thread = Thread(target=target)
         thread.setDaemon(True)
         thread.start()
+
+    def open_gate(self):
+        self.serialConnection.write(bytes([1]))
+
+    def close_gate(self):
+        self.serialConnection.write(bytes([0]))
 
     def close(self):
         self.time1 = time.time()
@@ -257,12 +263,14 @@ def main():
     s.readSerialStart()   # starts background threads
 
     def fly_release_target():
-        s.setup_gate()
+        #s.setup_gate()
 
         dispatcher = Dispatcher()
         dispatcher.add_method(s.releaseFly)
         dispatcher.add_method(s.startLogging)
         dispatcher.add_method(s.stopLogging)
+        dispatcher.add_method(s.close_gate)
+        dispatcher.add_method(s.open_gate)
         server = Server(dispatcher)
 
         while True:

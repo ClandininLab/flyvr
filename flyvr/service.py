@@ -1,12 +1,13 @@
 from time import time, sleep
 from warnings import warn
-from threading import Thread, Lock
+from threading import Thread, Event
 
 class Service:
-    def __init__(self, minTime=None, maxTime=None):
+    def __init__(self, minTime=None, maxTime=None, iter_warn=True):
         # set up minimum and maximum loop times
         self.minTime = minTime
         self.maxTime = maxTime
+        self.iter_warn = iter_warn
 
         # check that the loop time limits make sense
         if ((self.minTime is not None) and
@@ -15,15 +16,14 @@ class Service:
             raise Exception('Invalid loop time limits.')
 
         # set up access to the thread-ending signal
-        self.doneLock = Lock()
-        self._done = False
+        self.done = Event()
 
     def start(self):
         self.thread = Thread(target=self.loop)
         self.thread.start()
 
     def stop(self):
-        self.done = True
+        self.done.set()
         self.thread.join()
 
     def loop(self):
@@ -34,20 +34,24 @@ class Service:
         self.startTime = time()
 
         # main logic of loop control
-        while not self.done:
+        loopStart = time()
+        while not self.done.is_set():
             # run the loop body and measure how long it takes
-            loopStart = time()
             self.loopBody()
             loopStop = time()
 
             # if the loop body finished too early, delay until
             # the minimum loop time passes.  otherwise, if the loop
             # time is too long, issue a warning
-            dt = loopStop-loopStart
+
+            dt = loopStop - loopStart
+            loopStart = loopStop
+
             if (self.minTime is not None) and (dt < self.minTime):
                 sleep(self.minTime - dt)
-            elif (self.maxTime is not None) and (dt > self.maxTime):
-                warn('Slow iteration: ' + type(self).__name__)
+
+            if (self.iter_warn) and (self.maxTime is not None) and (dt > self.maxTime):
+                print('Slow iteration: {} ({:0.1f} ms)'.format(self.__class__.__name__, dt*1e3))
 
             # increment the loop iteration counter
             self.iterCount += 1
@@ -58,16 +62,6 @@ class Service:
     @property
     def avePeriod(self):
         return (self.stopTime - self.startTime) / self.iterCount
-
-    @property
-    def done(self):
-        with self.doneLock:
-            return self._done
-
-    @done.setter
-    def done(self, val):
-        with self.doneLock:
-            self._done = val
 
     # subclasses should override loop body
     def loopBody(self):

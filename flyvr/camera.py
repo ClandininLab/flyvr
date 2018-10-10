@@ -3,7 +3,7 @@ import copy
 import numpy as np
 
 from pypylon import pylon
-from math import pi, sqrt
+from math import pi, sqrt, hypot
 from time import time
 from threading import Lock
 import numpy as np
@@ -11,7 +11,7 @@ import numpy as np
 from flyvr.service import Service
 
 class CamThread(Service):
-    def __init__(self, defaultThresh=150, maxTime=10e-3, bufX=200, bufY=200):
+    def __init__(self, defaultThresh=150, maxTime=12e-3, bufX=200, bufY=200):
         # Serial I/O interface to CNC
         self.cam = Camera()
 
@@ -68,6 +68,7 @@ class CamThread(Service):
 
                 if frameData.inFrame.shape != 0:
                     self.logFull.write(frameData.inFrame)
+
 
     @property
     def flyData(self):
@@ -179,12 +180,12 @@ class ImageProcResult:
 class Camera:
     def __init__(self,
                  px_per_m = 37023.1016957, # calibrated for 2x on 2/6/2018
-                 ma_min = 0.4e-3, # m
-                 ma_max = 1.5e-3, # m
-                 MA_min = 2e-3, # m
-                 MA_max = 4e-3, # m
+                 ma_min = 0.25e-3, # m
+                 ma_max = 2e-3, # m
+                 MA_min = 0.6e-3, # m
+                 MA_max = 5e-3, # m
                  r_min = 0.2,
-                 r_max = 0.5
+                 r_max = 0.75
                  ):
         # Store the number of pixels per meter
         self.px_per_m = px_per_m
@@ -228,13 +229,14 @@ class Camera:
 
         # Convert frame to grayscale
         grayFrame = cv2.cvtColor(inFrame, cv2.COLOR_BGR2GRAY)
-        #grayFrame = cv2.bitwise_not(grayFrame)   #TURN ON FOR IR SINCE FLY IS BRIGHT
+        grayFrame = cv2.bitwise_not(grayFrame)   #TURN ON FOR IR SINCE FLY IS BRIGHT
         grayFrame = cv2.GaussianBlur(grayFrame, (11, 11), 0)
 
         # Threshold image according
         rel_level = float(threshold)/255
         auto_thresh = int(round(np.mean(grayFrame)*rel_level))
         ret, threshFrame = cv2.threshold(grayFrame, auto_thresh, 255, cv2.THRESH_BINARY_INV)
+
         rows, cols = threshFrame.shape
 
         # Find contours in image
@@ -260,7 +262,7 @@ class Camera:
 
         # If there is a contour, compute its centroid and mark the fly as present
         if len(results) > 0:
-            bestResult = max(results, key=lambda x: x[0].area)
+            bestResult = min(results, key=lambda x: hypot(x[0].cx, x[0].cy))
 
             ellipse = bestResult[0]
             flyData = FlyData(flyX_px=ellipse.cx_px,
