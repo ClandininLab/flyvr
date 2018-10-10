@@ -3,9 +3,6 @@ import os
 import platform
 import os.path
 import itertools
-import xmlrpc.client
-import subprocess
-import sys
 
 from time import strftime, time, sleep
 
@@ -13,8 +10,10 @@ from flyvr.cnc import CncThread, cnc_home
 from flyvr.camera import CamThread
 from flyvr.tracker import TrackThread, ManualVelocity
 from flyvr.service import Service
-from flyvr.rpc import Client, request
 from flyvr.mrstim import MrDisplay
+import flyvr.gate_control
+
+from flyrpc.launch import launch_server
 
 from threading import Lock
 
@@ -58,10 +57,7 @@ class TrialThread(Service):
 
         # start logging to dispenser
         try:
-            self.dispenser.write(request('startLogging',
-                                        os.path.join(self.exp_dir, 'raw_gate_data.txt'),
-                                        os.path.join(self.exp_dir, 'open_gate_data.txt'),
-                                        os.path.join(self.exp_dir, 'close_gate_data.txt')))
+            self.dispenser.start_logging(self.exp_dir)
         except OSError:
             print('Could not set up dispenser logging.')
 
@@ -121,7 +117,7 @@ class TrialThread(Service):
             print('** startup **')
 
             # Open connection to CNC rig
-            #cnc_home()
+            cnc_home()
             self.cnc = CncThread()
             self.cnc.start()
             sleep(0.1)
@@ -129,7 +125,7 @@ class TrialThread(Service):
             # Start tracker thread
             self.tracker = TrackThread(cncThread=self.cnc, camThread=self.cam)
             self.tracker.start()
-            #self.tracker.move_to_center()
+            self.tracker.move_to_center()
 
             # go to the manual control state
             self.resetManual()
@@ -193,7 +189,7 @@ class TrialThread(Service):
                     self._stop_trial()
                 self.tracker.move_to_center()
                 try:
-                    self.dispenser.write(request('releaseFly'))
+                    self.dispenser.release_fly()
                 except OSError:
                     print('Please dispense fly (could not release it automatically)')
                 self.prev_state = 'fly lost'
@@ -205,7 +201,7 @@ class TrialThread(Service):
                 pass
             elif manualCmd[0] == 'start':
                 try:
-                    self.dispenser.write(request('releaseFly'))
+                    self.dispenser.release_fly()
                 except OSError:
                     print('Please dispense fly (could not release it automatically)')
                 self.state = 'started'
@@ -223,7 +219,7 @@ class TrialThread(Service):
                 self.tracker.manualVelocity = manualVelocity
             elif manualCmd[0] == 'release_fly':
                 try:
-                    self.dispenser.write(request('releaseFly'))
+                    self.dispenser.release_fly()
                 except OSError:
                     print('Please dispense fly (could not release it automatically)')
             else:
@@ -234,13 +230,7 @@ class TrialThread(Service):
         else:
             raise Exception('Invalid state.')
 
-def trace(frame, event, arg):
-    print("{}, {}:{}".format(event, frame.f_code.co_filename, frame.f_lineno))
-    return trace
-
 def main():
-    #sys.settrace(trace)
-
     # create folder for data
     if platform.system() == 'Windows':
         topdir = r'F:\FlyVR'
@@ -249,6 +239,7 @@ def main():
     else:
         raise Exception('Invalid platform.')
 
+    # create top-level experiment directory
     folder = 'exp-'+strftime('%Y%m%d-%H%M%S')
     exp_dir = os.path.join(topdir, folder)
     os.makedirs(exp_dir)
@@ -263,11 +254,6 @@ def main():
     cv2.namedWindow('image')
     cv2.createTrackbar('threshold', 'image', 236, 254, nothing)
     cv2.createTrackbar('imageType', 'image', 0, 2, nothing)
-
-    # level related settings
-    cv2.createTrackbar('level', 'image', 0, 255, nothing)
-    lastLevel = -1
-
     cv2.createTrackbar('r_min', 'image', 2, 10, nothing)
     cv2.createTrackbar('r_max', 'image', 8, 10, nothing)
 
@@ -280,14 +266,7 @@ def main():
 
     # Try to connect to the dispenser server
     # ref: https://stackoverflow.com/questions/37863476/why-use-both-os-path-abspath-and-os-path-realpath/40311142
-    file_path_full = os.path.realpath(os.path.expanduser(__file__))
-    dir_path_full = os.path.dirname(os.path.dirname(file_path_full))
-    dispenser_full_path = os.path.join(dir_path_full, 'flyvr', 'gate_control.py')
-    python_full_path = os.path.realpath(os.path.expanduser(sys.executable))
-
-    p = subprocess.Popen([python_full_path, dispenser_full_path], stdin=subprocess.PIPE, stdout=sys.stdout)
-    dispenser = Client(p.stdin)
-    print('dispenser: ', dispenser)
+    dispenser = launch_server(flyvr.gate_control)
 
     #Create Stimulus object
     mrstim = MrDisplay()
@@ -297,14 +276,13 @@ def main():
     trialThread = TrialThread(exp_dir=exp_dir, cam=cam, dispenser=dispenser, mrstim=mrstim)
     trialThread.start()
 
+    # Create smoother for fly parameters
     focus_smoother = Smooth(12)
     ma_smoother = Smooth(12)
     MA_smoother = Smooth(12)
 
-    # open the connection to display service
-    display_proxy = xmlrpc.client.ServerProxy("http://127.0.0.1:54357/")
-
-    key = 0
+    # initialize to no key
+    key = -1
 
     # main program loop
     while key != 27:
@@ -331,16 +309,12 @@ def main():
             trialThread.manual('start')
         if key == ord('c'):
             trialThread.manual('center')
-        if key == ord('o'):
-            # trialThread.manual('open_servo')
-            pass
-        if key == ord('l'):
-            # trialThread.manual('close_servo')
-            pass
         if key == ord('n'):
-            dispenser.write(request('open_gate'))
+            dispenser.open_gate()
         if key == ord('m'):
-            dispenser.write(request('close_gate'))
+            dispenser.close_gate()
+        if key == ord('o'):
+            dispenser.calibrate_gate()
 
         # handle up/down keyboard input
         if key == 56:
@@ -365,16 +339,7 @@ def main():
             if (manualCmd is not None) and manualCmd[0] == 'jog':
                 trialThread.manual('nojog')
 
-        # read out level
-        levelTrack = cv2.getTrackbarPos('level', 'image')
-        if levelTrack != lastLevel:
-            newLevel = levelTrack/255
-            try:
-                display_proxy.set_level(newLevel)
-            except ConnectionRefusedError:
-                pass
-        lastLevel = levelTrack
-
+        # handle aspect ratios
         r_min=cv2.getTrackbarPos('r_min', 'image')
         r_max=cv2.getTrackbarPos('r_max', 'image')
         cam.cam.r_min = r_min/10.0
@@ -385,8 +350,6 @@ def main():
         if trialThread.tracker is not None:
             # check needed since tracker may not have been initialized yet
             trialThread.tracker.a = loop_gain
-
-        trial_dir = trialThread.trial_dir
 
         # compute new thresholds
         threshTrack = cv2.getTrackbarPos('threshold', 'image')

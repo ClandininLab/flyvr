@@ -6,6 +6,7 @@ from threading import Lock
 import serial.tools.list_ports
 
 from flyvr.service import Service
+from flyvr.util import serial_number_to_comport
 
 class CncThread(Service):
     def __init__(self, maxTime=12e-3):
@@ -151,12 +152,7 @@ class CNC:
         # set defaults
         if com is None:
             if platform.system() == 'Linux':
-                for port in serial.tools.list_ports.comports(include_links=True):
-                    if port.serial_number == '75330303035351E081A1':
-                        com = '/dev/' + port.description
-                        break
-                else:
-                    raise Exception('Could not find Arduino associated with CNC.')
+                com = serial_number_to_comport('75330303035351E081A1')
             else:
                 com = 'COM5'
 
