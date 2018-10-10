@@ -8,7 +8,7 @@ import serial.tools.list_ports
 from flyvr.service import Service
 
 class CncThread(Service):
-    def __init__(self, maxTime=10e-3):
+    def __init__(self, maxTime=12e-3):
         # Serial I/O interface to CNC
         self.cnc = CNC()
 

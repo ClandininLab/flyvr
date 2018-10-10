@@ -60,7 +60,7 @@ class TrackThread(Service):
         self.lastTime = time()
                  
         # call constructor from parent        
-        super().__init__(minTime=loopTime, maxTime=loopTime)
+        super().__init__(minTime=loopTime, maxTime=loopTime, iter_warn=False)
 
     # overriding method from parent...
     def loopBody(self):

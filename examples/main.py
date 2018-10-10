@@ -66,7 +66,7 @@ class TrialThread(Service):
             print('Could not set up dispenser logging.')
 
         # call constructor from parent
-        super().__init__(minTime=loopTime, maxTime=loopTime)
+        super().__init__(minTime=loopTime, maxTime=loopTime, iter_warn=False)
 
     @property
     def manualCmd(self):
@@ -121,7 +121,7 @@ class TrialThread(Service):
             print('** startup **')
 
             # Open connection to CNC rig
-            cnc_home()
+            #cnc_home()
             self.cnc = CncThread()
             self.cnc.start()
             sleep(0.1)
@@ -129,7 +129,7 @@ class TrialThread(Service):
             # Start tracker thread
             self.tracker = TrackThread(cncThread=self.cnc, camThread=self.cam)
             self.tracker.start()
-            self.tracker.move_to_center()
+            #self.tracker.move_to_center()
 
             # go to the manual control state
             self.resetManual()
@@ -261,7 +261,7 @@ def main():
 
     # create the UI
     cv2.namedWindow('image')
-    cv2.createTrackbar('threshold', 'image', 115, 254, nothing)
+    cv2.createTrackbar('threshold', 'image', 236, 254, nothing)
     cv2.createTrackbar('imageType', 'image', 0, 2, nothing)
 
     # level related settings
@@ -269,7 +269,7 @@ def main():
     lastLevel = -1
 
     cv2.createTrackbar('r_min', 'image', 2, 10, nothing)
-    cv2.createTrackbar('r_max', 'image', 5, 10, nothing)
+    cv2.createTrackbar('r_max', 'image', 8, 10, nothing)
 
     # loop gain settings
     cv2.createTrackbar('loop_gain', 'image', 100, 750, nothing)
@@ -337,6 +337,10 @@ def main():
         if key == ord('l'):
             # trialThread.manual('close_servo')
             pass
+        if key == ord('n'):
+            dispenser.write(request('open_gate'))
+        if key == ord('m'):
+            dispenser.write(request('close_gate'))
 
         # handle up/down keyboard input
         if key == 56:
