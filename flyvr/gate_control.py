@@ -50,8 +50,9 @@ class FlyDispenser:
 
         # save parameters
         self.num_pixels = 128
-        self.gate_start = 30
-        self.gate_end = 43
+        self.gate_start = 34
+        self.gate_end = 45
+        self.max_usable_pixel = 90
 
         # serial connection
         self.conn = None
@@ -60,22 +61,34 @@ class FlyDispenser:
         self.state = 'Reset'
         self.timer_ref = None
 
+        # set gate region file location
+        this_file = os.path.abspath(os.path.expanduser(__file__))
+        self.background_region_file = os.path.join(os.path.join(os.path.dirname(os.path.dirname(this_file)), 'calibration'), 'background_region.npy')
+
         # try to load gate region data
         try:
-            self.gate_region = np.load('gate_region.npy')
-            print('Successfully loaded gate_region data')
+            self.background_region = np.load(self.background_region_file)
+            print('Successfully loaded background_region data')
         except:
-            print('Could not load gate_region data.  Please re-calibrate.')
-            self.gate_region = None
+            print('Could not load background region data.  Please re-calibrate.')
+            self.background_region = None
 
         # history of last few frames
-        self.hist = np.zeros((2, self.num_pixels))
+        self.raw_data = np.zeros((self.num_pixels, ))
+
+        # initialize display settings
+        self.display_type = 'raw'
+        self.display_threshold = -11
+        self.gate_clear_threshold = -20
+        self.fly_passed_threshold = -11
+        self.num_needed_pixels = 2
 
         # manual command locking
         self.should_release = Event()
         self.should_open = Event()
         self.should_close = Event()
         self.should_calibrate_gate = Event()
+        self.gate_state = None
 
         # frame locking
         self.display_frame_lock = Lock()
@@ -130,19 +143,29 @@ class FlyDispenser:
         self.read_frame()
 
         # handle manual command outside of state machine
+        # this will always send the state machine back to Idle
         if self.should_open.is_set():
-            self.should_open.clear()
             self.send_open_gate_command()
+            self.state ='Idle'
+            print('Dispenser: going to Idle state.')
 
         if self.should_close.is_set():
-            self.should_close.clear()
             self.send_close_gate_command()
+            self.state = 'Idle'
+            print('Dispenser: going to Idle state.')
 
+        # handle calibration
         if self.should_calibrate_gate.is_set():
-            print('Manually calibrating gate...')
-            self.should_calibrate_gate.clear()
-            self.gate_region = self.hist[0, self.gate_start:self.gate_end]
-            np.save('gate_region', self.gate_region)
+            if self.gate_state == 'open':
+                print('Calibrating gate...')
+                self.background_region = self.raw_data
+                print('background region:', self.background_region)
+                np.save(self.background_region_file, self.background_region)
+            else:
+                print('Cannot calibrate gate.  Please issue an open_gate() command.')
+
+            self.state = 'Idle'
+            print('Dispenser: going to Idle state.')
 
         # update state machine
         if self.state == 'Reset':
@@ -151,13 +174,12 @@ class FlyDispenser:
             print('Dispenser: going to Idle state.')
         elif self.state == 'Idle':
             if self.should_release.is_set():
-                self.should_release.clear()
                 self.send_open_gate_command()
                 self.start_timer()
                 self.state = 'PreReleaseDelay'
                 print('Dispenser: going to PreReleaseDelay state.')
         elif self.state == 'PreReleaseDelay':
-            if self.timer_done(0.1):
+            if self.timer_done(0.5):
                 self.state = 'LookForFly'
                 print('Dispenser: going to LookForFly state.')
         elif self.state == 'LookForFly':
@@ -167,6 +189,12 @@ class FlyDispenser:
                 print('Dispenser: going to Idle state.')
         else:
             raise Exception('Invalid state.')
+
+        # clear flags
+        self.should_open.clear()
+        self.should_close.clear()
+        self.should_calibrate_gate.clear()
+        self.should_release.clear()
 
     def read_frame(self):
         while True:
@@ -178,29 +206,47 @@ class FlyDispenser:
                 frame = list(frame)
 
                 # write frame to variable for matplotlib display
-                self.display_frame = frame
+                if self.display_type == 'raw':
+                    display_frame = frame
+                elif self.display_type == 'corrected':
+                    display_frame = frame
+                    if self.background_region is not None:
+                        display_frame -= self.background_region
+                else:
+                    display_frame = frame
+                    if self.background_region is not None:
+                        display_frame -= self.background_region
+                    display_frame = display_frame > self.display_threshold
+
+                self.display_frame = display_frame
 
                 # write frame to file
                 self.log(self.raw_data_file, frame)
 
                 # add frame to history
-                self.hist = np.vstack(([frame], self.hist[0:-1, :]))
+                self.raw_data = np.array(frame)
 
                 return
 
     @property
-    def gate_clear(self, gate_thresh=100):
-        if self.gate_region is None:
+    def gate_clear(self):
+        if self.background_region is None:
             return False
 
-        gate_difference = self.gate_region-self.hist[0, self.gate_start:self.gate_end]
-        gate_sum = np.sum(gate_difference)
-        return (gate_sum < gate_thresh)
+        diff = (self.raw_data[self.gate_start:self.gate_end] -
+                self.background_region[self.gate_start:self.gate_end])
+
+        return np.all(diff > self.gate_clear_threshold)
 
     @property
-    def fly_passed(self, fly_threshold=5, num_needed_pixels=2):
-        diff = self.hist[0, self.gate_end:] - self.hist[1, self.gate_end:]
-        return np.sum(np.abs(diff) > fly_threshold) > num_needed_pixels
+    def fly_passed(self):
+        if self.background_region is None:
+            return False
+
+        diff = (self.raw_data[self.gate_end:self.max_usable_pixel] -
+                self.background_region[self.gate_end:self.max_usable_pixel])
+
+        return np.sum(diff < self.fly_passed_threshold) > self.num_needed_pixels
 
     def start_timer(self):
         self.timer_ref = time()
@@ -215,11 +261,13 @@ class FlyDispenser:
         print('Dispenser: opening gate...')
         self.conn.write(bytes([1]))
         self.log(self.open_times_file, [self.log_time()])
+        self.gate_state = 'open'
 
     def send_close_gate_command(self):
         print('Dispenser: closing gate...')
         self.conn.write(bytes([0]))
         self.log(self.close_times_file, [self.log_time()])
+        self.gate_state = 'closed'
 
     def open_gate(self):
         self.should_open.set()
@@ -232,6 +280,21 @@ class FlyDispenser:
 
     def release_fly(self):
         self.should_release.set()
+
+    def set_display_type(self, type):
+        self.display_type = type
+
+    def set_display_threshold(self, value):
+        self.display_threshold = value
+
+    def set_gate_clear_threshold(self, value):
+        self.gate_clear_threshold = value
+
+    def set_fly_passed_threshold(self, value):
+        self.fly_passed_threshold = value
+
+    def set_num_needed_pixels(self, value):
+        self.num_needed_pixels = value
 
     def close_all_open_files(self):
         for f in [self.raw_data_file, self.open_times_file, self.close_times_file]:
@@ -263,6 +326,8 @@ class FlyDispenser:
 def main():
     # start the server
     kwargs = get_kwargs()
+    if kwargs['port'] is None:
+        kwargs['port'] = 39855
     server = MySocketServer(host=kwargs['host'], port=kwargs['port'], name='DispenseServer', threaded=True)
 
     # create fly dispenser object
@@ -280,6 +345,11 @@ def main():
     server.register_function(dispenser.open_gate)
     server.register_function(dispenser.close_gate)
     server.register_function(dispenser.calibrate_gate)
+    server.register_function(dispenser.set_display_threshold)
+    server.register_function(dispenser.set_fly_passed_threshold)
+    server.register_function(dispenser.set_gate_clear_threshold)
+    server.register_function(dispenser.set_num_needed_pixels)
+    server.register_function(dispenser.set_display_type)
 
     # run the main event loop using matplotlib
 
