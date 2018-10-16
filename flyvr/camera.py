@@ -229,7 +229,7 @@ class Camera:
 
         # Convert frame to grayscale
         grayFrame = cv2.cvtColor(inFrame, cv2.COLOR_BGR2GRAY)
-        grayFrame = cv2.bitwise_not(grayFrame)   #TURN ON FOR IR SINCE FLY IS BRIGHT
+        #grayFrame = cv2.bitwise_not(grayFrame)   #TURN ON FOR IR SINCE FLY IS BRIGHT
         grayFrame = cv2.GaussianBlur(grayFrame, (11, 11), 0)
 
         # Threshold image according
@@ -262,7 +262,8 @@ class Camera:
 
         # If there is a contour, compute its centroid and mark the fly as present
         if len(results) > 0:
-            bestResult = min(results, key=lambda x: hypot(x[0].cx, x[0].cy))
+            #bestResult = min(results, key=lambda x: hypot(x[0].cx, x[0].cy))
+            bestResult = max(results,key=lambda x: x[0].area)
 
             ellipse = bestResult[0]
             flyData = FlyData(flyX_px=ellipse.cx_px,
