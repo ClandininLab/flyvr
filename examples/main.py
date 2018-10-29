@@ -1,21 +1,19 @@
 import cv2
 import os
+import platform
 import os.path
 import itertools
-import xmlrpc.client
-import subprocess
-import sys
 
-from time import strftime, perf_counter, time, sleep
-from pynput import keyboard
-from pynput.keyboard import Key, KeyCode
+from time import strftime, time, sleep
 
 from flyvr.cnc import CncThread, cnc_home
 from flyvr.camera import CamThread
 from flyvr.tracker import TrackThread, ManualVelocity
 from flyvr.service import Service
-from flyvr.rpc import Client, request
 from flyvr.mrstim import MrDisplay
+import flyvr.gate_control
+
+from flyrpc.launch import launch_server
 
 from threading import Lock
 
@@ -32,7 +30,8 @@ def nothing(x):
     pass
 
 class TrialThread(Service):
-    def __init__(self, exp_dir, cam, dispenser, mrstim, loopTime=10e-3, fly_lost_timeout=1, fly_detected_timeout=1):
+    def __init__(self, exp_dir, cam, dispenser, mrstim, loopTime=10e-3, fly_lost_timeout=1, fly_detected_timeout=1,
+                 auto_change_rate=None):
         self.trial_count = itertools.count(1)
         self.state = 'startup'
         self.prev_state = 'startup'
@@ -47,6 +46,7 @@ class TrialThread(Service):
         self.exp_dir = exp_dir
         self.fly_lost_timeout = fly_lost_timeout
         self.fly_detected_timeout = fly_detected_timeout
+        self.auto_change_rate = auto_change_rate
 
         # set up access to the thread-ending signal
         self.manualLock = Lock()
@@ -57,15 +57,12 @@ class TrialThread(Service):
 
         # start logging to dispenser
         try:
-            self.dispenser.write(request('startLogging',
-                                        os.path.join(self.exp_dir, 'raw_gate_data.txt'),
-                                        os.path.join(self.exp_dir, 'open_gate_data.txt'),
-                                        os.path.join(self.exp_dir, 'close_gate_data.txt')))
+            self.dispenser.start_logging(self.exp_dir)
         except OSError:
             print('Could not set up dispenser logging.')
 
         # call constructor from parent
-        super().__init__(minTime=loopTime, maxTime=loopTime)
+        super().__init__(minTime=loopTime, maxTime=loopTime, iter_warn=False)
 
     @property
     def manualCmd(self):
@@ -99,7 +96,6 @@ class TrialThread(Service):
 
         self.cnc.startLogging(os.path.join(_trial_dir, 'cnc.txt'))
         self.cam.startLogging(os.path.join(_trial_dir, 'cam.txt'),
-                              os.path.join(_trial_dir, 'cam_uncompr.mkv'),
                               os.path.join(_trial_dir, 'cam_compr.mkv'))
 
         self._trial_dir = _trial_dir
@@ -110,10 +106,13 @@ class TrialThread(Service):
 
         self.cnc.stopLogging()
         self.cam.stopLogging()
+        self.mrstim.stopStim(self._trial_dir)
 
         self.tracker.stopTracking()
 
     def loopBody(self):
+        self.mrstim.updateStim(self._trial_dir)
+
         if self.state == 'startup':
             print('** startup **')
 
@@ -190,7 +189,7 @@ class TrialThread(Service):
                     self._stop_trial()
                 self.tracker.move_to_center()
                 try:
-                    self.dispenser.write(request('releaseFly'))
+                    self.dispenser.release_fly()
                 except OSError:
                     print('Please dispense fly (could not release it automatically)')
                 self.prev_state = 'fly lost'
@@ -202,7 +201,7 @@ class TrialThread(Service):
                 pass
             elif manualCmd[0] == 'start':
                 try:
-                    self.dispenser.write(request('releaseFly'))
+                    self.dispenser.release_fly()
                 except OSError:
                     print('Please dispense fly (could not release it automatically)')
                 self.state = 'started'
@@ -220,7 +219,7 @@ class TrialThread(Service):
                 self.tracker.manualVelocity = manualVelocity
             elif manualCmd[0] == 'release_fly':
                 try:
-                    self.dispenser.write(request('releaseFly'))
+                    self.dispenser.release_fly()
                 except OSError:
                     print('Please dispense fly (could not release it automatically)')
             else:
@@ -232,19 +231,15 @@ class TrialThread(Service):
             raise Exception('Invalid state.')
 
 def main():
-    # handler for key events
-    keySet = set()
-    def on_press(key):
-        keySet.add(key)
-    def on_release(key):
-        keySet.remove(key)
-    listener = keyboard.Listener(on_press=on_press, on_release=on_release)
-    listener.start()
-
-    prev_key_set = set()
-
     # create folder for data
-    topdir = r'F:\FlyVR'
+    if platform.system() == 'Windows':
+        topdir = r'F:\FlyVR'
+    elif platform.system() == 'Linux':
+        topdir = '/mnt/fly-data/FlyVR'
+    else:
+        raise Exception('Invalid platform.')
+
+    # create top-level experiment directory
     folder = 'exp-'+strftime('%Y%m%d-%H%M%S')
     exp_dir = os.path.join(topdir, folder)
     os.makedirs(exp_dir)
@@ -257,26 +252,10 @@ def main():
 
     # create the UI
     cv2.namedWindow('image')
-    cv2.createTrackbar('threshold', 'image', 115, 254, nothing)
+    cv2.createTrackbar('threshold', 'image', 236, 254, nothing)
     cv2.createTrackbar('imageType', 'image', 0, 2, nothing)
-
-    # level related settings
-    cv2.createTrackbar('level', 'image', 0, 255, nothing)
-    lastLevel = -1
-
-    # servo settings
-    # cv2.createTrackbar('open', 'image', 180, 180, nothing)
-    # cv2.createTrackbar('closed', 'image', 130, 180, nothing)
-    # lastOpenPos = 180
-    # lastClosedPos = 130
-
-    # fly detection settings
-    # cv2.createTrackbar('ma_min', 'image', 6, 25, nothing)
-    # cv2.createTrackbar('ma_max', 'image', 11, 25, nothing)
-    # cv2.createTrackbar('MA_min', 'image', 22, 50, nothing)
-    # cv2.createTrackbar('MA_max', 'image', 33, 50, nothing)
     cv2.createTrackbar('r_min', 'image', 2, 10, nothing)
-    cv2.createTrackbar('r_max', 'image', 5, 10, nothing)
+    cv2.createTrackbar('r_max', 'image', 8, 10, nothing)
 
     # loop gain settings
     cv2.createTrackbar('loop_gain', 'image', 100, 750, nothing)
@@ -287,14 +266,7 @@ def main():
 
     # Try to connect to the dispenser server
     # ref: https://stackoverflow.com/questions/37863476/why-use-both-os-path-abspath-and-os-path-realpath/40311142
-    file_path_full = os.path.realpath(os.path.expanduser(__file__))
-    dir_path_full = os.path.dirname(os.path.dirname(file_path_full))
-    dispenser_full_path = os.path.join(dir_path_full, 'flyvr', 'gate_control.py')
-    python_full_path = os.path.realpath(os.path.expanduser(sys.executable))
-
-    p = subprocess.Popen([python_full_path, dispenser_full_path], stdin=subprocess.PIPE, stdout=sys.stdout)
-    dispenser = Client(p.stdin)
-    print('dispenser: ', dispenser)
+    dispenser = launch_server(flyvr.gate_control)
 
     #Create Stimulus object
     mrstim = MrDisplay()
@@ -304,62 +276,58 @@ def main():
     trialThread = TrialThread(exp_dir=exp_dir, cam=cam, dispenser=dispenser, mrstim=mrstim)
     trialThread.start()
 
+    # Create smoother for fly parameters
     focus_smoother = Smooth(12)
     ma_smoother = Smooth(12)
     MA_smoother = Smooth(12)
 
-    # open the connection to display service
-    display_proxy = xmlrpc.client.ServerProxy("http://127.0.0.1:54357/")
+    # initialize to no key
+    key = -1
 
     # main program loop
-    while keyboard.Key.esc not in keySet:
-        # handle keypress events
-        new_keys = keySet - prev_key_set
-        prev_key_set = set(keySet)
-
-        if KeyCode.from_char('f') in new_keys:
+    while key != 27:
+        if key == ord('f'):
             draw_details = not draw_details
-        if KeyCode.from_char('d') in new_keys:
+        if key == ord('d'):
             draw_contour = not draw_contour
-        if KeyCode.from_char('r') in new_keys:
+        if key == ord('r'):
             cncStatus = trialThread.cnc.status
             if cncStatus is not None:
                 posX, posY = cncStatus.posX, cncStatus.posY
                 trialThread.tracker.set_center_pos(posX=posX, posY=posY)
             print('new center position set...')
-        if KeyCode.from_char('s') in new_keys:
+        if key == ord('s'):
             if trialThread.cnc is not None:
                 cncStatus = trialThread.cnc.status
                 if cncStatus is not None:
                     print('cncX: {}, cncY: {}'.format(cncStatus.posX, cncStatus.posY))
 
-
         # manual control options
-        if Key.space in new_keys:
+        if key == 32:
             trialThread.manual('stop')
-        if Key.enter in new_keys:
+        if key == 13:
             trialThread.manual('start')
-        if KeyCode.from_char('c') in new_keys:
+        if key == ord('c'):
             trialThread.manual('center')
-        if KeyCode.from_char('o') in new_keys:
-            # trialThread.manual('open_servo')
-            pass
-        if KeyCode.from_char('l') in new_keys:
-            # trialThread.manual('close_servo')
-            pass
+        if key == ord('n'):
+            dispenser.open_gate()
+        if key == ord('m'):
+            dispenser.close_gate()
+        if key == ord('o'):
+            dispenser.calibrate_gate()
 
         # handle up/down keyboard input
-        if Key.up in keySet:
+        if key == 56:
             manVelY = +absJogVel
-        elif Key.down in keySet:
+        elif key == 50:
             manVelY = -absJogVel
         else:
             manVelY = 0
 
         # handle left/right keyboard input
-        if Key.right in keySet:
+        if key == 54:
             manVelX = -absJogVel
-        elif Key.left in keySet:
+        elif key == 52:
             manVelX = +absJogVel
         else:
             manVelX = 0
@@ -371,38 +339,9 @@ def main():
             if (manualCmd is not None) and manualCmd[0] == 'jog':
                 trialThread.manual('nojog')
 
-        # read out level
-        levelTrack = cv2.getTrackbarPos('level', 'image')
-        if levelTrack != lastLevel:
-            newLevel = levelTrack/255
-            try:
-                display_proxy.set_level(newLevel)
-            except ConnectionRefusedError:
-                pass
-        lastLevel = levelTrack
-
-        # read out servo settings
-        # TODO: add proper locking
-        # openPos = cv2.getTrackbarPos('open', 'image')
-        # if openPos != lastOpenPos:
-        #    trialThread.servo.opened_pos = openPos
-        # lastOpenPos = openPos
-        # closedPos = cv2.getTrackbarPos('closed', 'image')
-        # if closedPos != lastClosedPos:
-        #    trialThread.servo.closed_pos = closedPos
-        # lastClosedPos = closedPos
-
-        # set camera detection settings
-        #ma_min=cv2.getTrackbarPos('ma_min', 'image')
-        #ma_max=cv2.getTrackbarPos('ma_max', 'image')
-        #MA_min=cv2.getTrackbarPos('MA_min', 'image')
-        #MA_max=cv2.getTrackbarPos('MA_max', 'image')
+        # handle aspect ratios
         r_min=cv2.getTrackbarPos('r_min', 'image')
         r_max=cv2.getTrackbarPos('r_max', 'image')
-        # cam.cam.ma_min=ma_min
-        # cam.cam.ma_max = ma_max
-        # cam.cam.MA_min = MA_min
-        # cam.cam.MA_max = MA_max
         cam.cam.r_min = r_min/10.0
         cam.cam.r_max = r_max/10.0
 
@@ -411,11 +350,6 @@ def main():
         if trialThread.tracker is not None:
             # check needed since tracker may not have been initialized yet
             trialThread.tracker.a = loop_gain
-
-        trial_dir = trialThread.trial_dir
-        if trial_dir is not None:
-            with open(os.path.join(trial_dir, 'display.txt'), 'a') as f:
-                f.write(str(perf_counter()) + ', ' + str(lastLevel) + '\n')
 
         # compute new thresholds
         threshTrack = cv2.getTrackbarPos('threshold', 'image')
@@ -486,7 +420,9 @@ def main():
             cv2.imshow('image', drawFrame)
 
         # display image
-        cv2.waitKey(int(round(1e3*tLoop)))
+        key = cv2.waitKey(int(round(1e3*tLoop)))
+        if (key != -1):
+            print('key: {}'.format(key))
 
     # stop the trial thread manager
     trialThread.stop()
@@ -497,9 +433,6 @@ def main():
 
     # close UI window
     cv2.destroyAllWindows()
-
-    # close the keyboard listener
-    listener.stop()
         
 if __name__ == '__main__':
     main()

@@ -1,16 +1,16 @@
 #!/usr/bin/env python
- 
-from threading import Thread, Lock
-import serial
-import time
+
+import serial, platform, os.path
 import numpy as np
-import sys
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-import platform
+
+from threading import Thread, Lock, Event
+from time import time, sleep
 
 from flyrpc.transceiver import MySocketServer
-from flyrpc.util import start_daemon_thread
+from flyrpc.util import get_kwargs
+
+from flyvr.util import serial_number_to_comport
 
 def format_values(values, delimeter='\t', line_ending='\n'):
     retval = [str(value) for value in values]
@@ -20,245 +20,362 @@ def format_values(values, delimeter='\t', line_ending='\n'):
     return retval
 
 class FlyDispenser:
-    def __init__(self):
-        self.t0=time.time()
-        self.baud = 115200
-        self.rawData = np.zeros(128)
-        self.current_frame = np.zeros(128)
-        self.previous_frame = np.ones(128)
-        self.all_data = []
-        self.to_display1 = np.random.rand(128,128)*255
-        self.to_display2 = np.random.rand(128,128)*255
-        self.isRun = True
-        self.isReceiving = False
-        self.camera_thread = None
-        self.num_pixels = 128
-        self.delay_length = 1
-        self.first_delay_length = 5
-        self.fly_threshold = 5
-        self.num_needed_pixels = 2
-        self.half_gate_width = 7
-        self.gate_thresh = 100
+    def __init__(self, serial_port=None, serial_baud=None, serial_timeout=None, shutdown_flag=None):
+        # set defaults
+        if serial_port is None:
+            if platform.system() == 'Darwin':
+                serial_port = '/dev/tty.usbmodem1411'
+            elif platform.system() == 'Linux':
+                try:
+                    serial_port = serial_number_to_comport('557393232373516180D1')
+                except:
+                    print('Could not connect to fly dispenser Arduino.')
+            else:
+                serial_port = 'COM4'
 
-        self.logLock = Lock()
-        self.shouldLog = False
+        if serial_baud is None:
+            serial_baud = 115200
+
+        if serial_timeout is None:
+            serial_timeout = 4
+
+        if shutdown_flag is None:
+            shutdown_flag = Event()
+
+        # save settings
+        self.serial_port = serial_port
+        self.serial_baud = serial_baud
+        self.serial_timeout = serial_timeout
+        self.shutdown_flag = shutdown_flag
+
+        # save parameters
+        self.num_pixels = 128
+        self.gate_start = 34
+        self.gate_end = 45
+        self.max_usable_pixel = 90
+
+        # serial connection
+        self.conn = None
+
+        # dispenser state
+        self.state = 'Reset'
+        self.timer_ref = None
+
+        # set gate region file location
+        this_file = os.path.abspath(os.path.expanduser(__file__))
+        self.background_region_file = os.path.join(os.path.join(os.path.dirname(os.path.dirname(this_file)), 'calibration'), 'background_region.npy')
+
+        # try to load gate region data
+        try:
+            self.background_region = np.load(self.background_region_file)
+            print('Successfully loaded background_region data')
+        except:
+            print('Could not load background region data.  Please re-calibrate.')
+            self.background_region = None
+
+        # history of last few frames
+        self.raw_data = np.zeros((self.num_pixels, ))
+
+        # initialize display settings
+        self.display_type = 'raw'
+        self.display_threshold = -11
+        self.gate_clear_threshold = -20
+        self.fly_passed_threshold = -11
+        self.num_needed_pixels = 2
+
+        # manual command locking
+        self.should_release = Event()
+        self.should_open = Event()
+        self.should_close = Event()
+        self.should_calibrate_gate = Event()
+        self.gate_state = None
+
+        # frame locking
+        self.display_frame_lock = Lock()
+        self._display_frame = None
+
+        # log file management
+        self.log_lock = Lock()
+        self.log_time_ref = None
         self.raw_data_file = None
         self.open_times_file = None
-        self.close_time_file = None
+        self.close_times_file = None
 
-        self.flyReleaseLock = Lock()
+    @property
+    def display_frame(self):
+        with self.display_frame_lock:
+            return self._display_frame
 
-        if platform.system() == 'Darwin':
-            self.port = '/dev/tty.usbmodem1411'
-        else:
-            self.port = 'COM4'
+    @display_frame.setter
+    def display_frame(self, value):
+        with self.display_frame_lock:
+            self._display_frame = value
 
-        print('Trying to connect to: ' + str(self.port) + ' at ' + str(self.baud) + ' BAUD.')
+    def loop(self):
+        if self.serial_port is None:
+            return
+
+        # save the start time
+        self.log_time_ref = time()
+
+        # try to connect to the serial port
         try:
-            self.serialConnection = serial.Serial(self.port, self.baud, timeout=4)
-            print('Connected to ' + str(self.port) + ' at ' + str(self.baud) + ' BAUD.')
+            self.conn = serial.Serial(self.serial_port, self.serial_baud, timeout=self.serial_timeout)
+            print('Connected to {} at {} baud.'.format(self.serial_port, self.serial_baud))
         except:
-            print("Failed to connect with " + str(self.port) + ' at ' + str(self.baud) + ' BAUD.')
-            sys.exit(0)
- 
-    def readSerialStart(self):
-        if self.camera_thread == None:
+            print('Failed to connect with {} at {} baud.'.format(self.serial_port, self.serial_baud))
+            return
 
-            #Start camera thread
-            self.camera_thread = Thread(target=self.backgroundThreadCamera)
-            self.camera_thread.start()
+        # make sure the serial buffer is initialized properly
+        sleep(1.0)
+        self.conn.reset_input_buffer()
 
-            # Block until we start receiving values
-            while self.isReceiving != True:
-                time.sleep(0.1)
+        # main loop
+        while not self.shutdown_flag.is_set():
+            self.loop_body()
 
-    def setup_gate(self):
-        #estabilsh closed gate appearance
-        self.serialConnection.write(bytes([0])) #close gate
-        time.sleep(3) #wait to stabilize (3sec is overkill)
-        self.background_close = np.median(np.asarray(self.all_data)[-3:,:],axis=0) #save frame
+        # cleanup tasks
+        self.send_close_gate_command()
+        self.conn.close()
 
-        #estabilsh open gate appearance
-        self.serialConnection.write(bytes([1])) #open gate
-        time.sleep(3) #wait to stabilize (3sec is overkill)
-        self.background_open = np.median(np.asarray(self.all_data)[-3:,:],axis=0) #save frame
+    def loop_body(self):
+        # read next frame
+        self.read_frame()
 
-        # close the gate again
-        self.serialConnection.write(bytes([0]))  # close gate
+        # handle manual command outside of state machine
+        # this will always send the state machine back to Idle
+        if self.should_open.is_set():
+            self.send_open_gate_command()
+            self.state ='Idle'
+            print('Dispenser: going to Idle state.')
 
-        #find gate
-        self.gate_difference = self.background_open - self.background_close
-        self.gate_center = np.argmax(self.gate_difference)
-        self.gate_start = self.gate_center-self.half_gate_width
-        self.gate_end = self.gate_center+self.half_gate_width
+        if self.should_close.is_set():
+            self.send_close_gate_command()
+            self.state = 'Idle'
+            print('Dispenser: going to Idle state.')
 
-        #for fly detection later
-        self.gate_region = self.background_open[self.gate_start:self.gate_end]
+        # handle calibration
+        if self.should_calibrate_gate.is_set():
+            if self.gate_state == 'open':
+                print('Calibrating gate...')
+                self.background_region = self.raw_data
+                print('background region:', self.background_region)
+                np.save(self.background_region_file, self.background_region)
+            else:
+                print('Cannot calibrate gate.  Please issue an open_gate() command.')
 
-        print('gate start: ', self.gate_start)
-        print('gate end', self.gate_end)
+            self.state = 'Idle'
+            print('Dispenser: going to Idle state.')
 
-    def check_gate(self):
-        gate_difference = self.gate_region-self.current_frame[self.gate_start:self.gate_end]
-        gate_sum = np.sum(gate_difference)
-        self.gate_clear = gate_sum<self.gate_thresh
-
-    def check_fly_passed(self):
-        if (np.sum(np.abs(self.diff[self.gate_end:]) > self.fly_threshold)>self.num_needed_pixels):
-            self.fly_passed = True
+        # update state machine
+        if self.state == 'Reset':
+            self.send_close_gate_command()
+            self.state = 'Idle'
+            print('Dispenser: going to Idle state.')
+        elif self.state == 'Idle':
+            if self.should_release.is_set():
+                self.send_open_gate_command()
+                self.start_timer()
+                self.state = 'PreReleaseDelay'
+                print('Dispenser: going to PreReleaseDelay state.')
+        elif self.state == 'PreReleaseDelay':
+            if self.timer_done(0.5):
+                self.state = 'LookForFly'
+                print('Dispenser: going to LookForFly state.')
+        elif self.state == 'LookForFly':
+            if self.gate_clear and self.fly_passed:
+                self.send_close_gate_command()
+                self.state = 'Idle'
+                print('Dispenser: going to Idle state.')
         else:
-            self.fly_passed = False
+            raise Exception('Invalid state.')
 
-    def look_for_fly(self):
-        while(self.isRun and self.found_fly == False):
-            time.sleep(0.01)
+        # clear flags
+        self.should_open.clear()
+        self.should_close.clear()
+        self.should_calibrate_gate.clear()
+        self.should_release.clear()
 
-            self.check_gate()
-            self.check_fly_passed()
+    def read_frame(self):
+        while True:
+            start_byte = self.conn.read(1)[0]
 
-            if (self.gate_clear == True) and (self.fly_passed == True):
-                self.found_fly = True
+            if int(start_byte) == 0:
+                # read raw data into a list
+                frame = self.conn.read(self.num_pixels)
+                frame = list(frame)
 
-    def getSerialData(self, lines1):
-        self.to_display1 = np.roll(self.to_display1, 1, axis = 0)
-        self.to_display1[0] = self.current_frame
-        lines1.set_data(self.to_display1)
+                # write frame to variable for matplotlib display
+                if self.display_type == 'raw':
+                    display_frame = frame
+                elif self.display_type == 'corrected':
+                    display_frame = frame
+                    if self.background_region is not None:
+                        display_frame -= self.background_region
+                else:
+                    display_frame = frame
+                    if self.background_region is not None:
+                        display_frame -= self.background_region
+                    display_frame = display_frame > self.display_threshold
 
-    def backgroundThreadCamera(self):    # retrieve data
-        time.sleep(1.0)  # give some buffer time for retrieving data
-        self.serialConnection.reset_input_buffer()
-        while (self.isRun):
-            start_byte = self.serialConnection.read(1)
-            if int(start_byte[0]) == 0:
-                for i in range(self.num_pixels):
-                    pixel = self.serialConnection.read(1)
-                    self.rawData[i] = int(pixel[0])
-                self.current_frame = np.asarray(np.ndarray.tolist(self.rawData))
+                self.display_frame = display_frame
 
-                self.all_data.append(self.current_frame)
-                self.log_raw_data(self.current_frame)
+                # write frame to file
+                self.log(self.raw_data_file, frame)
 
-                self.diff = self.current_frame - self.previous_frame
-                self.previous_frame = self.current_frame
-                self.t1=time.time()
-            self.isReceiving = True
+                # add frame to history
+                self.raw_data = np.array(frame)
 
-    def releaseFly(self):
-
-        def target():
-            if not self.flyReleaseLock.acquire(blocking=False):
                 return
 
-            self.found_fly = False
-            self.serialConnection.write(bytes([1])) # open gate
+    @property
+    def gate_clear(self):
+        if self.background_region is None:
+            return False
 
-            open_time = time.time()-self.t0
-            self.log_open_time(open_time)
+        diff = (self.raw_data[self.gate_start:self.gate_end] -
+                self.background_region[self.gate_start:self.gate_end])
 
-            time.sleep(1)
-            self.look_for_fly() # look for fly
+        return np.all(diff > self.gate_clear_threshold)
 
-            self.serialConnection.write(bytes([0])) # close gate
+    @property
+    def fly_passed(self):
+        if self.background_region is None:
+            return False
 
-            close_time = time.time()-self.t0
-            self.log_close_time(close_time)
+        diff = (self.raw_data[self.gate_end:self.max_usable_pixel] -
+                self.background_region[self.gate_end:self.max_usable_pixel])
 
-            time.sleep(self.delay_length) #temp wait for testing
+        return np.sum(diff < self.fly_passed_threshold) > self.num_needed_pixels
 
-            self.flyReleaseLock.release()
+    def start_timer(self):
+        self.timer_ref = time()
 
-        thread = Thread(target=target)
-        thread.setDaemon(True)
-        thread.start()
+    def timer_done(self, duration):
+        return (time() - self.timer_ref) > duration
 
-    def close(self):
-        self.time1 = time.time()
-        print(np.shape(self.all_data))
-        print(self.time1-self.t0)
-        self.isRun = False
-        self.camera_thread.join()
-        self.serialConnection.write(bytes([0]))
-        self.serialConnection.close()
-        print('Disconnected...')
+    def log_time(self):
+        return time() - self.log_time_ref
 
-    def log_raw_data(self, raw_data):
-        with self.logLock:
-            if self.shouldLog and self.raw_data_file:
-                self.raw_data_file.write(format_values(raw_data))
-                self.raw_data_file.flush()
+    def send_open_gate_command(self):
+        print('Dispenser: opening gate...')
+        self.conn.write(bytes([1]))
+        self.log(self.open_times_file, [self.log_time()])
+        self.gate_state = 'open'
 
-    def log_open_time(self, open_time):
-        with self.logLock:
-            if self.shouldLog and self.open_times_file:
-                self.open_times_file.write(format_values([open_time]))
-                self.open_times_file.flush()
-                print('done logging open time')
+    def send_close_gate_command(self):
+        print('Dispenser: closing gate...')
+        self.conn.write(bytes([0]))
+        self.log(self.close_times_file, [self.log_time()])
+        self.gate_state = 'closed'
 
-    def log_close_time(self, close_time):
-        with self.logLock:
-            if self.shouldLog and self.close_times_file:
-                self.close_times_file.write(format_values([close_time]))
-                self.close_times_file.flush()
-                print('done logging close time')
+    def open_gate(self):
+        self.should_open.set()
 
-    def startLogging(self, raw_data_file_name, open_times_file_name, close_times_file_name):
-        with self.logLock:
-            self.shouldLog = True
+    def close_gate(self):
+        self.should_close.set()
 
-            if self.open_times_file:
-                self.open_times_file.close()
-            if self.close_time_file:
-                self.close_time_file.close()
-            if self.raw_data_file:
-                self.raw_data_file.close()
+    def calibrate_gate(self):
+        self.should_calibrate_gate.set()
 
-            self.open_times_file = open(open_times_file_name, 'w')
-            self.close_times_file = open(close_times_file_name, 'w')
-            self.raw_data_file = open(raw_data_file_name, 'w')
+    def release_fly(self):
+        self.should_release.set()
 
-    def stopLogging(self):
-        with self.logLock:
-            self.shouldLog = False
+    def set_display_type(self, type):
+        self.display_type = type
 
-            if self.open_times_file:
-                self.open_times_file.close()
-            if self.close_time_file:
-                self.close_time_file.close()
-            if self.raw_data_file:
-                self.raw_data_file.close()
+    def set_display_threshold(self, value):
+        self.display_threshold = value
+
+    def set_gate_clear_threshold(self, value):
+        self.gate_clear_threshold = value
+
+    def set_fly_passed_threshold(self, value):
+        self.fly_passed_threshold = value
+
+    def set_num_needed_pixels(self, value):
+        self.num_needed_pixels = value
+
+    def close_all_open_files(self):
+        for f in [self.raw_data_file, self.open_times_file, self.close_times_file]:
+            if f is not None:
+                f.close()
+
+    def log(self, f, values):
+        with self.log_lock:
+            if f is not None:
+                f.write(format_values(values))
+                f.flush()
+
+    def start_logging(self, exp_dir):
+        with self.log_lock:
+            self.close_all_open_files()
+
+            self.raw_data_file = open(os.path.join(exp_dir, 'raw_gate_data.txt'), 'w')
+            self.open_times_file = open(os.path.join(exp_dir, 'open_gate_data.txt'), 'w')
+            self.close_times_file = open(os.path.join(exp_dir, 'close_gate_data.txt'), 'w')
+
+    def stop_logging(self):
+        with self.log_lock:
+            self.close_all_open_files()
+
+            self.raw_data_file = None
+            self.open_times_file = None
+            self.close_times_file = None
 
 def main():
-    if len(sys.argv) > 1:
-        plot = sys.argv[1]
-    else:
-        plot = 'True'
+    # start the server
+    kwargs = get_kwargs()
+    if kwargs['port'] is None:
+        kwargs['port'] = 39855
+    server = MySocketServer(host=kwargs['host'], port=kwargs['port'], name='DispenseServer', threaded=True)
 
-    s = FlyDispenser()   # create serial object
-    s.readSerialStart()   # starts background threads
-    s.setup_gate()
+    # create fly dispenser object
+    dispenser = FlyDispenser(serial_port=kwargs['serial_port'], serial_baud=kwargs['serial_baud'],
+                             serial_timeout=kwargs['serial_timeout'], shutdown_flag = server.shutdown_flag)
 
-    server = MySocketServer(port=50432)
-    server.register_function(s.releaseFly)
-    server.register_function(s.startLogging)
-    server.register_function(s.stopLogging)
+    # start the dispener loop
+    t = Thread(target=dispenser.loop)
+    t.start()
 
-    pltInterval = 10 # Period at which the plot animation updates [ms]
-    plt.figure()
-    ax = plt.gca()
-    line1 = ax.matshow(np.random.rand(128,128)*255)
+    # register methods
+    server.register_function(dispenser.start_logging)
+    server.register_function(dispenser.stop_logging)
+    server.register_function(dispenser.release_fly)
+    server.register_function(dispenser.open_gate)
+    server.register_function(dispenser.close_gate)
+    server.register_function(dispenser.calibrate_gate)
+    server.register_function(dispenser.set_display_threshold)
+    server.register_function(dispenser.set_fly_passed_threshold)
+    server.register_function(dispenser.set_gate_clear_threshold)
+    server.register_function(dispenser.set_num_needed_pixels)
+    server.register_function(dispenser.set_display_type)
 
-    while server.should_run:
-        s.getSerialData(line1)
-        plt.draw()
-        plt.pause(pltInterval * 1e-3)
+    # run the main event loop using matplotlib
+
+    should_plot = kwargs.get('should_plot', True)
+    plot_interval = kwargs.get('plot_interval', 0.01)
+
+    if should_plot:
+        plot_data = np.zeros((dispenser.num_pixels, dispenser.num_pixels))
+        lines = plt.matshow(plot_data, vmin=0, vmax=255)
+
+    # run the main event loop using matplotlib
+    while not server.shutdown_flag.is_set():
+        if should_plot:
+            display_frame = dispenser.display_frame
+            if display_frame is not None:
+                plot_data = np.vstack(([display_frame], plot_data[0:-1, :]))
+                lines.set_data(plot_data)
 
         server.process_queue()
 
-    sys.exit(0)
+        # pause function is required to actually update the display and provide GUI functionality
+        plt.pause(plot_interval)
 
-    #####To do: flyvr triggers close sequence
-    #time.sleep(60) #delay for testing - remove when flyvr has control
-    #s.close()
+    # wait for dispenser thread to finish
+    t.join()
+
 
 if __name__ == '__main__':
     main()
