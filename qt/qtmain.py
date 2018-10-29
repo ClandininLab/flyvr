@@ -4,6 +4,7 @@ from PyQt5 import uic
 from functools import partial
 
 import flyvr.gate_control
+from flyvr.opto import OptoService
 from flyrpc.launch import launch_server
 
 def main():
@@ -19,9 +20,15 @@ def main():
     ui.thresh_slider.valueChanged.connect(partial(valuechg, ui))
     ui.thresh_slider.setValue(99)
 
-    client = launch_server(flyvr.gate_control)
-    releaseFly = client.releaseFly
-    ui.start_trial_button.clicked.connect(lambda x: releaseFly())
+    dispenser = launch_server(flyvr.gate_control)
+    ui.start_trial_button.clicked.connect(lambda x: dispenser.release_fly())
+    ui.open_gate_button.clicked.connect(lambda x: dispenser.open_gate())
+    ui.close_gate_button.clicked.connect(lambda x: dispenser.close_gate())
+
+    opto = OptoService()
+    ui.opto_on_button.clicked.connect(lambda x: opto.on())
+    ui.opto_off_button.clicked.connect(lambda x: opto.off())
+    ui.opto_pulse_button.clicked.connect(lambda x: opto.pulse())
 
     sys.exit(app.exec_())
 

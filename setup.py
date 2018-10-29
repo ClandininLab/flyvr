@@ -4,7 +4,13 @@ setup(
     name="flyvr",
     version="0.0.1",
     long_description=__doc__,
-    packages=find_packages(),
+    packages=['flyvr'],
     include_package_data=True,
-    zip_safe=False,
+    install_requires=[
+        'opencv-python',
+        'pynput',
+        'pyserial',
+        'scikit-image'
+    ],
+    zip_safe=False
 )

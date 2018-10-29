@@ -4,3 +4,4 @@ __pycache__
 examples/display.txt
 .DS_Store
 qt/main.ui
+gate_region.npy

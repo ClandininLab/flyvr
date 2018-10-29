@@ -1,13 +1,15 @@
-import serial
+import serial, platform
 
 from math import pi
-from time import sleep, perf_counter
+from time import sleep, time
 from threading import Lock
+import serial.tools.list_ports
 
 from flyvr.service import Service
+from flyvr.util import serial_number_to_comport
 
 class CncThread(Service):
-    def __init__(self, maxTime=10e-3):
+    def __init__(self, maxTime=12e-3):
         # Serial I/O interface to CNC
         self.cnc = CNC()
 
@@ -42,7 +44,7 @@ class CncThread(Service):
         # log status
         logState, logFile = self.getLogState()
         if logState:
-            logStr = (str(perf_counter()) + ',' +
+            logStr = (str(time()) + ',' +
                       str(status.posX) + ',' +
                       str(status.posY) + '\n')
             logFile.write(logStr)
@@ -142,11 +144,18 @@ class CncStatus:
 
 class CNC:
     def __init__(self,
-                 com='COM5', 
+                 com=None, 
                  baud=115200,
                  maxSpeed=0.75, # m/s
                  bytesPerVel=3
                  ):
+        # set defaults
+        if com is None:
+            if platform.system() == 'Linux':
+                com = serial_number_to_comport('75330303035351E081A1')
+            else:
+                com = 'COM5'
+
         # store settings
         self.maxSpeed = maxSpeed
         self.bytesPerVel = bytesPerVel
