@@ -2,22 +2,52 @@
 
 # Example client program that walks through all available stimuli.
 
-from flyrpc.launch import launch_server
 import json
-import flystim.stim_server
+from flystim.stim_server import launch_stim_server
 from time import time
 
 from random import choice
+from math import pi
+
+from flystim.screen import Screen
+
 import os, os.path
 
 def pretty_json(d):
     return json.dumps(d, indent=2, sort_keys=True)
 
+def get_bigrig_screen(dir):
+    w = 43 * 2.54e-2
+    h = 24 * 2.54e-2
+
+    if dir.lower() in ['w', 'west']:
+        id = 1
+        rotation = pi/2
+        offset = (-w/2, 0, h/2)
+    elif dir.lower() in ['n', 'north']:
+        id = 2
+        rotation = 0
+        offset = (0, w/2, h/2)
+    elif dir.lower() in ['s', 'south']:
+        id = 3
+        rotation = pi
+        offset = (0, -w/2, h/2)
+    elif dir.lower() in ['e', 'east']:
+        id = 4
+        rotation = -pi/2
+        offset = (w/2, 0, h/2)
+    else:
+        raise ValueError('Invalid direction.')
+
+    return Screen(id=id, server_number=1, rotation=rotation, width=w, height=h, offset=offset,
+                  name='BigRig {} Screen'.format(dir.title()))
+
 class MrDisplay:
     def __init__(self, mode='random_direction', pause_duration=2.0, stim_duration=2.0, use_stimuli=False):
         try:
             assert use_stimuli
-            self.manager = launch_server(flystim.stim_server, setup_name='bigrig')
+            screens = [get_bigrig_screen(dir) for dir in ['n', 'e', 's', 'w']]
+            self.manager = launch_stim_server(screens)
             self.manager.hide_corner_square()
         except:
             print('Not using visual stimulus.')
