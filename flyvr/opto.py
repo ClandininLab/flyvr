@@ -7,27 +7,67 @@ from threading import Lock, Thread
 import serial.tools.list_ports
 
 from flyvr.service import Service
+from flyvr.tracker import TrackThread
+from flyvr.cnc import CncThread
+from flyvr.camera import CamThread
+
 from flyvr.util import serial_number_to_comport
 
-class OptoService:
+class OptoThread(Service):
     ON_COMMAND = 0xbe
     OFF_COMMAND = 0xef
 
-    def __init__(self, com=None):
-        # set defaults
-        if com is None:
-            if platform.system() == 'Linux':
-                com = serial_number_to_comport('7563830303735130C030')
-            else:
-                raise Exception('Opto not supported on this platform.')
+    def __init__(self, cncThread, camThread, TrackThread, use_opto=False):
+        # Serial interface to opto arduino
+        self.opto = OPTO
+        
+        # Setup locks
+        self.pulseLock = Lock()
+        self.logLock = Lock()
+        self.logFile = None
+        self.logState = False
 
-        self.pulse_lock = Lock()
-        self.log_lock = Lock()
-        self.log_file = None
+        # Store thread handles
+        self.camThread = camThread
+        self.cncThread = cncThread
+        self.TrackThread = TrackThread
 
-        # set up serial connection
-        self.ser = serial.Serial(port=com, baudrate=9600)
-        sleep(2)
+        # Set the starting time
+        self.trial_start_time = None
+
+        # call constructor from parent        
+        super().__init__(maxTime=maxTime)
+
+    # overriding method from parent...
+    def loopBody(self):
+        # get latest camera position
+        flyData = self.camThread.flyData          
+        if flyData is not None:
+            camX = flyData.flyX
+            camY = flyData.flyY
+            flyPresent = flyData.flyPresent
+        else:
+            camX = 0
+            camY = 0
+            flyPresent = False
+
+        # get latest cnc position
+        if self.cncThread.status is not None:
+            cncX = self.cncThread.status.posX
+            cncY = self.cncThread.status.posY
+        else:
+            cncX = 0
+            cncY = 0
+
+        # find fly position
+        flyX = camX + cncX
+        flyY = camY + cncY
+
+        # temporary opto logic
+        if flyX > self.TrackThread.center_pos_x:
+            on()
+        else:
+            off()
 
     def on(self):
         self.log('on')
@@ -50,20 +90,40 @@ class OptoService:
         Thread(target=target).start()
 
     def log(self, led_status):
-        with self.log_lock:
-            if self.log_file is not None:
-                self.log_file.write('{}, {}\n'.format(time(), led_status))
-                self.log_file.flush()
+        with self.logLock:
+            if self.logFile is not None:
+                self.logFile.write('{}, {}\n'.format(time(), led_status))
+                self.logFile.flush()
 
-    def start_logging(self, exp_dir):
+    def start_logging(self, logFile):
+        self.trial_start_time = time()
         with self.log_lock:
-            if self.log_file is not None:
-                self.log_file.close()
-            self.log_file = open(os.path.join(exp_dir, 'opto_log.txt'), 'w')
-            self.log_file.write('time, LED Status\n')
+
+            self.logState = True
+
+            if self.logFile is not None:
+                self.logFile.close()
+
+            self.logFile = open(logFile, 'w')
+            self.logFile.write('time, LED Status\n')
 
     def stop_logging(self):
-        with self.log_lock:
-            if self.log_file is not None:
-                self.log_file.close()
-            self.log_file = None
+        with self.logLock:
+
+            self.logState = False
+
+            if self.logFile is not None:
+                self.logFile.close()
+
+class OPTO:
+    def __init__(self):
+        com = None
+        if com is None:
+            if platform.system() == 'Linux':
+                com = serial_number_to_comport('7563830303735130C030')
+            else:
+                raise Exception('Opto not supported on this platform.')
+
+        # set up serial connection
+        self.ser = serial.Serial(port=com, baudrate=9600)
+        sleep(2)
