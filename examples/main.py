@@ -12,6 +12,7 @@ from flyvr.tracker import TrackThread, ManualVelocity
 from flyvr.service import Service
 from flyvr.mrstim import MrDisplay
 import flyvr.gate_control
+from flyvr.opto import OptoThread
 
 from flyrpc.launch import launch_server
 
@@ -30,8 +31,8 @@ def nothing(x):
     pass
 
 class TrialThread(Service):
-    def __init__(self, exp_dir, cam, dispenser, mrstim, loopTime=10e-3, fly_lost_timeout=1, fly_detected_timeout=1,
-                 auto_change_rate=None):
+    def __init__(self, exp_dir, cam, dispenser, mrstim,
+                 loopTime=10e-3, fly_lost_timeout=1, fly_detected_timeout=1, auto_change_rate=None):
         self.trial_count = itertools.count(1)
         self.state = 'startup'
         self.prev_state = 'startup'
@@ -39,6 +40,7 @@ class TrialThread(Service):
         self.cam = cam
         self.dispenser = dispenser
         self.mrstim = mrstim
+        self.opto = None
         self.cnc = None
         self.tracker = None
         self.timer_start = None
@@ -97,6 +99,7 @@ class TrialThread(Service):
         self.cnc.startLogging(os.path.join(_trial_dir, 'cnc.txt'))
         self.cam.startLogging(os.path.join(_trial_dir, 'cam.txt'),
                               os.path.join(_trial_dir, 'cam_compr.mkv'))
+        self.opto.startLogging(os.path.join(_trial_dir, 'opto.txt'))
 
         self._trial_dir = _trial_dir
         self.mrstim.nextStim(self._trial_dir)
@@ -126,6 +129,10 @@ class TrialThread(Service):
             self.tracker = TrackThread(cncThread=self.cnc, camThread=self.cam)
             self.tracker.start()
             self.tracker.move_to_center()
+
+            #Start opto thread
+            self.opto = OptoThread(cncThread=self.cnc, camThread=self.cam)
+            self.opto.start()
 
             # go to the manual control state
             self.resetManual()
@@ -268,7 +275,7 @@ def main():
     # ref: https://stackoverflow.com/questions/37863476/why-use-both-os-path-abspath-and-os-path-realpath/40311142
     dispenser = launch_server(flyvr.gate_control)
 
-    #Create Stimulus object
+    #Create Stimulus Service
     mrstim = MrDisplay()
     print('mrstim: ', mrstim)
 
