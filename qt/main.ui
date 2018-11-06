@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>737</width>
-    <height>676</height>
+    <width>730</width>
+    <height>711</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -394,14 +394,14 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>50</y>
+     <y>40</y>
      <width>341</width>
-     <height>143</height>
+     <height>195</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_5">
-    <item row="3" column="2">
-     <widget class="QPushButton" name="camera_stop_button">
+    <item row="5" column="2">
+     <widget class="QPushButton" name="opto_stop_button">
       <property name="enabled">
        <bool>false</bool>
       </property>
@@ -410,14 +410,7 @@
       </property>
      </widget>
     </item>
-    <item row="5" column="1">
-     <widget class="QPushButton" name="dispenser_start_button">
-      <property name="text">
-       <string>Start</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="2">
+    <item row="3" column="2">
      <widget class="QPushButton" name="stim_stop_button">
       <property name="enabled">
        <bool>false</bool>
@@ -427,14 +420,21 @@
       </property>
      </widget>
     </item>
-    <item row="4" column="1">
-     <widget class="QPushButton" name="stim_start_button">
+    <item row="5" column="1">
+     <widget class="QPushButton" name="opto_start_button">
       <property name="text">
        <string>Start</string>
       </property>
      </widget>
     </item>
-    <item row="5" column="2">
+    <item row="1" column="0">
+     <widget class="QLabel" name="label_29">
+      <property name="text">
+       <string>CNC</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="2">
      <widget class="QPushButton" name="dispenser_stop_button">
       <property name="enabled">
        <bool>false</bool>
@@ -444,14 +444,14 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
-     <widget class="QPushButton" name="camera_start_button">
+    <item row="4" column="0">
+     <widget class="QLabel" name="label_34">
       <property name="text">
-       <string>Start</string>
+       <string>Dispenser</string>
       </property>
      </widget>
     </item>
-    <item row="1" column="0" colspan="3">
+    <item row="0" column="0" colspan="3">
      <widget class="QLabel" name="label_42">
       <property name="text">
        <string>&lt;b&gt;Services&lt;/b&gt;</string>
@@ -461,14 +461,14 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="1">
-     <widget class="QPushButton" name="cnc_start_button">
+    <item row="5" column="0">
+     <widget class="QLabel" name="label_45">
       <property name="text">
-       <string>Start</string>
+       <string>Opto</string>
       </property>
      </widget>
     </item>
-    <item row="2" column="2">
+    <item row="1" column="2">
      <widget class="QPushButton" name="cnc_stop_button">
       <property name="enabled">
        <bool>false</bool>
@@ -478,28 +478,52 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="0">
+    <item row="2" column="2">
+     <widget class="QPushButton" name="camera_stop_button">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="text">
+       <string>Stop</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="1">
+     <widget class="QPushButton" name="cnc_start_button">
+      <property name="text">
+       <string>Start</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="1">
+     <widget class="QPushButton" name="camera_start_button">
+      <property name="text">
+       <string>Start</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="1">
+     <widget class="QPushButton" name="dispenser_start_button">
+      <property name="text">
+       <string>Start</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QPushButton" name="stim_start_button">
+      <property name="text">
+       <string>Start</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="0">
      <widget class="QLabel" name="label_30">
       <property name="text">
        <string>Camera</string>
       </property>
      </widget>
     </item>
-    <item row="5" column="0">
-     <widget class="QLabel" name="label_34">
-      <property name="text">
-       <string>Dispenser</string>
-      </property>
-     </widget>
-    </item>
-    <item row="2" column="0">
-     <widget class="QLabel" name="label_29">
-      <property name="text">
-       <string>CNC</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="0">
+    <item row="3" column="0">
      <widget class="QLabel" name="label_33">
       <property name="text">
        <string>Stimulus</string>
@@ -512,9 +536,9 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>220</y>
+     <y>250</y>
      <width>341</width>
-     <height>81</height>
+     <height>93</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_6">
@@ -548,7 +572,7 @@
    <property name="geometry">
     <rect>
      <x>510</x>
-     <y>310</y>
+     <y>340</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -561,7 +585,7 @@
    <property name="geometry">
     <rect>
      <x>510</x>
-     <y>350</y>
+     <y>380</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -574,7 +598,7 @@
    <property name="geometry">
     <rect>
      <x>430</x>
-     <y>330</y>
+     <y>360</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -587,7 +611,7 @@
    <property name="geometry">
     <rect>
      <x>590</x>
-     <y>330</y>
+     <y>360</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -600,26 +624,26 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>390</y>
+     <y>420</y>
      <width>341</width>
      <height>102</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_7">
     <item row="3" column="0">
-     <widget class="QPushButton" name="stop_trial_button">
+     <widget class="QPushButton" name="stop_experiment_button">
       <property name="enabled">
        <bool>false</bool>
       </property>
       <property name="text">
-       <string>Stop Trial</string>
+       <string>Stop Experiment</string>
       </property>
      </widget>
     </item>
     <item row="2" column="0">
-     <widget class="QPushButton" name="start_trial_button">
+     <widget class="QPushButton" name="start_experiment_button">
       <property name="text">
-       <string>Start Trial</string>
+       <string>Start Experiment</string>
       </property>
      </widget>
     </item>
@@ -678,7 +702,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>370</y>
+     <y>400</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -691,9 +715,9 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>200</y>
+     <y>230</y>
      <width>341</width>
-     <height>16</height>
+     <height>31</height>
     </rect>
    </property>
    <property name="orientation">
@@ -719,7 +743,7 @@
      <x>10</x>
      <y>610</y>
      <width>331</width>
-     <height>51</height>
+     <height>55</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_8">
@@ -783,7 +807,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>500</y>
+     <y>530</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -796,7 +820,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>520</y>
+     <y>550</y>
      <width>341</width>
      <height>61</height>
     </rect>
@@ -842,7 +866,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>610</y>
+     <y>640</y>
      <width>341</width>
      <height>61</height>
     </rect>
@@ -878,7 +902,7 @@
    <property name="geometry">
     <rect>
      <x>380</x>
-     <y>590</y>
+     <y>620</y>
      <width>341</width>
      <height>16</height>
     </rect>

@@ -97,8 +97,7 @@ class TrialThread(Service):
         os.makedirs(_trial_dir)
 
         self.cnc.startLogging(os.path.join(_trial_dir, 'cnc.txt'))
-        self.cam.startLogging(os.path.join(_trial_dir, 'cam.txt'),
-                              os.path.join(_trial_dir, 'cam_compr.mkv'))
+        self.cam.startLogging(os.path.join(_trial_dir, 'cam.txt'),os.path.join(_trial_dir, 'cam_compr.mkv'))
         self.opto.startLogging(os.path.join(_trial_dir, 'opto.txt'))
 
         self._trial_dir = _trial_dir

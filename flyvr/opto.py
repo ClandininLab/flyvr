@@ -78,7 +78,6 @@ class OptoThread(Service):
         else:
             self.off()
 
-
     def on(self):
         self.log('on')
         self.write(self.ON_COMMAND)
