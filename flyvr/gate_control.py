@@ -50,7 +50,7 @@ class FlyDispenser:
 
         # save parameters
         self.num_pixels = 128
-        self.gate_start = 34
+        self.gate_start = 25
         self.gate_end = 45
         self.max_usable_pixel = 90
 
@@ -76,10 +76,13 @@ class FlyDispenser:
         # history of last few frames
         self.raw_data = np.zeros((self.num_pixels, ))
 
+        # last frame
+        self.prev_frame = None
+
         # initialize display settings
         self.display_type = 'raw'
         self.display_threshold = -11
-        self.gate_clear_threshold = -20
+        self.gate_clear_threshold = -8
         self.fly_passed_threshold = -11
         self.num_needed_pixels = 2
 
@@ -212,6 +215,10 @@ class FlyDispenser:
                     display_frame = frame
                     if self.background_region is not None:
                         display_frame -= self.background_region
+                elif self.display_type == 'diff':
+                    display_frame = frame
+                    if self.prev_frame is not None:
+                        display_frame = np.abs(self.prev_frame - frame)
                 else:
                     display_frame = frame
                     if self.background_region is not None:
@@ -222,6 +229,9 @@ class FlyDispenser:
 
                 # write frame to file
                 self.log(self.raw_data_file, frame)
+
+                # save previous frame for difference calculation if desired
+                self.prev_frame = self.raw_data
 
                 # add frame to history
                 self.raw_data = np.array(frame)
@@ -243,8 +253,11 @@ class FlyDispenser:
         if self.background_region is None:
             return False
 
-        diff = (self.raw_data[self.gate_end:self.max_usable_pixel] -
-                self.background_region[self.gate_end:self.max_usable_pixel])
+        #diff = (self.raw_data[self.gate_end:self.max_usable_pixel] -
+        #        self.background_region[self.gate_end:self.max_usable_pixel])
+
+        diff = -np.abs(self.raw_data[self.gate_end:self.max_usable_pixel] -
+                       self.prev_frame[self.gate_end:self.max_usable_pixel])
 
         return np.sum(diff < self.fly_passed_threshold) > self.num_needed_pixels
 

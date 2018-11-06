@@ -43,7 +43,7 @@ def get_bigrig_screen(dir):
                   name='BigRig {} Screen'.format(dir.title()))
 
 class MrDisplay:
-    def __init__(self, mode='random_direction', pause_duration=2.0, stim_duration=2.0, use_stimuli=False):
+    def __init__(self, mode='random_stim', pause_duration=2.0, stim_duration=2.0, use_stimuli=False):
         try:
             assert use_stimuli
             screens = [get_bigrig_screen(dir) for dir in ['n', 'e', 's', 'w']]

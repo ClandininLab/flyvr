@@ -18,8 +18,8 @@ class TrackThread(Service):
                  v_max_ctrl = 0.04, # m/s
                  k_pctrl = 2*pi,
 
-                 center_pos_x = 0.348625,
-                 center_pos_y = 0.332775
+                 center_pos_x = 0.3534,
+                 center_pos_y = 0.3402
                  ):
 
         # Store thread handles

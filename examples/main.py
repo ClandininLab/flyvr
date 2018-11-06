@@ -30,7 +30,7 @@ def nothing(x):
     pass
 
 class TrialThread(Service):
-    def __init__(self, exp_dir, cam, dispenser, mrstim, loopTime=10e-3, fly_lost_timeout=1, fly_detected_timeout=1,
+    def __init__(self, exp_dir, cam, dispenser, mrstim, loopTime=10e-3, fly_lost_timeout=3, fly_detected_timeout=3,
                  auto_change_rate=None):
         self.trial_count = itertools.count(1)
         self.state = 'startup'
@@ -269,7 +269,7 @@ def main():
     dispenser = launch_server(flyvr.gate_control)
 
     #Create Stimulus object
-    mrstim = MrDisplay()
+    mrstim = MrDisplay(use_stimuli=True)
     print('mrstim: ', mrstim)
 
     # Run trial manager
