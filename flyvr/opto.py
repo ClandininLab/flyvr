@@ -17,9 +17,18 @@ class OptoThread(Service):
     ON_COMMAND = 0xbe
     OFF_COMMAND = 0xef
 
-    def __init__(self, cncThread, camThread, TrackThread, use_opto=False):
+    def __init__(self, cncThread=None, camThread=None, TrackThread=None, use_opto=False):
         # Serial interface to opto arduino
-        self.opto = OPTO
+        com = None
+        if com is None:
+            if platform.system() == 'Linux':
+                com = serial_number_to_comport('557323235303519180B1')
+            else:
+                raise Exception('Opto not supported on this platform.')
+
+        # set up serial connection
+        self.ser = serial.Serial(port=com, baudrate=9600)
+        sleep(2)
         
         # Setup locks
         self.pulseLock = Lock()
@@ -36,7 +45,7 @@ class OptoThread(Service):
         self.trial_start_time = None
 
         # call constructor from parent        
-        super().__init__(maxTime=maxTime)
+        super().__init__()
 
     # overriding method from parent...
     def loopBody(self):
@@ -65,9 +74,10 @@ class OptoThread(Service):
 
         # temporary opto logic
         if flyX > self.TrackThread.center_pos_x:
-            on()
+            self.on()
         else:
-            off()
+            self.off()
+
 
     def on(self):
         self.log('on')
@@ -95,9 +105,9 @@ class OptoThread(Service):
                 self.logFile.write('{}, {}\n'.format(time(), led_status))
                 self.logFile.flush()
 
-    def start_logging(self, logFile):
+    def startLogging(self, logFile):
         self.trial_start_time = time()
-        with self.log_lock:
+        with self.logLock:
 
             self.logState = True
 
@@ -107,23 +117,10 @@ class OptoThread(Service):
             self.logFile = open(logFile, 'w')
             self.logFile.write('time, LED Status\n')
 
-    def stop_logging(self):
+    def stopLogging(self):
         with self.logLock:
 
             self.logState = False
 
             if self.logFile is not None:
                 self.logFile.close()
-
-class OPTO:
-    def __init__(self):
-        com = None
-        if com is None:
-            if platform.system() == 'Linux':
-                com = serial_number_to_comport('7563830303735130C030')
-            else:
-                raise Exception('Opto not supported on this platform.')
-
-        # set up serial connection
-        self.ser = serial.Serial(port=com, baudrate=9600)
-        sleep(2)

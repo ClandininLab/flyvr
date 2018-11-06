@@ -120,7 +120,7 @@ class TrialThread(Service):
             print('** startup **')
 
             # Open connection to CNC rig
-            cnc_home()
+            #cnc_home()
             self.cnc = CncThread()
             self.cnc.start()
             sleep(0.1)
@@ -128,10 +128,10 @@ class TrialThread(Service):
             # Start tracker thread
             self.tracker = TrackThread(cncThread=self.cnc, camThread=self.cam)
             self.tracker.start()
-            self.tracker.move_to_center()
+            #self.tracker.move_to_center()
 
             #Start opto thread
-            self.opto = OptoThread(cncThread=self.cnc, camThread=self.cam)
+            self.opto = OptoThread(cncThread=self.cnc, camThread=self.cam, TrackThread=self.tracker)
             self.opto.start()
 
             # go to the manual control state
