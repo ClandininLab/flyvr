@@ -58,6 +58,9 @@ class TrackThread(Service):
 
         # Set the starting time
         self.lastTime = time()
+
+        # Set manual jog velocity
+        self.manual_jog_vel = 0.02
                  
         # call constructor from parent        
         super().__init__(minTime=loopTime, maxTime=loopTime, iter_warn=False)
@@ -69,7 +72,10 @@ class TrackThread(Service):
         dt = thisTime - self.lastTime
 
         # get latest camera data
-        flyData = self.camThread.flyData
+        if self.camThread is not None:
+            flyData = self.camThread.flyData
+        else:
+            flyData = None
 
         # store fly position information            
         if flyData is not None:
@@ -123,6 +129,19 @@ class TrackThread(Service):
         self.lastTime = thisTime
         self.prevVelX = velX
         self.prevVelY = velY
+
+    # For gui control
+    def manual_move_up(self):
+        self.manualVelocity = ManualVelocity(velX=0, velY= +self.manual_jog_vel)
+    def manual_move_down(self):
+        self.manualVelocity = ManualVelocity(velX=0, velY= -self.manual_jog_vel)
+    def manual_move_right(self):
+        self.manualVelocity = ManualVelocity(velX= +self.manual_jog_vel, velY=0)
+    def manual_move_left(self):
+        self.manualVelocity = ManualVelocity(velX= -self.manual_jog_vel, velY=0)
+
+    def manual_stop(self):
+        self.manualVelocity = None
 
     # control update based on fly position
     # PI controller approximated by bilinear transform of

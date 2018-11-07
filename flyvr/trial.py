@@ -11,19 +11,21 @@ from threading import Lock
 from flyvr.tracker import TrackThread, ManualVelocity
 
 class TrialThread(Service):
-    def __init__(self, exp_dir, cam, dispenser, mrstim, opto, cnc, ui,
+    def __init__(self, exp_dir, cam, dispenser, mrstim, opto, cnc, tracker, ui,
                  loopTime=10e-3, fly_lost_timeout=2, fly_detected_timeout=2, auto_change_rate=None):
+
         self.trial_count = itertools.count(1)
         self.state = 'startup'
         self.prev_state = 'startup'
 
         self.cam = cam
+        self.cnc = cnc
         self.dispenser = dispenser
         self.mrstim = mrstim
         self.opto = opto
-        self.cnc = cnc
         self.ui = ui
-        self.tracker = None
+        self.tracker = tracker
+
         self.timer_start = None
 
         self.exp_dir = exp_dir
@@ -59,19 +61,6 @@ class TrialThread(Service):
 
         # call constructor from parent
         super().__init__(minTime=loopTime, maxTime=loopTime, iter_warn=False)
-
-    @property
-    def manualCmd(self):
-        with self.manualLock:
-            return self._manualCmd
-
-    def resetManual(self):
-        with self.manualLock:
-            self._manualCmd = None
-
-    def manual(self, *args):
-        with self.manualLock:
-            self._manualCmd = args
 
     def stop(self):
         super().stop()
@@ -111,14 +100,6 @@ class TrialThread(Service):
 
         if self.state == 'startup':
             print('** startup **')
-
-            # Open connection to CNC rig
-            #cnc_home()
-            # Start tracker thread
-            self.tracker = TrackThread(cncThread=self.cnc, camThread=self.cam)
-            self.tracker.start()
-            #self.tracker.move_to_center()
-
             # go to the manual control state
             self.resetManual()
             self.state = 'manual'

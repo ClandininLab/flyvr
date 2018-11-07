@@ -11,7 +11,6 @@ import os
 from tqdm import tqdm
 import scipy
 from scipy.interpolate import interp1d
-%matplotlib inline
 
 #####################
 ###  Import Data  ###
