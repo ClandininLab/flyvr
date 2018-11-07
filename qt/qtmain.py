@@ -1,13 +1,23 @@
 import sys
+import cv2
+from time import strftime, time, sleep
+
 from PyQt5.QtWidgets import QApplication
 from PyQt5 import QtWidgets
 from PyQt5 import uic
 from PyQt5 import QtGui
 from functools import partial
 
+from flyrpc.launch import launch_server
+from flyvr.service import Service
+
+from flyvr.cnc import CncThread, cnc_home
+from flyvr.camera import CamThread
+from flyvr.tracker import TrackThread, ManualVelocity
 import flyvr.gate_control
 from flyvr.opto import OptoThread
-from flyrpc.launch import launch_server
+from flyvr.mrstim import MrDisplay
+from flyvr.trial import TrialThread
 
 class MainGui():
     def __init__(self, dialog):
@@ -23,14 +33,22 @@ class MainGui():
         self.tracker = None
         self.stim = None
 
+        self.frameData = None
+
         self.ui.thresh_slider.valueChanged.connect(partial(self.valuechg, self.ui))
         self.ui.thresh_slider.setValue(99)
 
         # Setup cnc buttons
         self.ui.cnc_start_button.clicked.connect(lambda x: self.cncStart())
+        self.ui.cnc_stop_button.clicked.connect(lambda x: self.cncStop())
 
         # Setup cam buttons
         self.ui.camera_start_button.clicked.connect(lambda x: self.camStart())
+        self.ui.camera_stop_button.clicked.connect(lambda x: self.camStop())
+
+        # Setup tracker buttons
+        self.ui.tracker_start_button.clicked.connect(lambda x: self.trackerStart())
+        self.ui.tracker_stop_button.clicked.connect(lambda x: self.trackerStop())
 
         # Setup visual stimulus buttons
         self.ui.stim_start_button.clicked.connect(lambda x: self.stimStart())
@@ -67,12 +85,43 @@ class MainGui():
         pass
 
     def cncStart(self):
+        cnc_home()
         self.cnc = CncThread()
         self.cnc.start()
+        sleep(0.1)
+        self.ui.cnc_start_button.setEnabled(False)
+        self.ui.cnc_start_button.setEnabled(True)
+
+    def cncStop(self):
+        self.cnc.stop()
+        self.ui.cnc_start_button.setEnabled(True)
+        self.ui.cnc_start_button.setEnabled(False)
 
     def camStart(self):
+        cv2.namedWindow('image')
         self.cam = CamThread()
         self.cam.start()
+        self.ui.camera_start_button.setEnabled(False)
+        self.ui.camera_stop_button.setEnabled(True)
+
+    def camStop(self):
+        self.cam.cam.camera.StopGrabbing()
+        self.cam.stop()
+        cv2.destroyAllWindows()
+        self.ui.camera_start_button.setEnabled(True)
+        self.ui.camera_stop_button.setEnabled(False)
+
+    def trackerStart(self):
+        self.tracker = TrackThread(cncThread=self.cnc, camThread=self.cam)
+        self.tracker.start()
+        self.tracker.move_to_center()
+        self.ui.tracker_start_button.setEnabled(False)
+        self.ui.tracker_stop_button.setEnabled(True)
+
+    def trackerStop(self):
+        self.tracker.stop()
+        self.ui.tracker_start_button.setEnabled(True)
+        self.ui.tracker_stop_button.setEnabled(False)
 
     def stimStart(self):
         self.stim = MrDisplay()
@@ -104,24 +153,24 @@ class MainGui():
                                        mrstim=self.mrstim, opto=self.opto, stim=self.stim, ui=self.ui)
         self.trialThread.start()
 
-    def shutdown(self):
-        print('shutting down')
-        #self.opto.stop()
-
     def shutdown(self, app):
         app.exec_()
         if self.opto is not None:
             self.opto.off()
             self.opto.stop()
-        print('la')
-
+        if self.cam is not None:
+            self.cam.stop()
+            cv2.destroyAllWindows()
+        if self.cnc is not None:
+            self.cnc.stop()
+        if self.tracker is not None:
+            self.tracker.stop()
+        print('Shutdown Called')
 
 def main():
     app = QApplication(sys.argv)
     dialog = QtWidgets.QMainWindow()
     prog = MainGui(dialog)
-    #dialog.show()
-    #sys.exit(prog.shutdown())
     #sys.exit(app.exec_())
     sys.exit(prog.shutdown(app))
 

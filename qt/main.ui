@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>730</width>
+    <width>1114</width>
     <height>711</height>
    </rect>
   </property>
@@ -16,8 +16,8 @@
   <widget class="QWidget" name="gridLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>50</y>
+     <x>740</x>
+     <y>430</y>
      <width>341</width>
      <height>153</height>
     </rect>
@@ -269,8 +269,8 @@
   <widget class="QWidget" name="gridLayoutWidget_3">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>230</y>
+     <x>740</x>
+     <y>610</y>
      <width>341</width>
      <height>79</height>
     </rect>
@@ -393,14 +393,14 @@
   <widget class="QWidget" name="gridLayoutWidget_5">
    <property name="geometry">
     <rect>
-     <x>380</x>
+     <x>10</x>
      <y>40</y>
-     <width>341</width>
-     <height>195</height>
+     <width>242</width>
+     <height>205</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_5">
-    <item row="5" column="2">
+    <item row="6" column="2">
      <widget class="QPushButton" name="opto_stop_button">
       <property name="enabled">
        <bool>false</bool>
@@ -410,7 +410,7 @@
       </property>
      </widget>
     </item>
-    <item row="3" column="2">
+    <item row="4" column="2">
      <widget class="QPushButton" name="stim_stop_button">
       <property name="enabled">
        <bool>false</bool>
@@ -420,7 +420,7 @@
       </property>
      </widget>
     </item>
-    <item row="5" column="1">
+    <item row="6" column="1">
      <widget class="QPushButton" name="opto_start_button">
       <property name="text">
        <string>Start</string>
@@ -434,7 +434,7 @@
       </property>
      </widget>
     </item>
-    <item row="4" column="2">
+    <item row="5" column="2">
      <widget class="QPushButton" name="dispenser_stop_button">
       <property name="enabled">
        <bool>false</bool>
@@ -444,7 +444,7 @@
       </property>
      </widget>
     </item>
-    <item row="4" column="0">
+    <item row="5" column="0">
      <widget class="QLabel" name="label_34">
       <property name="text">
        <string>Dispenser</string>
@@ -461,7 +461,7 @@
       </property>
      </widget>
     </item>
-    <item row="5" column="0">
+    <item row="6" column="0">
      <widget class="QLabel" name="label_45">
       <property name="text">
        <string>Opto</string>
@@ -478,7 +478,7 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="2">
+    <item row="3" column="2">
      <widget class="QPushButton" name="camera_stop_button">
       <property name="enabled">
        <bool>false</bool>
@@ -495,38 +495,62 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="1">
+    <item row="3" column="1">
      <widget class="QPushButton" name="camera_start_button">
       <property name="text">
        <string>Start</string>
       </property>
      </widget>
     </item>
-    <item row="4" column="1">
+    <item row="5" column="1">
      <widget class="QPushButton" name="dispenser_start_button">
       <property name="text">
        <string>Start</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="1">
+    <item row="4" column="1">
      <widget class="QPushButton" name="stim_start_button">
       <property name="text">
        <string>Start</string>
       </property>
      </widget>
     </item>
-    <item row="2" column="0">
+    <item row="3" column="0">
      <widget class="QLabel" name="label_30">
       <property name="text">
        <string>Camera</string>
       </property>
      </widget>
     </item>
-    <item row="3" column="0">
+    <item row="2" column="0">
      <widget class="QLabel" name="label_33">
       <property name="text">
+       <string>Tracker</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="0">
+     <widget class="QLabel" name="label_46">
+      <property name="text">
        <string>Stimulus</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="1">
+     <widget class="QPushButton" name="tracker_start_button">
+      <property name="text">
+       <string>Start</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="2">
+     <widget class="QPushButton" name="tracker_stop_button">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="text">
+       <string>Stop</string>
       </property>
      </widget>
     </item>
@@ -535,10 +559,10 @@
   <widget class="QWidget" name="gridLayoutWidget_6">
    <property name="geometry">
     <rect>
-     <x>380</x>
-     <y>250</y>
+     <x>730</x>
+     <y>132</y>
      <width>341</width>
-     <height>93</height>
+     <height>101</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_6">
@@ -571,8 +595,8 @@
   <widget class="QPushButton" name="cnc_up_button">
    <property name="geometry">
     <rect>
-     <x>510</x>
-     <y>340</y>
+     <x>860</x>
+     <y>250</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -584,8 +608,8 @@
   <widget class="QPushButton" name="cnc_down_button">
    <property name="geometry">
     <rect>
-     <x>510</x>
-     <y>380</y>
+     <x>860</x>
+     <y>290</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -597,8 +621,8 @@
   <widget class="QPushButton" name="cnc_left_button">
    <property name="geometry">
     <rect>
-     <x>430</x>
-     <y>360</y>
+     <x>780</x>
+     <y>270</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -610,8 +634,8 @@
   <widget class="QPushButton" name="cnc_right_button">
    <property name="geometry">
     <rect>
-     <x>590</x>
-     <y>360</y>
+     <x>940</x>
+     <y>270</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -662,8 +686,8 @@
   <widget class="Line" name="line">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>310</y>
+     <x>740</x>
+     <y>690</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -675,8 +699,8 @@
   <widget class="Line" name="line_2">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>210</y>
+     <x>740</x>
+     <y>590</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -701,8 +725,8 @@
   <widget class="Line" name="line_4">
    <property name="geometry">
     <rect>
-     <x>380</x>
-     <y>400</y>
+     <x>730</x>
+     <y>320</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -714,7 +738,7 @@
   <widget class="Line" name="line_5">
    <property name="geometry">
     <rect>
-     <x>380</x>
+     <x>10</x>
      <y>230</y>
      <width>341</width>
      <height>31</height>
@@ -794,7 +818,7 @@
    <property name="geometry">
     <rect>
      <x>10</x>
-     <y>10</y>
+     <y>0</y>
      <width>711</width>
      <height>31</height>
     </rect>
@@ -909,6 +933,25 @@
    </property>
    <property name="orientation">
     <enum>Qt::Horizontal</enum>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="checkBox">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>260</x>
+     <y>60</y>
+     <width>81</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>home</string>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
    </property>
   </widget>
  </widget>
