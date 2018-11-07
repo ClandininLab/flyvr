@@ -1,6 +1,18 @@
+import cv2
+import os
+import platform
+import os.path
+import itertools
+
+from time import strftime, time, sleep
+
+from flyvr.service import Service
+from threading import Lock
+from flyvr.tracker import TrackThread, ManualVelocity
+
 class TrialThread(Service):
     def __init__(self, exp_dir, cam, dispenser, mrstim, opto, cnc, ui,
-                 loopTime=10e-3, fly_lost_timeout=1, fly_detected_timeout=1, auto_change_rate=None):
+                 loopTime=10e-3, fly_lost_timeout=2, fly_detected_timeout=2, auto_change_rate=None):
         self.trial_count = itertools.count(1)
         self.state = 'startup'
         self.prev_state = 'startup'
