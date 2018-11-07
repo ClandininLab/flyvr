@@ -49,34 +49,36 @@ class OptoThread(Service):
 
     # overriding method from parent...
     def loopBody(self):
-        # get latest camera position
-        flyData = self.camThread.flyData          
-        if flyData is not None:
-            camX = flyData.flyX
-            camY = flyData.flyY
-            flyPresent = flyData.flyPresent
-        else:
-            camX = 0
-            camY = 0
-            flyPresent = False
+        if self.camThread is not None:
 
-        # get latest cnc position
-        if self.cncThread.status is not None:
-            cncX = self.cncThread.status.posX
-            cncY = self.cncThread.status.posY
-        else:
-            cncX = 0
-            cncY = 0
+            # get latest camera position
+            flyData = self.camThread.flyData
+            if flyData is not None:
+                camX = flyData.flyX
+                camY = flyData.flyY
+                flyPresent = flyData.flyPresent
+            else:
+                camX = 0
+                camY = 0
+                flyPresent = False
 
-        # find fly position
-        flyX = camX + cncX
-        flyY = camY + cncY
+            # get latest cnc position
+            if self.cncThread.status is not None:
+                cncX = self.cncThread.status.posX
+                cncY = self.cncThread.status.posY
+            else:
+                cncX = 0
+                cncY = 0
 
-        # temporary opto logic
-        if flyX > self.TrackThread.center_pos_x:
-            self.on()
-        else:
-            self.off()
+            # find fly position
+            flyX = camX + cncX
+            flyY = camY + cncY
+
+            # temporary opto logic
+            if flyX > self.TrackThread.center_pos_x:
+                self.on()
+            else:
+                self.off()
 
     def on(self):
         self.log('on')
