@@ -56,6 +56,7 @@ class FlyDispenser:
 
         # serial connection
         self.conn = None
+        self.synced = False
 
         # dispenser state
         self.state = 'Reset'
@@ -200,43 +201,46 @@ class FlyDispenser:
         self.should_release.clear()
 
     def read_frame(self):
-        while True:
-            start_byte = self.conn.read(1)[0]
+        start_byte = self.conn.read(1)[0]
+        if int(start_byte) == 0:
+            if not self.synced:
+                print('Dispenser camera is synced.')
+                self.synced = True
+            # read raw data into a list
+            frame = self.conn.read(self.num_pixels)
+            frame = list(frame)
 
-            if int(start_byte) == 0:
-                # read raw data into a list
-                frame = self.conn.read(self.num_pixels)
-                frame = list(frame)
+            # write frame to variable for matplotlib display
+            if self.display_type == 'raw':
+                display_frame = frame
+            elif self.display_type == 'corrected':
+                display_frame = frame
+                if self.background_region is not None:
+                    display_frame -= self.background_region
+            elif self.display_type == 'diff':
+                display_frame = frame
+                if self.prev_frame is not None:
+                    display_frame = np.abs(self.prev_frame - frame)
+            else:
+                display_frame = frame
+                if self.background_region is not None:
+                    display_frame -= self.background_region
+                display_frame = display_frame > self.display_threshold
 
-                # write frame to variable for matplotlib display
-                if self.display_type == 'raw':
-                    display_frame = frame
-                elif self.display_type == 'corrected':
-                    display_frame = frame
-                    if self.background_region is not None:
-                        display_frame -= self.background_region
-                elif self.display_type == 'diff':
-                    display_frame = frame
-                    if self.prev_frame is not None:
-                        display_frame = np.abs(self.prev_frame - frame)
-                else:
-                    display_frame = frame
-                    if self.background_region is not None:
-                        display_frame -= self.background_region
-                    display_frame = display_frame > self.display_threshold
+            self.display_frame = display_frame
 
-                self.display_frame = display_frame
+            # write frame to file
+            self.log(self.raw_data_file, frame)
 
-                # write frame to file
-                self.log(self.raw_data_file, frame)
+            # save previous frame for difference calculation if desired
+            self.prev_frame = self.raw_data
 
-                # save previous frame for difference calculation if desired
-                self.prev_frame = self.raw_data
-
-                # add frame to history
-                self.raw_data = np.array(frame)
-
-                return
+            # add frame to history
+            self.raw_data = np.array(frame)
+        else:
+            if self.synced:
+                print('Dispenser camera lost sync')
+                synced = False
 
     @property
     def gate_clear(self):

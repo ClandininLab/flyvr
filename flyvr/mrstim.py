@@ -107,7 +107,7 @@ class MrDisplay:
             return
 
         if self.mode == 'random_stim':
-            stim_type = choice(['SineGrating', 'SineGrating', 'Grey', 'Dark'])
+            stim_type = choice(['SineGrating', 'SineGrating', 'Dark', 'Bright', 'Grey', 'RandomCheckerboard'])
             if stim_type is 'SineGrating':
                 angle = choice([0, 90])
                 kwargs = {'name': 'SineGrating', 'angle': angle, 'period': 20, 'rate': 0, 'color': 1.0,
@@ -116,6 +116,10 @@ class MrDisplay:
                 kwargs = {'name': 'ConstantBackground', 'background': 0.5}
             elif stim_type is 'Dark':
                 kwargs = {'name': 'ConstantBackground', 'background': 0.0}
+            elif stim_type is 'Bright':
+                kwargs = {'name': 'ConstantBackground', 'background': 1.0}
+            elif stim_type is 'RandomCheckerboard':
+                kwargs = {'name': 'RandomGrid', 'update_rate': 0}
             else:
                 raise Exception('Invalid stimulus type.')
 
