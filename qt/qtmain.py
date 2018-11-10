@@ -94,6 +94,8 @@ class MainGui():
 
         # Setup main experiment buttons
         self.ui.start_experiment_button.clicked.connect(lambda x: self.experimentStart())
+        self.ui.stop_experiment_button.clicked.connect(lambda x: self.experimentStop())
+
 
         #Setup quickstart button
         self.ui.quick_start_button.clicked.connect(lambda x: self.quickStart())
@@ -202,8 +204,17 @@ class MainGui():
 
     def experimentStart(self):
         self.trialThread = TrialThread(cam=self.cam, dispenser=self.dispenser, cnc=self.cnc, tracker=self.tracker,
-                                       mrstim=self.mrstim, opto=self.opto, stim=self.stim, ui=self.ui)
+                                       opto=self.opto, mrstim=self.stim, ui=self.ui)
         self.trialThread.start()
+        self.ui.start_experiment_button.setEnabled(False)
+        self.ui.stop_experiment_button.setEnabled(True)
+
+
+    def experimentStop(self):
+        self.trialThread._stop_trial()
+        self.trialThread.stop()
+        self.ui.start_experiment_button.setEnabled(True)
+        self.ui.stop_experiment_button.setEnabled(False)
 
     def quickStart(self):
         self.ui.quick_start_button.setEnabled(False)

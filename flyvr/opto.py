@@ -63,22 +63,23 @@ class OptoThread(Service):
                 flyPresent = False
 
             # get latest cnc position
-            if self.cncThread.status is not None:
-                cncX = self.cncThread.status.posX
-                cncY = self.cncThread.status.posY
-            else:
-                cncX = 0
-                cncY = 0
+            if self.cncThread is not None:
+                if self.cncThread.status is not None:
+                    cncX = self.cncThread.status.posX
+                    cncY = self.cncThread.status.posY
+                else:
+                    cncX = 0
+                    cncY = 0
 
-            # find fly position
-            flyX = camX + cncX
-            flyY = camY + cncY
+                # find fly position
+                flyX = camX + cncX
+                flyY = camY + cncY
 
             # temporary opto logic
-            if flyX > self.TrackThread.center_pos_x:
-                self.on()
-            else:
-                self.off()
+            #if flyX > self.TrackThread.center_pos_x:
+            #    self.on()
+            #else:
+            #    self.off()
 
     def on(self):
         self.log('on')

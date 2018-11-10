@@ -69,7 +69,14 @@ class CamThread(Service):
                 if frameData.inFrame.shape != 0:
                     self.logFull.write(frameData.inFrame)
 
-        cv2.imshow('image', self.frameData.inFrame)
+        drawFrame = frameData.inFrame.copy()
+        # Process frame if desired
+        if frameData is not None:
+            if frameData.flyContour is not None:
+                # draw the fly contour if status available
+                cv2.drawContours(drawFrame, [frameData.flyContour], 0, (0, 255, 0), 2)
+
+        cv2.imshow('image', drawFrame)
         # display image
         self.tLoop = 1/24
         key = cv2.waitKey(int(round(1e3 * self.tLoop)))
