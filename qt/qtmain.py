@@ -2,11 +2,12 @@ import sys
 import cv2
 from time import strftime, time, sleep
 
-from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QWidget
+from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QWidget, QPushButton
 from PyQt5 import QtWidgets
 from PyQt5 import uic
 from PyQt5 import QtGui
 from functools import partial
+from PyQt5.QtCore import QSize
 
 from flyrpc.launch import launch_server
 from flyvr.service import Service
@@ -14,9 +15,9 @@ from flyvr.service import Service
 from flyvr.cnc import CncThread, cnc_home
 from flyvr.camera import CamThread
 from flyvr.tracker import TrackThread, ManualVelocity
-import flyvr.gate_control
+import flyvr.dispenser
 from flyvr.opto import OptoThread
-from flyvr.mrstim import MrDisplay
+from flyvr.stim import StimThread
 from flyvr.trial import TrialThread
 
 class MainGui():
@@ -30,8 +31,11 @@ class MainGui():
         self.opto = None
         self.cam = None
         self.cnc = None
-        self.tracker = None
         self.stim = None
+
+        # Set background services to none
+        self.trial = None
+        self.tracker = None
 
         self.frameData = None
 
@@ -40,13 +44,15 @@ class MainGui():
 
         self.cnc_shouldinitialize = None
         self.ask_cnc_init = True
+        self.cncinit = False
+        self.message = []
 
         # Setup cnc buttons
         self.ui.cnc_start_button.clicked.connect(lambda x: self.cncStart())
         self.ui.cnc_stop_button.clicked.connect(lambda x: self.cncStop())
         self.ui.cnc_initialize_button.clicked.connect(lambda x: self.initializeCnc())
         self.ui.cnc_move_center_button.clicked.connect(lambda x: self.tracker.move_to_center())
-        self.ui.cnc_mark_center_button.clicked.connect(lambda x: self.tracker.set_center_pos(self.cnc.status.posX, self.cnc.status.posY))
+        self.ui.cnc_mark_center_button.clicked.connect(lambda x: self.markCenter())
         self.ui.cnc_initialize_button.setEnabled(False)
         self.ui.cnc_move_center_button.setEnabled(False)
         self.ui.cnc_mark_center_button.setEnabled(False)
@@ -68,10 +74,6 @@ class MainGui():
         self.ui.camera_start_button.clicked.connect(lambda x: self.camStart())
         self.ui.camera_stop_button.clicked.connect(lambda x: self.camStop())
 
-        # Setup tracker buttons
-        #self.ui.tracker_start_button.clicked.connect(lambda x: self.trackerStart())
-        #self.ui.tracker_stop_button.clicked.connect(lambda x: self.trackerStop())
-
         # Setup visual stimulus buttons
         self.ui.stim_start_button.clicked.connect(lambda x: self.stimStart())
 
@@ -80,6 +82,8 @@ class MainGui():
         self.ui.dispenser_stop_button.clicked.connect(lambda x: self.dispenserStop())
         self.ui.open_gate_button.clicked.connect(lambda x: self.dispenser.open_gate())
         self.ui.close_gate_button.clicked.connect(lambda x: self.dispenser.close_gate())
+        self.ui.close_gate_button.setEnabled(False)
+        self.ui.open_gate_button.setEnabled(False)
 
         # Setup opto buttons
         self.ui.opto_start_button.clicked.connect(lambda x: self.optoStart())
@@ -96,6 +100,11 @@ class MainGui():
         self.ui.start_experiment_button.clicked.connect(lambda x: self.experimentStart())
         self.ui.stop_experiment_button.clicked.connect(lambda x: self.experimentStop())
 
+        # Setup trial buttons
+        self.ui.start_trial_button.clicked.connect(lambda x: self.trialStart())
+        self.ui.stop_trial_button.clicked.connect(lambda x: self.trialStop())
+        self.ui.start_trial_button.setEnabled(False)
+        self.ui.stop_trial_button.setEnabled(False)
 
         #Setup quickstart button
         self.ui.quick_start_button.clicked.connect(lambda x: self.quickStart())
@@ -104,12 +113,18 @@ class MainGui():
         self.ui.thresh_label.setText(str(data))
 
     def dispenserStart(self):
-        self.dispenser = launch_server(flyvr.gate_control)
+        self.dispenser = launch_server(flyvr.dispenser)
         self.ui.dispenser_start_button.setEnabled(False)
         self.ui.dispenser_stop_button.setEnabled(True)
+        self.ui.close_gate_button.setEnabled(True)
+        self.ui.open_gate_button.setEnabled(True)
 
     def dispenserStop(self):
-        pass
+        #how to turn off?
+        self.ui.dispenser_start_button.setEnabled(True)
+        self.ui.dispenser_stop_button.setEnabled(False)
+        self.ui.close_gate_button.setEnabled(False)
+        self.ui.open_gate_button.setEnabled(False)
 
     def cncStart(self):
         if self.ask_cnc_init:
@@ -118,6 +133,7 @@ class MainGui():
             self.cnc_shouldinitialize = mail.message
             if self.cnc_shouldinitialize:
                 cnc_home()
+                self.cncinit = True
         else:
             cnc_home()
         self.cnc = CncThread()
@@ -148,6 +164,11 @@ class MainGui():
         sleep(0.1)
         self.trackerStart()
         self.tracker.move_to_center()
+        self.cncinit = True
+
+    def markCenter(self):
+        self.tracker.set_center_pos(self.cnc.status.posX, self.cnc.status.posY)
+        self.cncinit = True
 
     def camStart(self):
         cv2.namedWindow('image')
@@ -172,7 +193,6 @@ class MainGui():
         self.ui.cnc_down_button.setEnabled(True)
         self.ui.cnc_left_button.setEnabled(True)
         self.ui.cnc_right_button.setEnabled(True)
-        #self.tracker.move_to_center()
 
     def trackerStop(self):
         self.tracker.stop()
@@ -182,7 +202,7 @@ class MainGui():
         self.ui.cnc_right_button.setEnabled(False)
 
     def stimStart(self):
-        self.stim = MrDisplay()
+        self.stim = StimThread()
 
     def optoStart(self):
         self.opto = OptoThread(cncThread=self.cnc, camThread=self.cam,
@@ -203,18 +223,43 @@ class MainGui():
         self.ui.opto_pulse_button.setEnabled(False)
 
     def experimentStart(self):
-        self.trialThread = TrialThread(cam=self.cam, dispenser=self.dispenser, cnc=self.cnc, tracker=self.tracker,
-                                       opto=self.opto, mrstim=self.stim, ui=self.ui)
-        self.trialThread.start()
-        self.ui.start_experiment_button.setEnabled(False)
-        self.ui.stop_experiment_button.setEnabled(True)
-
+        if self.cam is None:
+            self.message.append("Turn on the camera before starting the experiment.")
+        if self.cnc is None:
+            self.message.append("Turn on the cnc before starting the experiment.")
+        if not self.cncinit:
+            self.message.append("Initialize cnc or mark center before starting the experiment.")
+        if self.message:
+            print(self.message)
+            MessagePopup(self.message)
+            self.message = []
+        else:
+            self.trial = TrialThread(cam=self.cam, dispenser=self.dispenser, cnc=self.cnc, tracker=self.tracker,
+                                           opto=self.opto, stim=self.stim, ui=self.ui)
+            self.trial.start()
+            if self.dispenser is not None:
+                self.dispenser.release_fly()
+            self.ui.start_experiment_button.setEnabled(False)
+            self.ui.stop_experiment_button.setEnabled(True)
+            self.ui.stop_trial_button.setEnabled(True)
 
     def experimentStop(self):
-        self.trialThread._stop_trial()
-        self.trialThread.stop()
+        self.trial._stop_trial()
+        self.trial.stop()
         self.ui.start_experiment_button.setEnabled(True)
         self.ui.stop_experiment_button.setEnabled(False)
+        self.ui.start_trial_button.setEnabled(False)
+        self.ui.stop_trial_button.setEnabled(False)
+
+    def trialStart(self):
+        self.trial._start_trial()
+        self.ui.start_trial_button.setEnabled(False)
+        self.ui.stop_trial_button.setEnabled(True)
+
+    def trialStop(self):
+        self.trial._stop_trial()
+        self.ui.start_trial_button.setEnabled(True)
+        self.ui.stop_trial_button.setEnabled(False)
 
     def quickStart(self):
         self.ui.quick_start_button.setEnabled(False)
@@ -235,6 +280,11 @@ class MainGui():
             self.cnc.stop()
         if self.tracker is not None:
             self.tracker.stop()
+        if self.trial is not None:
+            self.trial._stop_trial()
+            self.trial.stop()
+        if self.dispenser is not None:
+            pass
         print('Shutdown Called')
 
 class Mail():
@@ -261,6 +311,43 @@ class CncPopup(QMessageBox):
         else:
             mail.message = False
         self.show()
+
+class MessagePopup(QMessageBox):
+    def __init__(self, message):
+        super().__init__()
+        self.title = 'box thing'
+        self.left = 600
+        self.top = 400
+        self.width = 320
+        self.height = 200
+        self.initUI(message)
+    def initUI(self, message):
+        self.setWindowTitle(self.title)
+        self.setGeometry(self.left, self.top, self.width, self.height)
+        QMessageBox.warning(self, 'Warning', '\n\n'.join(message))
+        self.show()
+
+# class MessagePopup(QMessageBox):
+#     def __init__(self):
+#         super().__init__()
+#         self.title = 'box thing'
+#         self.left = 10
+#         self.top = 10
+#         self.width = 320
+#         self.height = 200
+#
+#         #self.setMinimumSize(QSize(300, 200))
+#         self.setWindowTitle("PyQt messagebox example - pythonprogramminglanguage.com")
+#         self.setGeometry(self.left, self.top, self.width, self.height)
+#
+#         pybutton = QPushButton('Show messagebox', self)
+#         pybutton.clicked.connect(self.clickMethod)
+#         pybutton.resize(200,64)
+#         pybutton.move(50, 50)
+#         self.show()
+#
+#     def clickMethod(self):
+#         QMessageBox.about(self, "Title", "Message")
 
 def main():
     app = QApplication(sys.argv)
