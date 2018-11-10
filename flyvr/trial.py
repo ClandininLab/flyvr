@@ -27,6 +27,7 @@ class TrialThread(Service):
         self.tracker = tracker
 
         self.timer_start = None
+        self.trial_start_t = None
 
         self.fly_lost_timeout = fly_lost_timeout
         self.fly_detected_timeout = fly_detected_timeout
@@ -48,8 +49,8 @@ class TrialThread(Service):
             raise Exception('Invalid platform.')
 
         # create top-level experiment directory
-        folder = 'exp-'+strftime('%Y%m%d-%H%M%S')
-        self.exp_dir = os.path.join(topdir, folder)
+        self.exp = 'exp-'+strftime('%Y%m%d-%H%M%S')
+        self.exp_dir = os.path.join(topdir, self.exp)
         os.makedirs(self.exp_dir)
 
         # start logging to dispenser
@@ -108,6 +109,7 @@ class TrialThread(Service):
             if (time() - self.timer_start) >= self.fly_detected_timeout:
                 print('Fly found!')
                 self.tracker.startTracking()
+                self.trial_start_t = time()
                 self._start_trial()
                 self.prev_state = 'fly detected'
                 self.state = 'run'

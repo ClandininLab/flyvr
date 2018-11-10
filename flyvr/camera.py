@@ -77,6 +77,7 @@ class CamThread(Service):
                 cv2.drawContours(drawFrame, [frameData.flyContour], 0, (0, 255, 0), 2)
 
         cv2.imshow('image', drawFrame)
+        #cv2.moveWindow(40,30) ?try this. look more...
         # display image
         self.tLoop = 1/24
         key = cv2.waitKey(int(round(1e3 * self.tLoop)))
@@ -112,6 +113,10 @@ class CamThread(Service):
     def threshold(self, val):
         with self.threshLock:
             self._threshold = val
+
+    #Q for steven: why not do threshold this way?:
+    #def threshold(self, val):
+    #   self.threshold = val
 
     def startLogging(self, logFile, logFull):
         with self.logLock:

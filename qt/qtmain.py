@@ -25,6 +25,8 @@ class MainGui():
 
         self.ui = uic.loadUi('main.ui')
         self.ui.show()
+        #self.left = 600
+        #self.top = 400
 
         # Set services to none
         self.dispenser = None
@@ -39,13 +41,13 @@ class MainGui():
 
         self.frameData = None
 
-        self.ui.thresh_slider.valueChanged.connect(partial(self.valuechg, self.ui))
-        self.ui.thresh_slider.setValue(99)
-
         self.cnc_shouldinitialize = None
         self.ask_cnc_init = True
         self.cncinit = False
         self.message = []
+
+        # Launch GuiThread - helps to manage some types of events
+        self.GuiThread()
 
         # Setup cnc buttons
         self.ui.cnc_start_button.clicked.connect(lambda x: self.cncStart())
@@ -56,6 +58,7 @@ class MainGui():
         self.ui.cnc_initialize_button.setEnabled(False)
         self.ui.cnc_move_center_button.setEnabled(False)
         self.ui.cnc_mark_center_button.setEnabled(False)
+
         # Setup cnc movement buttons
         self.ui.cnc_up_button.pressed.connect(lambda: self.tracker.manual_move_up())
         self.ui.cnc_up_button.released.connect(lambda: self.tracker.manual_stop())
@@ -80,10 +83,12 @@ class MainGui():
         # Setup dispenser buttons
         self.ui.dispenser_start_button.clicked.connect(lambda x: self.dispenserStart())
         self.ui.dispenser_stop_button.clicked.connect(lambda x: self.dispenserStop())
-        self.ui.open_gate_button.clicked.connect(lambda x: self.dispenser.open_gate())
-        self.ui.close_gate_button.clicked.connect(lambda x: self.dispenser.close_gate())
+        self.ui.open_gate_button.clicked.connect(lambda x: self.openDispenser())
+        self.ui.close_gate_button.clicked.connect(lambda x: self.closeDispenser())
+        self.ui.calibrate_gate_button.clicked.connect(lambda x: self.calibrateDispenser())
         self.ui.close_gate_button.setEnabled(False)
         self.ui.open_gate_button.setEnabled(False)
+        self.ui.calibrate_gate_button.setEnabled(False)
 
         # Setup opto buttons
         self.ui.opto_start_button.clicked.connect(lambda x: self.optoStart())
@@ -106,11 +111,48 @@ class MainGui():
         self.ui.start_trial_button.setEnabled(False)
         self.ui.stop_trial_button.setEnabled(False)
 
-        #Setup quickstart button
+        # Setup quickstart button
         self.ui.quick_start_button.clicked.connect(lambda x: self.quickStart())
 
-    def valuechg(self, data):
-        self.ui.thresh_label.setText(str(data))
+        # Setup camera sliders
+        self.ui.thresh_slider.valueChanged.connect(partial(self.thresholdChange, self.ui))
+        self.ui.thresh_slider.setValue(200)
+        self.ui.r_min_slider.valueChanged.connect(partial(self.rminChange, self.ui))
+        self.ui.r_min_slider.setValue(2)
+        self.ui.r_max_slider.valueChanged.connect(partial(self.rmaxChange, self.ui))
+        self.ui.r_max_slider.setValue(8)
+        self.ui.loop_gain_slider.valueChanged.connect(partial(self.loopgainChange, self.ui))
+        self.ui.loop_gain_slider.setValue(80)
+
+        # Setup metadata input
+        self.ui.save_metadata_button.connect(partial(self.saveMetadata, self.ui))
+        
+    def saveMetadata(self):
+        age = self.age_textbox.toPlainText()
+        timezone = self.timezone_textbox.toPlainText()
+        genotype = self.genotype_textbox.toPlainText()
+        #with open('somefile.txt', 'a') as f:
+        #    f.write(mytext)
+
+    def thresholdChange(self):
+        value = self.ui.thresh_slider.value()
+        self.ui.thresh_label.setText(str(value))
+        self.cam.threshold = value
+
+    def rminChange(self):
+        value = self.ui.r_min_slider.value()
+        self.ui.r_min_label.setText(str(value))
+        self.cam.cam.r_min = value
+
+    def rmaxChange(self):
+        value = self.ui.r_max_slider.value()
+        self.ui.r_max_label.setText(str(value))
+        self.cam.cam.r_max = value
+
+    def loopgainChange(self):
+        value = self.ui.loop_gain_slider.value()
+        self.ui.loop_gain_label.setText(str(value))
+        self.tracker.a = value
 
     def dispenserStart(self):
         self.dispenser = launch_server(flyvr.dispenser)
@@ -118,6 +160,7 @@ class MainGui():
         self.ui.dispenser_stop_button.setEnabled(True)
         self.ui.close_gate_button.setEnabled(True)
         self.ui.open_gate_button.setEnabled(True)
+        #self.gate_state
 
     def dispenserStop(self):
         #how to turn off?
@@ -125,6 +168,16 @@ class MainGui():
         self.ui.dispenser_stop_button.setEnabled(False)
         self.ui.close_gate_button.setEnabled(False)
         self.ui.open_gate_button.setEnabled(False)
+
+    def openDispenser(self):
+        self.dispenser.open_gate()
+        #self.ui.close_gate_button.setEnabled(False)
+
+    def closeDispenser(self):
+        self.dispenser.close_gate()
+
+    def calibrateDispenser(self):
+        self.dispenser.calibrate_gate()
 
     def cncStart(self):
         if self.ask_cnc_init:
@@ -268,6 +321,10 @@ class MainGui():
         self.camStart()
         self.cncStart()
 
+    #def keyPressEvent(self, e):    
+    #    if e.key() == Qt.Key_Escape:
+    #        self.close()
+
     def shutdown(self, app):
         app.exec_()
         if self.opto is not None:
@@ -286,6 +343,88 @@ class MainGui():
         if self.dispenser is not None:
             pass
         print('Shutdown Called')
+
+    class GuiThread(Service):
+        def __init__(self):
+            # put shit in here
+
+            # call constructor from parent        
+            super().__init__()
+
+        # overriding method from parent...
+        def loopBody(self):
+
+            # Handle display of fly parameters
+            if self.camera.flyData.MA is not None:
+                self.ui.fly_major_axis_label.setText(str(self.camera.flyData.MA))
+            else:
+                self.ui.fly_major_axis_label.setText('N/A')
+
+            if self.camera.flyData.ma is not None:
+                self.ui.fly_minor_axis_label.setText(str(self.camera.flyData.ma))
+            else:
+                self.ui.fly_minor_axis_label.setText('N/A')
+
+            if self.camera.flyData.MA is not None:
+                self.ui.fly_aspect_ratio_label.setText(str(self.camera.flyData.MA/self.camera.flyData.ma))
+            else:
+                self.ui.fly_aspect_ratio_label.setText('N/A')
+
+            # Handle bigrig state
+            if self.trial is not None:
+                self.ui.bigrig_state_label.setText(self.trial.state)
+
+            # Handle experiment and trial display
+            if self.trial is not None:
+                self.ui.experiment_label.setText(str(self.trial.exp))
+            else:
+                self.ui.experiment_label.setText('N/A')
+
+            if self.trial is not None:
+                self.ui.trial_label.setText(str(self.trial.trial_count))
+            else:
+                self.ui.trial_label.setText('N/A')
+
+            # Handle gate close/open buttons
+            if self.dispenser is not None:
+                if self.dispenser.gate_state == 'open':
+                    self.ui.open_gate_button.setEnabled(False)
+                    self.ui.close_gate_button.setEnabled(True)
+                elif self.dispenser.gate_state == 'close':
+                    self.ui.open_gate_button.setEnabled(True)
+                    self.ui.close_gate_button.setEnabled(False)
+
+            # Handle trial duration
+            if self.trial is not None:
+                if self.trial is not None:
+                    trial_duration = self.trial.trial_start_t - time()
+            else:
+                trial_duration = 0
+            self.ui.trial_duration_label.setText(int(trial_duration))
+
+
+
+
+
+
+
+
+
+    # class GateState(QWidget):
+    #     valueChanged = pyqtSignal(object)
+
+    #     def __init__(self, parent=None):
+    #         super(GateState, self).__init__(parent)
+    #         self._t = self.dispenser.gate_state
+
+    #     @property
+    #     def t(self):
+    #         return self._t
+
+    #     @t.setter
+    #     def t(self, value):
+    #         self._t = value
+    #         self.valueChanged.emit(value)
 
 class Mail():
     def __init__(self):
@@ -327,28 +466,6 @@ class MessagePopup(QMessageBox):
         QMessageBox.warning(self, 'Warning', '\n\n'.join(message))
         self.show()
 
-# class MessagePopup(QMessageBox):
-#     def __init__(self):
-#         super().__init__()
-#         self.title = 'box thing'
-#         self.left = 10
-#         self.top = 10
-#         self.width = 320
-#         self.height = 200
-#
-#         #self.setMinimumSize(QSize(300, 200))
-#         self.setWindowTitle("PyQt messagebox example - pythonprogramminglanguage.com")
-#         self.setGeometry(self.left, self.top, self.width, self.height)
-#
-#         pybutton = QPushButton('Show messagebox', self)
-#         pybutton.clicked.connect(self.clickMethod)
-#         pybutton.resize(200,64)
-#         pybutton.move(50, 50)
-#         self.show()
-#
-#     def clickMethod(self):
-#         QMessageBox.about(self, "Title", "Message")
-
 def main():
     app = QApplication(sys.argv)
     dialog = QtWidgets.QMainWindow()
@@ -358,4 +475,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
