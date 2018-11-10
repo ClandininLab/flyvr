@@ -10,7 +10,7 @@ from flyvr.cnc import CncThread, cnc_home
 from flyvr.camera import CamThread
 from flyvr.tracker import TrackThread, ManualVelocity
 from flyvr.service import Service
-from flyvr.mrstim import MrDisplay
+from flyvr.stim import StimThread
 import flyvr.gate_control
 from flyvr.opto import OptoThread
 

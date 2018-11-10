@@ -11,7 +11,7 @@ from threading import Lock
 from flyvr.tracker import TrackThread, ManualVelocity
 
 class TrialThread(Service):
-    def __init__(self, cam, dispenser, mrstim, opto, cnc, tracker, ui,
+    def __init__(self, cam, dispenser, stim, opto, cnc, tracker, ui,
                  loopTime=10e-3, fly_lost_timeout=2, fly_detected_timeout=2, auto_change_rate=None):
 
         self.trial_count = itertools.count(1)
@@ -21,7 +21,7 @@ class TrialThread(Service):
         self.cam = cam
         self.cnc = cnc
         self.dispenser = dispenser
-        self.mrstim = mrstim
+        self.mrstim = stim
         self.opto = opto
         self.ui = ui
         self.tracker = tracker
@@ -61,10 +61,10 @@ class TrialThread(Service):
         # call constructor from parent
         super().__init__(minTime=loopTime, maxTime=loopTime, iter_warn=False)
 
-    def stop(self):
-        super().stop()
-        self.tracker.stop()
-        self.cnc.stop()
+    #def stop(self):
+        #super().stop()
+        #self.tracker.stop()
+        #self.cnc.stop()
 
     @property
     def trial_dir(self):
@@ -72,6 +72,7 @@ class TrialThread(Service):
             return self._trial_dir
 
     def _start_trial(self):
+        self.tracker.startTracking()
         trial_num = next(self.trial_count)
         print('Started trial ' + str(trial_num))
         folder = 'trial-' + str(trial_num) + '-' + strftime('%Y%m%d-%H%M%S')

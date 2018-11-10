@@ -13,7 +13,7 @@ import os, os.path
 def pretty_json(d):
     return json.dumps(d, indent=2, sort_keys=True)
 
-class MrDisplay:
+class StimThread:
     def __init__(self, mode='random_direction', pause_duration=2.0, stim_duration=2.0, use_stimuli=False):
         try:
             assert use_stimuli
