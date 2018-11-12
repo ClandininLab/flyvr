@@ -24,26 +24,31 @@ def get_bigrig_screen(dir):
         id = 1
         rotation = pi/2
         offset = (-w/2, 0, h/2)
+        fullscreen = True
     elif dir.lower() in ['n', 'north']:
         id = 2
         rotation = 0
         offset = (0, w/2, h/2)
+        fullscreen = True
     elif dir.lower() in ['s', 'south']:
         id = 3
         rotation = pi
         offset = (0, -w/2, h/2)
+        fullscreen = True
     elif dir.lower() in ['e', 'east']:
         id = 4
         rotation = -pi/2
         offset = (w/2, 0, h/2)
+        fullscreen = True
     elif dir.lower() == 'gui':
         id = 0
         rotation = 0
         offset = (0, w/2, h/2)
+        fullscreen = False
     else:
         raise ValueError('Invalid direction.')
 
-    return Screen(id=id, server_number=1, rotation=rotation, width=w, height=h, offset=offset,
+    return Screen(id=id, server_number=1, rotation=rotation, width=w, height=h, offset=offset, fullscreen=fullscreen,
                   name='BigRig {} Screen'.format(dir.title()))
 
 class StimThread:
@@ -153,6 +158,3 @@ class StimThread:
         self.stimuli_file.close()
 
         print('stimuli logged.')
-
-if __name__ == '__main__':
-    main()
