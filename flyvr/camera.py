@@ -89,6 +89,7 @@ class CamThread(Service):
             # draw the fly contour if status available
             if frameData.flyContour is not None:
                 if self.draw_contours:
+                    "trying to draw contour"
                     cv2.drawContours(outFrame, [frameData.flyContour], 0, (0, 255, 0), 2)
 
         cv2.imshow('image', drawFrame)
@@ -188,9 +189,11 @@ class CamThread(Service):
         self.display_type = 'threshold'
 
 class FrameData:
-    def __init__(self, inFrame, grayFrame, threshFrame, flyContour):
+    def __init__(self, inFrame, grayFrame, invertedFrame, blurFrame, threshFrame, flyContour):
         self.inFrame = inFrame
         self.grayFrame = grayFrame
+        self.invertedFrame = invertedFrame,
+        self.blurFrame = blurFrame,
         self.threshFrame = threshFrame
         self.flyContour = flyContour
 

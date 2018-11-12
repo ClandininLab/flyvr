@@ -9,6 +9,7 @@ import serial.tools.list_ports
 
 from flyvr.service import Service
 from flyvr.tracker import TrackThread
+from flyvr.trial import TrialThread
 from flyvr.cnc import CncThread
 from flyvr.camera import CamThread
 
@@ -41,7 +42,7 @@ class OptoThread(Service):
         self.camThread = camThread
         self.cncThread = cncThread
         self.trackThread = TrackThread
-        self.trialThread = trialThread
+        self.trialThread = TrialThread
 
         # Set foraging parameters
         self.foraging = False
@@ -50,10 +51,10 @@ class OptoThread(Service):
         self.foraging_distance_min = 0.05
         self.foraging_distance_max = 0.2
 
-        self.foragingNextFood_t_min = 
-        self.foragingNextFood_t_max = 
-        self.foragingNextFood_d_min = 
-        self.foragingNextFood_d_min = 
+        #self.foragingNextFood_t_min =
+        #self.foragingNextFood_t_max =
+        #self.foragingNextFood_d_min =
+        #self.foragingNextFood_d_min =
 
         self.foodspots = []
         self.food_rad = 5e-3
@@ -101,14 +102,14 @@ class OptoThread(Service):
         
                 if self.foraging:
                     # define food spot if all requirements are met
-                    checkFoodCreation()
+                    self.checkFoodCreation()
                     if self.shouldCreateFood:
-                        defineFoodSpot()
+                        self.defineFoodSpot()
                         self.shouldCreateFood = False
 
 
                     # turn on LED if fly is in food spot
-                    for foodspot in foodspots:
+                    for foodspot in self.foodspots:
                         if foodspot.x - self.food_rad <= self.flyX <= foodspot.x - self.food_rad and \
                            foodspot.y - self.food_rad <= self.flyY <= foodspot.y - self.food_rad:
                            #turn on LED
@@ -134,19 +135,19 @@ class OptoThread(Service):
             self.distance_correct = True
 
         # make sure fly is moving
-        if abs(camX) > fly_movement_threshold or \
-           abs(camY) > fly_movement_threshold:
+        if abs(self.camX) > self.fly_movement_threshold or \
+           abs(self.camY) > self.fly_movement_threshold:
            self.fly_moving = True
 
         # make sure the fly hasn't recently passed through a spot
-        if (time() - time_since_last_food > self.time_since_last_food_min):
+        if (time() - self.time_since_last_food > self.time_since_last_food_min):
             self.long_time_since_food = True
 
         if self.distance_correct and self.fly_moving and self.long_time_since_food:
             self.shouldCreateFood = True
 
     def defineFoodSpot(self):
-        foodspots.append({x: self.flyX, y: self.flyY})
+        self.foodspots.append({'x': self.flyX, 'y': self.flyY})
 
     def on(self):
         self.log('on')

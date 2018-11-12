@@ -77,9 +77,6 @@ class MainGui():
         self.ui.camera_start_button.clicked.connect(lambda x: self.camStart())
         self.ui.camera_stop_button.clicked.connect(lambda x: self.camStop())
 
-        # Setup visual stimulus buttons
-        self.ui.stim_start_button.clicked.connect(lambda x: self.stimStart())
-
         # Setup dispenser buttons
         self.ui.dispenser_start_button.clicked.connect(lambda x: self.dispenserStart())
         self.ui.dispenser_stop_button.clicked.connect(lambda x: self.dispenserStop())
@@ -116,49 +113,55 @@ class MainGui():
         self.ui.quick_start_button.clicked.connect(lambda x: self.quickStart())
 
         # Setup camera sliders
-        self.ui.thresh_slider.valueChanged.connect(partial(self.thresholdChange, self.ui))
         self.ui.thresh_slider.setValue(200)
-        self.ui.r_min_slider.valueChanged.connect(partial(self.rminChange, self.ui))
+        self.ui.thresh_label.setText(str(self.ui.thresh_slider.value()))
+
         self.ui.r_min_slider.setValue(2)
-        self.ui.r_max_slider.valueChanged.connect(partial(self.rmaxChange, self.ui))
+        self.ui.r_min_label.setText(str(self.ui.r_min_slider.value()))
+
         self.ui.r_max_slider.setValue(8)
-        self.ui.loop_gain_slider.valueChanged.connect(partial(self.loopgainChange, self.ui))
         self.ui.loop_gain_slider.setValue(80)
+        self.ui.thresh_slider.valueChanged.connect(self.thresholdChange)
+        self.ui.r_min_slider.valueChanged.connect(self.rminChange)
+        self.ui.r_max_slider.valueChanged.connect(self.rmaxChange)
+        self.ui.loop_gain_slider.valueChanged.connect(self.loopgainChange)
+
 
         # Setup camera combo
         self.ui.image_type_combo.setEnabled(False)
-        self.ui.image_type_combo.activated['Original'].connect(lambda x: self.cam.original())
-        self.ui.image_type_combo.activated['Greyscale'].connect(lambda x: self.cam.greyscale()) 
-        self.ui.image_type_combo.activated['Inverted'].connect(lambda x: self.cam.inverted()) 
-        self.ui.image_type_combo.activated['Blurred'].connect(lambda x: self.cam.blurred()) 
-        self.ui.image_type_combo.activated['Threshold'].connect(lambda x: self.cam.threshold()) 
+        #self.ui.image_type_combo.activated['Original'].connect(lambda x: self.cam.original())
+        #self.ui.image_type_combo.activated['Greyscale'].connect(lambda x: self.cam.greyscale())
+        #self.ui.image_type_combo.activated['Inverted'].connect(lambda x: self.cam.inverted())
+        #self.ui.image_type_combo.activated['Blurred'].connect(lambda x: self.cam.blurred())
+        #self.ui.image_type_combo.activated['Threshold'].connect(lambda x: self.cam.threshold())
         self.ui.draw_contours_checkbox.stateChanged.connect(lambda x: self.camContours())
-        self.ui.draw_contours_checkbox.setChecked()
+        self.ui.draw_contours_checkbox.setChecked(True)
         self.ui.draw_contours_checkbox.setEnabled(False)
 
         # Setup metadata input
-        self.ui.save_metadata_button.connect(partial(self.saveMetadata, self.ui))
+        self.ui.save_metadata_button.clicked.connect(partial(self.saveMetadata, self.ui))
 
         # Setup visual stimuli buttons
         self.ui.stim_start_button.clicked.connect(lambda x: self.stimStart())
-        self.ui.stim_per_trial_button.connect(lambda x: self.stimPerTrial())
-        self.ui.stim_within_trial_button.connect(lambda x: self.stimWithinTrial())
+        self.ui.stim_per_trial_button.clicked.connect(lambda x: self.stimPerTrial())
+        self.ui.stim_within_trial_button.clicked.connect(lambda x: self.stimWithinTrial())
         self.ui.stim_per_trial_button.setEnabled(False)
         self.ui.stim_within_trial_button.setEnabled(False)
 
     def camContours(self):
-        if self.ui.draw_contours_checkbox.isChecked():
-            self.cam.draw_contours = True
-        else:
-            self.cam.draw_contours = False
+        if self.cam is not None:
+            if self.ui.draw_contours_checkbox.isChecked():
+                self.cam.draw_contours = True
+            else:
+                self.cam.draw_contours = False
 
     def stimPerTrial(self):
         self.stim.mode = 'random_stim'
 
-    def stimWhithinTrial(self):
+    def stimWithinTrial(self):
         self.stim.mode = 'random_direction'
-        self.pause_duration = 2.0
-        self.stim_duration = 2.0
+        self.stim.pause_duration = 2.0
+        self.stim.stim_duration = 2.0
 
     def stimStart(self):
         self.stim = StimThread()
