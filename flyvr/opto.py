@@ -50,10 +50,10 @@ class OptoThread(Service):
         self.foraging_distance_min = 0.05
         self.foraging_distance_max = 0.2
 
-        self.foragingNextFood_t_min = 
-        self.foragingNextFood_t_max = 
-        self.foragingNextFood_d_min = 
-        self.foragingNextFood_d_min = 
+        #self.foragingNextFood_t_min = 
+        #self.foragingNextFood_t_max = 
+        #self.foragingNextFood_d_min = 
+        #self.foragingNextFood_d_min = 
 
         self.foodspots = []
         self.food_rad = 5e-3
@@ -62,6 +62,9 @@ class OptoThread(Service):
         self.time_since_last_food_min = 30 #sec
         self.long_time_since_food = True
         self.shouldCreateFood = False
+        self.led_status = 'off'
+        self.fly_in_food = False
+        self.food_to_food_min_distance = 
 
         # call constructor from parent        
         super().__init__()
@@ -109,23 +112,20 @@ class OptoThread(Service):
 
                     # turn on LED if fly is in food spot
                     for foodspot in foodspots:
-                        if foodspot.x - self.food_rad <= self.flyX <= foodspot.x - self.food_rad and \
-                           foodspot.y - self.food_rad <= self.flyY <= foodspot.y - self.food_rad:
-                           #turn on LED
-                           time_since_last_food = time()
+                        if foodspot.x - self.food_rad <= self.flyX <= foodspot.x + self.food_rad and \
+                           foodspot.y - self.food_rad <= self.flyY <= foodspot.y + self.food_rad:
+                           
+                            self.time_since_last_food = time()
 
+                            self.fly_in_food = True
 
-
-
-
-
-
-
-            # temporary opto logic
-            #if flyX > self.trackThread.center_pos_x:
-            #    self.on()
-            #else:
-            #    self.off()
+                    if self.fly_in_food:
+                        if self.led_status == 'off'
+                            self.on()
+                    else:
+                        if self.led_status == 'on'
+                            self.off()
+                    self.fly_in_food = False
 
     def checkFoodCreation(self):
         # time is large or distance correct: (consider removing time override?)
@@ -139,8 +139,12 @@ class OptoThread(Service):
            self.fly_moving = True
 
         # make sure the fly hasn't recently passed through a spot
-        if (time() - time_since_last_food > self.time_since_last_food_min):
-            self.long_time_since_food = True
+        if time_since_last_food is not None:
+            if (time() - time_since_last_food > self.time_since_last_food_min):
+                self.long_time_since_food = True
+
+        # make sure new foods aren't too close to other foods
+        if self.flyX - 
 
         if self.distance_correct and self.fly_moving and self.long_time_since_food:
             self.shouldCreateFood = True
@@ -149,11 +153,13 @@ class OptoThread(Service):
         foodspots.append({x: self.flyX, y: self.flyY})
 
     def on(self):
-        self.log('on')
+        self.led_status = 'on'
+        self.log(self.led_status)
         self.write(self.ON_COMMAND)
 
     def off(self):
-        self.log('off')
+        self.led_status = 'off'
+        self.log(self.led_status)
         self.write(self.OFF_COMMAND)
 
     def write(self, cmd):
