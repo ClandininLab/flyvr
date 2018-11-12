@@ -2,31 +2,60 @@
 
 # Example client program that walks through all available stimuli.
 
-from flyrpc.launch import launch_server
 import json
-import flystim.stim_server
+from flystim.stim_server import launch_stim_server
 from time import time
 
 from random import choice
+from math import pi
+
+from flystim.screen import Screen
+
 import os, os.path
 
 def pretty_json(d):
     return json.dumps(d, indent=2, sort_keys=True)
 
+def get_bigrig_screen(dir):
+    w = 43 * 2.54e-2
+    h = 24 * 2.54e-2
+
+    if dir.lower() in ['w', 'west']:
+        id = 1
+        rotation = pi/2
+        offset = (-w/2, 0, h/2)
+    elif dir.lower() in ['n', 'north']:
+        id = 2
+        rotation = 0
+        offset = (0, w/2, h/2)
+    elif dir.lower() in ['s', 'south']:
+        id = 3
+        rotation = pi
+        offset = (0, -w/2, h/2)
+    elif dir.lower() in ['e', 'east']:
+        id = 4
+        rotation = -pi/2
+        offset = (w/2, 0, h/2)
+    elif dir.lower() == 'gui':
+        id = 0
+        rotation = 0
+        offset = (0, w/2, h/2)
+    else:
+        raise ValueError('Invalid direction.')
+
+    return Screen(id=id, server_number=1, rotation=rotation, width=w, height=h, offset=offset,
+                  name='BigRig {} Screen'.format(dir.title()))
+
 class StimThread:
-    def __init__(self, mode='random_direction', pause_duration=2.0, stim_duration=2.0, use_stimuli=False):
-        try:
-            assert use_stimuli
-            self.manager = launch_server(flystim.stim_server, setup_name='bigrig')
-            self.manager.hide_corner_square()
-        except:
-            print('Not using visual stimulus.')
-            self.manager = None
+    def __init__(self):
+        screens = [get_bigrig_screen(dir) for dir in ['n', 'e', 's', 'w', 'gui']]
+        self.manager = launch_stim_server(screens)
+        self.manager.hide_corner_square()
 
-        self.pause_duration = pause_duration
-        self.stim_duration = stim_duration
+        self.pause_duration = None
+        self.stim_duration = None
 
-        self.mode = mode
+        self.mode = None
         self.stim_loaded = False
         self.stim_state = {}
 
@@ -77,7 +106,7 @@ class StimThread:
             return
 
         if self.mode == 'random_stim':
-            stim_type = choice(['SineGrating', 'SineGrating', 'Grey', 'Dark'])
+            stim_type = choice(['SineGrating', 'SineGrating', 'Dark', 'Bright', 'Grey', 'RandomCheckerboard'])
             if stim_type is 'SineGrating':
                 angle = choice([0, 90])
                 kwargs = {'name': 'SineGrating', 'angle': angle, 'period': 20, 'rate': 0, 'color': 1.0,
@@ -86,6 +115,10 @@ class StimThread:
                 kwargs = {'name': 'ConstantBackground', 'background': 0.5}
             elif stim_type is 'Dark':
                 kwargs = {'name': 'ConstantBackground', 'background': 0.0}
+            elif stim_type is 'Bright':
+                kwargs = {'name': 'ConstantBackground', 'background': 1.0}
+            elif stim_type is 'RandomCheckerboard':
+                kwargs = {'name': 'RandomGrid', 'update_rate': 0}
             else:
                 raise Exception('Invalid stimulus type.')
 
@@ -120,9 +153,6 @@ class StimThread:
         self.stimuli_file.close()
 
         print('stimuli logged.')
-
-def main():
-    MrDisplay()
 
 if __name__ == '__main__':
     main()
