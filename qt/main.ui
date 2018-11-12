@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>712</width>
+    <width>1091</width>
     <height>711</height>
    </rect>
   </property>
@@ -160,8 +160,8 @@
   <widget class="QWidget" name="gridLayoutWidget_2">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>250</y>
+     <x>180</x>
+     <y>300</y>
      <width>148</width>
      <height>140</height>
     </rect>
@@ -340,8 +340,8 @@
   <widget class="QWidget" name="gridLayoutWidget_4">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>370</y>
+     <x>20</x>
+     <y>340</y>
      <width>148</width>
      <height>66</height>
     </rect>
@@ -641,8 +641,8 @@
   <widget class="QWidget" name="gridLayoutWidget_7">
    <property name="geometry">
     <rect>
-     <x>190</x>
-     <y>300</y>
+     <x>560</x>
+     <y>490</y>
      <width>145</width>
      <height>93</height>
     </rect>
@@ -693,41 +693,17 @@
   <widget class="QWidget" name="gridLayoutWidget_8">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>430</y>
+     <x>740</x>
+     <y>100</y>
      <width>161</width>
-     <height>55</height>
+     <height>87</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_8">
-    <item row="1" column="1">
-     <widget class="QComboBox" name="comboBox_2">
-      <item>
-       <property name="text">
-        <string>Original</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Grayscale</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Blurred</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Threshold</string>
-       </property>
-      </item>
-     </widget>
-    </item>
-    <item row="1" column="0">
-     <widget class="QLabel" name="label_38">
+    <item row="2" column="0" colspan="2">
+     <widget class="QPushButton" name="stim_within_trial_button">
       <property name="text">
-       <string>Protocol</string>
+       <string>Within Trial</string>
       </property>
      </widget>
     </item>
@@ -735,6 +711,23 @@
      <widget class="QLabel" name="label_37">
       <property name="text">
        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Stimulus Control&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0" colspan="2">
+     <widget class="QPushButton" name="stim_per_trial_button">
+      <property name="text">
+       <string>Per Trial</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="0" colspan="2">
+     <widget class="QLabel" name="current_stim_label">
+      <property name="text">
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;N/A&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
@@ -761,7 +754,7 @@
     <rect>
      <x>10</x>
      <y>540</y>
-     <width>252</width>
+     <width>337</width>
      <height>59</height>
     </rect>
    </property>
@@ -790,7 +783,14 @@
       </property>
      </widget>
     </item>
-    <item row="0" column="0" colspan="3">
+    <item row="1" column="3">
+     <widget class="QPushButton" name="opto_foraging_button">
+      <property name="text">
+       <string>Pulse</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="0" colspan="4">
      <widget class="QLabel" name="label_40">
       <property name="text">
        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Opto Stimulus Control&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -864,8 +864,8 @@
   <widget class="QWidget" name="gridLayoutWidget_11">
    <property name="geometry">
     <rect>
-     <x>190</x>
-     <y>380</y>
+     <x>710</x>
+     <y>490</y>
      <width>134</width>
      <height>93</height>
     </rect>
@@ -975,13 +975,20 @@
   <widget class="QWidget" name="gridLayoutWidget_14">
    <property name="geometry">
     <rect>
-     <x>480</x>
-     <y>550</y>
-     <width>159</width>
-     <height>141</height>
+     <x>600</x>
+     <y>270</y>
+     <width>186</width>
+     <height>123</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_14">
+    <item row="4" column="0" colspan="2">
+     <widget class="QPushButton" name="save_metadata_button">
+      <property name="text">
+       <string>Save</string>
+      </property>
+     </widget>
+    </item>
     <item row="0" column="0" colspan="2">
      <widget class="QLabel" name="label_49">
       <property name="text">
@@ -1006,35 +1013,6 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="1">
-     <widget class="QTextEdit" name="timezone_textbox">
-      <property name="html">
-       <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'.SF NS Text'; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
-    </item>
-    <item row="4" column="0" colspan="2">
-     <widget class="QPushButton" name="save_metadata_button">
-      <property name="text">
-       <string>Save</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="1">
-     <widget class="QTextEdit" name="age_textbox">
-      <property name="html">
-       <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'.SF NS Text'; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-      </property>
-     </widget>
-    </item>
     <item row="3" column="0">
      <widget class="QLabel" name="bigrig_state_label_7">
       <property name="text">
@@ -1042,14 +1020,16 @@ p, li { white-space: pre-wrap; }
       </property>
      </widget>
     </item>
+    <item row="1" column="1">
+     <widget class="QLineEdit" name="lineEdit"/>
+    </item>
+    <item row="2" column="1">
+     <widget class="QLineEdit" name="lineEdit_2"/>
+    </item>
     <item row="3" column="1">
-     <widget class="QTextEdit" name="genotype_textbox">
-      <property name="html">
-       <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'.SF NS Text'; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;isoD1&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     <widget class="QLineEdit" name="lineEdit_3">
+      <property name="text">
+       <string>isoD1</string>
       </property>
      </widget>
     </item>

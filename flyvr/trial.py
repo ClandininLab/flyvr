@@ -83,7 +83,7 @@ class TrialThread(Service):
             self.opto.startLogging(os.path.join(_trial_dir, 'opto.txt'))
 
         if self.stim is not None:
-            self.mrstim.nextStim(self._trial_dir)
+            self.stim.nextStim(self._trial_dir)
 
     def _stop_trial(self):
         print('Stopped trial.')
