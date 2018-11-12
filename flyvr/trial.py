@@ -12,7 +12,7 @@ from flyvr.tracker import TrackThread, ManualVelocity
 
 class TrialThread(Service):
     def __init__(self, cam, dispenser, stim, opto, cnc, tracker, ui,
-                 loopTime=10e-3, fly_lost_timeout=2, fly_detected_timeout=2, auto_change_rate=None):
+                 loopTime=10e-3, fly_lost_timeout=2, fly_detected_timeout=2):
 
         self.trial_count = itertools.count(1)
         self.state = 'started'
@@ -21,7 +21,7 @@ class TrialThread(Service):
         self.cam = cam
         self.cnc = cnc
         self.dispenser = dispenser
-        self.mrstim = stim
+        self.stim = stim
         self.opto = opto
         self.ui = ui
         self.tracker = tracker
@@ -31,7 +31,6 @@ class TrialThread(Service):
 
         self.fly_lost_timeout = fly_lost_timeout
         self.fly_detected_timeout = fly_detected_timeout
-        self.auto_change_rate = auto_change_rate
 
         # set up access to the thread-ending signal
         self.manualLock = Lock()
@@ -62,22 +61,19 @@ class TrialThread(Service):
         # call constructor from parent
         super().__init__(minTime=loopTime, maxTime=loopTime, iter_warn=False)
 
-    #def stop(self):
-        #super().stop()
-        #self.tracker.stop()
-        #self.cnc.stop()
-
     @property
     def trial_dir(self):
         with self.trialDirLock:
             return self._trial_dir
 
     def _start_trial(self):
+        self.trial_start_t = time()
         self.tracker.startTracking()
         trial_num = next(self.trial_count)
         print('Started trial ' + str(trial_num))
         folder = 'trial-' + str(trial_num) + '-' + strftime('%Y%m%d-%H%M%S')
         _trial_dir = os.path.join(self.exp_dir, folder)
+        self._trial_dir = _trial_dir
         os.makedirs(_trial_dir)
 
         self.cnc.startLogging(os.path.join(_trial_dir, 'cnc.txt'))
@@ -86,19 +82,23 @@ class TrialThread(Service):
         if self.opto is not None:
             self.opto.startLogging(os.path.join(_trial_dir, 'opto.txt'))
 
-        self._trial_dir = _trial_dir
-        #self.mrstim.nextStim(self._trial_dir)
+        if self.stim is not None:
+            self.mrstim.nextStim(self._trial_dir)
 
     def _stop_trial(self):
         print('Stopped trial.')
 
         self.cnc.stopLogging()
         self.cam.stopLogging()
-        #self.mrstim.stopStim(self._trial_dir)
         self.tracker.stopTracking()
 
+        if self.stim is not None:
+            self.stim.stopStim(self._trial_dir)
+
     def loopBody(self):
-        #self.mrstim.updateStim(self._trial_dir)
+        if self.stim is not None:
+            self.stim.updateStim(self._trial_dir)
+
         if self.state == 'started':
             if self.cam.flyData.flyPresent:
                 print('Fly possibly found...')
@@ -109,7 +109,6 @@ class TrialThread(Service):
             if (time() - self.timer_start) >= self.fly_detected_timeout:
                 print('Fly found!')
                 self.tracker.startTracking()
-                self.trial_start_t = time()
                 self._start_trial()
                 self.prev_state = 'fly detected'
                 self.state = 'run'

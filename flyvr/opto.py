@@ -2,6 +2,7 @@ import serial, platform
 import os.path
 
 from math import pi
+import numpy as np
 from time import sleep, time
 from threading import Lock, Thread
 import serial.tools.list_ports
@@ -17,7 +18,7 @@ class OptoThread(Service):
     ON_COMMAND = 0xbe
     OFF_COMMAND = 0xef
 
-    def __init__(self, cncThread=None, camThread=None, TrackThread=None, use_opto=False):
+    def __init__(self, cncThread=None, camThread=None, trackThread=None, TrialThread=None):
         # Serial interface to opto arduino
         com = None
         if com is None:
@@ -39,10 +40,28 @@ class OptoThread(Service):
         # Store thread handles
         self.camThread = camThread
         self.cncThread = cncThread
-        self.TrackThread = TrackThread
+        self.trackThread = TrackThread
+        self.trialThread = trialThread
 
-        # Set the starting time
-        self.trial_start_time = None
+        # Set foraging parameters
+        self.foraging = False
+        self.foraging_time_min = 2
+        self.foraging_time_override = 3*(60)
+        self.foraging_distance_min = 0.05
+        self.foraging_distance_max = 0.2
+
+        self.foragingNextFood_t_min = 
+        self.foragingNextFood_t_max = 
+        self.foragingNextFood_d_min = 
+        self.foragingNextFood_d_min = 
+
+        self.foodspots = []
+        self.food_rad = 5e-3
+        self.fly_movement_threshold = 0.5e-3
+        self.time_since_last_food = None
+        self.time_since_last_food_min = 30 #sec
+        self.long_time_since_food = True
+        self.shouldCreateFood = False
 
         # call constructor from parent        
         super().__init__()
@@ -72,14 +91,62 @@ class OptoThread(Service):
                     cncY = 0
 
                 # find fly position
-                flyX = camX + cncX
-                flyY = camY + cncY
+                self.flyX = camX + cncX
+                self.flyY = camY + cncY
+
+                # calculate distance from center
+                x_dist = np.abs(self.flyX - self.trackThread.center_pos_x)
+                y_dist = np.abs(self.flyY - self.trackThread.center_pos_y)
+                self.dist_from_center = np.sqrt(x_dist*x_dist + y_dist*y_dist)
+        
+                if self.foraging:
+                    # define food spot if all requirements are met
+                    checkFoodCreation()
+                    if self.shouldCreateFood:
+                        defineFoodSpot()
+                        self.shouldCreateFood = False
+
+
+                    # turn on LED if fly is in food spot
+                    for foodspot in foodspots:
+                        if foodspot.x - self.food_rad <= self.flyX <= foodspot.x - self.food_rad and \
+                           foodspot.y - self.food_rad <= self.flyY <= foodspot.y - self.food_rad:
+                           #turn on LED
+                           time_since_last_food = time()
+
+
+
+
+
+
+
 
             # temporary opto logic
-            #if flyX > self.TrackThread.center_pos_x:
+            #if flyX > self.trackThread.center_pos_x:
             #    self.on()
             #else:
             #    self.off()
+
+    def checkFoodCreation(self):
+        # time is large or distance correct: (consider removing time override?)
+        if ((time() - self.trial.trial_start_t > self.foraging_time_override) or \
+            self.foraging_distance_max > self.dist_from_center > self.foraging_distance_min):
+            self.distance_correct = True
+
+        # make sure fly is moving
+        if abs(camX) > fly_movement_threshold or \
+           abs(camY) > fly_movement_threshold:
+           self.fly_moving = True
+
+        # make sure the fly hasn't recently passed through a spot
+        if (time() - time_since_last_food > self.time_since_last_food_min):
+            self.long_time_since_food = True
+
+        if self.distance_correct and self.fly_moving and self.long_time_since_food:
+            self.shouldCreateFood = True
+
+    def defineFoodSpot(self):
+        foodspots.append({x: self.flyX, y: self.flyY})
 
     def on(self):
         self.log('on')
@@ -108,7 +175,6 @@ class OptoThread(Service):
                 self.logFile.flush()
 
     def startLogging(self, logFile):
-        self.trial_start_time = time()
         with self.logLock:
 
             self.logState = True

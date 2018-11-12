@@ -96,6 +96,7 @@ class MainGui():
         self.ui.opto_on_button.clicked.connect(lambda x: self.opto.on())
         self.ui.opto_off_button.clicked.connect(lambda x: self.opto.off())
         self.ui.opto_pulse_button.clicked.connect(lambda x: self.opto.pulse())
+        self.ui.opto_foraging_button.clicked.connect(lambda x: self.foraging())
         self.ui.opto_stop_button.setEnabled(False)
         self.ui.opto_on_button.setEnabled(False)
         self.ui.opto_off_button.setEnabled(False)
@@ -124,8 +125,47 @@ class MainGui():
         self.ui.loop_gain_slider.valueChanged.connect(partial(self.loopgainChange, self.ui))
         self.ui.loop_gain_slider.setValue(80)
 
+        # Setup camera combo
+        self.ui.image_type_combo.setEnabled(False)
+        self.ui.image_type_combo.activated['Original'].connect(lambda x: self.cam.original())
+        self.ui.image_type_combo.activated['Greyscale'].connect(lambda x: self.cam.greyscale()) 
+        self.ui.image_type_combo.activated['Inverted'].connect(lambda x: self.cam.inverted()) 
+        self.ui.image_type_combo.activated['Blurred'].connect(lambda x: self.cam.blurred()) 
+        self.ui.image_type_combo.activated['Threshold'].connect(lambda x: self.cam.threshold()) 
+        self.ui.draw_contours_checkbox.stateChanged.connect(lambda x: self.camContours())
+        self.ui.draw_contours_checkbox.setChecked()
+        self.ui.draw_contours_checkbox.setEnabled(False)
+
         # Setup metadata input
         self.ui.save_metadata_button.connect(partial(self.saveMetadata, self.ui))
+
+        # Setup visual stimuli buttons
+        self.ui.stim_start_button.clicked.connect(lambda x: self.stimStart())
+        self.ui.stim_per_trial_button.connect(lambda x: self.stimPerTrial())
+        self.ui.stim_within_trial_button.connect(lambda x: self.stimWithinTrial())
+        self.ui.stim_per_trial_button.setEnabled(False)
+        self.ui.stim_within_trial_button.setEnabled(False)
+
+    def camContours(self):
+        if self.ui.draw_contours_checkbox.isChecked():
+            self.cam.draw_contours = True
+        else:
+            self.cam.draw_contours = False
+
+    def stimPerTrial(self):
+        self.stim.mode = 'random_stim'
+
+    def stimWhithinTrial(self):
+        self.stim.mode = 'random_direction'
+        self.pause_duration = 2.0
+        self.stim_duration = 2.0
+
+    def stimStart(self):
+        self.stim = StimThread()
+        self.ui.stim_stop_button.setEnabled(True)
+        self.ui.stim_start_button.setEnabled(False)
+        self.ui.stim_per_trial_button.setEnabled(True)
+        self.ui.stim_within_trial_button.setEnabled(True)
         
     def saveMetadata(self):
         age = self.age_textbox.toPlainText()
@@ -202,6 +242,7 @@ class MainGui():
     def cncStop(self):
         self.cnc.stop()
         self.trackerStop()
+        self.cnc = None
         self.ui.cnc_start_button.setEnabled(True)
         self.ui.cnc_stop_button.setEnabled(False)
         self.ui.cnc_initialize_button.setEnabled(False)
@@ -229,10 +270,13 @@ class MainGui():
         self.cam.start()
         self.ui.camera_start_button.setEnabled(False)
         self.ui.camera_stop_button.setEnabled(True)
+        self.ui.image_type_combo.setEnabled(True)
+        self.ui.draw_contours_checkbox.setEnabled(True)
 
     def camStop(self):
         self.cam.cam.camera.StopGrabbing()
         self.cam.stop()
+        self.cam = None
         cv2.destroyAllWindows()
         self.ui.camera_start_button.setEnabled(True)
         self.ui.camera_stop_button.setEnabled(False)
@@ -254,12 +298,9 @@ class MainGui():
         self.ui.cnc_left_button.setEnabled(False)
         self.ui.cnc_right_button.setEnabled(False)
 
-    def stimStart(self):
-        self.stim = StimThread()
-
     def optoStart(self):
         self.opto = OptoThread(cncThread=self.cnc, camThread=self.cam,
-                               TrackThread=self.tracker)
+                               trackThread=self.tracker, trialThread = self.trial)
         self.opto.start()
         self.ui.opto_start_button.setEnabled(False)
         self.ui.opto_stop_button.setEnabled(True)
@@ -269,11 +310,15 @@ class MainGui():
 
     def optoStop(self):
         self.opto.stop()
+        self.opto = None
         self.ui.opto_start_button.setEnabled(True)
         self.ui.opto_stop_button.setEnabled(False)
         self.ui.opto_on_button.setEnabled(False)
         self.ui.opto_off_button.setEnabled(False)
         self.ui.opto_pulse_button.setEnabled(False)
+
+    def foraging(self):
+        self.opto.foraging = True
 
     def experimentStart(self):
         if self.cam is None:
@@ -299,6 +344,7 @@ class MainGui():
     def experimentStop(self):
         self.trial._stop_trial()
         self.trial.stop()
+        self.trial = None
         self.ui.start_experiment_button.setEnabled(True)
         self.ui.stop_experiment_button.setEnabled(False)
         self.ui.start_trial_button.setEnabled(False)
@@ -402,13 +448,11 @@ class MainGui():
                 trial_duration = 0
             self.ui.trial_duration_label.setText(int(trial_duration))
 
-
-
-
-
-
-
-
+            # Handle stim label
+            if self.stim is not None:
+                self.ui.current_stim_label.setText(str(self.stim.stim_type))
+            else:
+                self.ui.current_stim_label.setText('N/A')
 
     # class GateState(QWidget):
     #     valueChanged = pyqtSignal(object)

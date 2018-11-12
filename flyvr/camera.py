@@ -35,6 +35,9 @@ class CamThread(Service):
         self.logFull = None
         self.logState = False
 
+        self.display_type = 'original'
+        self.draw_contours = True
+
         # call constructor from parent        
         super().__init__(maxTime=maxTime)
 
@@ -72,9 +75,21 @@ class CamThread(Service):
         drawFrame = frameData.inFrame.copy()
         # Process frame if desired
         if frameData is not None:
+            if self.display_type == 'original':
+                outFrame = frameData.inFrame
+            elif self.display_type == 'greyscale':
+                outFrame = cv2.cvtColor(frameData.grayFrame, cv2.COLOR_GRAY2BGR)
+            elif self.display_type == 'inverted':
+                outFrame = cv2.cvtColor(frameData.invertedFrame, cv2.COLOR_GRAY2BGR)
+            elif self.display_type == 'blurred':
+                outFrame = cv2.cvtColor(frameData.blurFrame, cv2.COLOR_GRAY2BGR)
+            elif self.display_type == 'threshold':
+                outFrame = cv2.cvtColor(frameData.threshFrame, cv2.COLOR_GRAY2BGR)
+
+            # draw the fly contour if status available
             if frameData.flyContour is not None:
-                # draw the fly contour if status available
-                cv2.drawContours(drawFrame, [frameData.flyContour], 0, (0, 255, 0), 2)
+                if self.draw_contours:
+                    cv2.drawContours(outFrame, [frameData.flyContour], 0, (0, 255, 0), 2)
 
         cv2.imshow('image', drawFrame)
         #cv2.moveWindow(40,30) ?try this. look more...
@@ -156,6 +171,21 @@ class CamThread(Service):
             # close previous full log video
             if self.logFull is not None:
                 self.logFull.release()
+
+    def orginal(self):
+        self.display_type = 'original'
+
+    def greyscale(self):
+        self.display_type = 'greyscale'
+
+    def inverted(self):
+        self.display_type = 'inverted'
+
+    def blurred(self):
+        self.display_type = 'blurred'
+
+    def threshold(self):
+        self.display_type = 'threshold'
 
 class FrameData:
     def __init__(self, inFrame, grayFrame, threshFrame, flyContour):
@@ -248,13 +278,13 @@ class Camera:
 
             # Convert frame to grayscale
             grayFrame = cv2.cvtColor(inFrame, cv2.COLOR_BGR2GRAY)
-            grayFrame = cv2.bitwise_not(grayFrame)   #TURN ON FOR IR SINCE FLY IS BRIGHT
-            grayFrame = cv2.GaussianBlur(grayFrame, (11, 11), 0)
+            invertedFrame = cv2.bitwise_not(grayFrame)   #TURN ON FOR IR SINCE FLY IS BRIGHT
+            blurFrame = cv2.GaussianBlur(invertedFrame, (11, 11), 0)
 
             # Threshold image according
             rel_level = float(threshold)/255
-            auto_thresh = int(round(np.mean(grayFrame)*rel_level))
-            ret, threshFrame = cv2.threshold(grayFrame, auto_thresh, 255, cv2.THRESH_BINARY_INV)
+            auto_thresh = int(round(np.mean(blurFrame)*rel_level))
+            ret, threshFrame = cv2.threshold(blurFrame, auto_thresh, 255, cv2.THRESH_BINARY_INV)
 
             rows, cols = threshFrame.shape
 
@@ -302,6 +332,8 @@ class Camera:
             # wrap results
             frameData = FrameData(inFrame=inFrame,
                                   grayFrame=grayFrame,
+                                  invertedFrame=invertedFrame,
+                                  blurFrame=blurFrame,
                                   threshFrame=threshFrame,
                                   flyContour=flyContour)
 
