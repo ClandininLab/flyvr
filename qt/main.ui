@@ -23,8 +23,8 @@
     <rect>
      <x>360</x>
      <y>260</y>
-     <width>224</width>
-     <height>155</height>
+     <width>212</width>
+     <height>92</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout">
@@ -160,8 +160,8 @@
   <widget class="QWidget" name="gridLayoutWidget_2">
    <property name="geometry">
     <rect>
-     <x>180</x>
-     <y>300</y>
+     <x>400</x>
+     <y>70</y>
      <width>148</width>
      <height>140</height>
     </rect>
@@ -280,52 +280,14 @@
   <widget class="QWidget" name="gridLayoutWidget_3">
    <property name="geometry">
     <rect>
-     <x>360</x>
-     <y>430</y>
-     <width>187</width>
-     <height>78</height>
+     <x>420</x>
+     <y>610</y>
+     <width>222</width>
+     <height>41</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_3">
-    <item row="2" column="1">
-     <widget class="QComboBox" name="image_type_combo">
-      <item>
-       <property name="text">
-        <string>Original</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Grayscale</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Blurred</string>
-       </property>
-      </item>
-      <item>
-       <property name="text">
-        <string>Threshold</string>
-       </property>
-      </item>
-     </widget>
-    </item>
-    <item row="2" column="0">
-     <widget class="QLabel" name="label_2">
-      <property name="text">
-       <string>Image Type</string>
-      </property>
-     </widget>
-    </item>
-    <item row="1" column="0" colspan="2">
-     <widget class="QCheckBox" name="draw_contours_checkbox">
-      <property name="text">
-       <string>Draw contours</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="0" colspan="2">
+    <item row="0" column="0" colspan="3">
      <widget class="QLabel" name="label_16">
       <property name="text">
        <string>&lt;b&gt;Drawing Options&lt;/b&gt;</string>
@@ -335,13 +297,27 @@
       </property>
      </widget>
     </item>
+    <item row="2" column="0" colspan="2">
+     <widget class="QCheckBox" name="draw_contours_checkbox">
+      <property name="text">
+       <string>Draw contours</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="2">
+     <widget class="QCheckBox" name="show_threshold_checkbox">
+      <property name="text">
+       <string>Show Threshold</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
   <widget class="QWidget" name="gridLayoutWidget_4">
    <property name="geometry">
     <rect>
-     <x>20</x>
-     <y>340</y>
+     <x>560</x>
+     <y>70</y>
      <width>148</width>
      <height>66</height>
     </rect>
@@ -546,10 +522,10 @@
   <widget class="QWidget" name="gridLayoutWidget_6">
    <property name="geometry">
     <rect>
-     <x>360</x>
-     <y>42</y>
-     <width>341</width>
-     <height>127</height>
+     <x>20</x>
+     <y>290</y>
+     <width>94</width>
+     <height>94</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_6">
@@ -589,8 +565,8 @@
   <widget class="QPushButton" name="cnc_up_button">
    <property name="geometry">
     <rect>
-     <x>490</x>
-     <y>160</y>
+     <x>200</x>
+     <y>320</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -599,24 +575,11 @@
     <string>Up</string>
    </property>
   </widget>
-  <widget class="QPushButton" name="cnc_down_button">
-   <property name="geometry">
-    <rect>
-     <x>490</x>
-     <y>200</y>
-     <width>75</width>
-     <height>23</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Down</string>
-   </property>
-  </widget>
   <widget class="QPushButton" name="cnc_left_button">
    <property name="geometry">
     <rect>
-     <x>410</x>
-     <y>180</y>
+     <x>120</x>
+     <y>340</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -628,8 +591,8 @@
   <widget class="QPushButton" name="cnc_right_button">
    <property name="geometry">
     <rect>
-     <x>570</x>
-     <y>180</y>
+     <x>280</x>
+     <y>340</y>
      <width>75</width>
      <height>23</height>
     </rect>
@@ -680,8 +643,8 @@
   <widget class="Line" name="line_4">
    <property name="geometry">
     <rect>
-     <x>360</x>
-     <y>240</y>
+     <x>50</x>
+     <y>640</y>
      <width>341</width>
      <height>16</height>
     </rect>
@@ -752,10 +715,10 @@
   <widget class="QWidget" name="gridLayoutWidget_9">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>540</y>
+     <x>20</x>
+     <y>510</y>
      <width>337</width>
-     <height>59</height>
+     <height>42</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_9">
@@ -786,14 +749,14 @@
     <item row="1" column="3">
      <widget class="QPushButton" name="opto_foraging_button">
       <property name="text">
-       <string>Pulse</string>
+       <string>Foraging</string>
       </property>
      </widget>
     </item>
     <item row="0" column="0" colspan="4">
      <widget class="QLabel" name="label_40">
       <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Opto Stimulus Control&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Opto Control&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
@@ -805,10 +768,10 @@
   <widget class="QWidget" name="gridLayoutWidget_10">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>480</y>
-     <width>352</width>
-     <height>59</height>
+     <x>200</x>
+     <y>460</y>
+     <width>259</width>
+     <height>42</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_10">
@@ -844,22 +807,6 @@
      </widget>
     </item>
    </layout>
-  </widget>
-  <widget class="QPushButton" name="quick_start_button">
-   <property name="geometry">
-    <rect>
-     <x>24</x>
-     <y>40</y>
-     <width>301</width>
-     <height>41</height>
-    </rect>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">background-color: rgb(115, 210, 22);</string>
-   </property>
-   <property name="text">
-    <string>Quick Start</string>
-   </property>
   </widget>
   <widget class="QWidget" name="gridLayoutWidget_11">
    <property name="geometry">
@@ -903,8 +850,8 @@
   <widget class="QWidget" name="gridLayoutWidget_12">
    <property name="geometry">
     <rect>
-     <x>290</x>
-     <y>590</y>
+     <x>300</x>
+     <y>120</y>
      <width>83</width>
      <height>42</height>
     </rect>
@@ -932,8 +879,8 @@
   <widget class="QWidget" name="gridLayoutWidget_13">
    <property name="geometry">
     <rect>
-     <x>550</x>
-     <y>440</y>
+     <x>560</x>
+     <y>140</y>
      <width>163</width>
      <height>44</height>
     </rect>
@@ -1038,8 +985,8 @@
   <widget class="QPushButton" name="current_faulty_trial_button">
    <property name="geometry">
     <rect>
-     <x>20</x>
-     <y>620</y>
+     <x>840</x>
+     <y>410</y>
      <width>131</width>
      <height>31</height>
     </rect>
@@ -1054,24 +1001,11 @@
     <string>Mark current trial as faulty</string>
    </property>
   </widget>
-  <widget class="QToolButton" name="toolButton">
-   <property name="geometry">
-    <rect>
-     <x>200</x>
-     <y>640</y>
-     <width>25</width>
-     <height>22</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>...</string>
-   </property>
-  </widget>
   <widget class="QPushButton" name="previous_faulty_trial_button">
    <property name="geometry">
     <rect>
-     <x>20</x>
-     <y>650</y>
+     <x>840</x>
+     <y>440</y>
      <width>131</width>
      <height>31</height>
     </rect>
@@ -1084,26 +1018,6 @@
    </property>
    <property name="text">
     <string>Mark previous trial as faulty</string>
-   </property>
-  </widget>
-  <widget class="QSpinBox" name="spinBox">
-   <property name="geometry">
-    <rect>
-     <x>360</x>
-     <y>660</y>
-     <width>42</width>
-     <height>22</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QDoubleSpinBox" name="doubleSpinBox">
-   <property name="geometry">
-    <rect>
-     <x>260</x>
-     <y>660</y>
-     <width>62</width>
-     <height>22</height>
-    </rect>
    </property>
   </widget>
   <widget class="QWidget" name="gridLayoutWidget_15">
@@ -1134,6 +1048,41 @@
      </widget>
     </item>
    </layout>
+  </widget>
+  <widget class="QToolButton" name="cnc_down_button">
+   <property name="geometry">
+    <rect>
+     <x>220</x>
+     <y>370</y>
+     <width>41</width>
+     <height>41</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>...</string>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>arrow.png</normaloff>arrow.png</iconset>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>30</width>
+     <height>30</height>
+    </size>
+   </property>
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonIconOnly</enum>
+   </property>
+   <property name="autoRaise">
+    <bool>false</bool>
+   </property>
+   <property name="arrowType">
+    <enum>Qt::NoArrow</enum>
+   </property>
   </widget>
  </widget>
  <resources/>

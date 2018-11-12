@@ -35,7 +35,7 @@ class CamThread(Service):
         self.logFull = None
         self.logState = False
 
-        self.display_type = 'original'
+        self.show_threshold = False
         self.draw_contours = True
 
         # call constructor from parent        
@@ -72,26 +72,19 @@ class CamThread(Service):
                 if frameData.inFrame.shape != 0:
                     self.logFull.write(frameData.inFrame)
 
-        drawFrame = frameData.inFrame.copy()
         # Process frame if desired
         if frameData is not None:
-            if self.display_type == 'original':
-                outFrame = frameData.inFrame
-            elif self.display_type == 'greyscale':
-                outFrame = cv2.cvtColor(frameData.grayFrame, cv2.COLOR_GRAY2BGR)
-            elif self.display_type == 'inverted':
-                outFrame = cv2.cvtColor(frameData.invertedFrame, cv2.COLOR_GRAY2BGR)
-            elif self.display_type == 'blurred':
-                outFrame = cv2.cvtColor(frameData.blurFrame, cv2.COLOR_GRAY2BGR)
-            elif self.display_type == 'threshold':
+            if self.show_threshold:
                 outFrame = cv2.cvtColor(frameData.threshFrame, cv2.COLOR_GRAY2BGR)
+            else:
+                outFrame = frameData.inFrame
 
             # draw the fly contour if status available
             if frameData.flyContour is not None:
                 if self.draw_contours:
-                    "trying to draw contour"
                     cv2.drawContours(outFrame, [frameData.flyContour], 0, (0, 255, 0), 2)
 
+        drawFrame = outFrame.copy()
         cv2.imshow('image', drawFrame)
         #cv2.moveWindow(40,30) ?try this. look more...
         # display image
@@ -172,21 +165,6 @@ class CamThread(Service):
             # close previous full log video
             if self.logFull is not None:
                 self.logFull.release()
-
-    def orginal(self):
-        self.display_type = 'original'
-
-    def greyscale(self):
-        self.display_type = 'greyscale'
-
-    def inverted(self):
-        self.display_type = 'inverted'
-
-    def blurred(self):
-        self.display_type = 'blurred'
-
-    def threshold(self):
-        self.display_type = 'threshold'
 
 class FrameData:
     def __init__(self, inFrame, grayFrame, invertedFrame, blurFrame, threshFrame, flyContour):

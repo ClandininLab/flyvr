@@ -2,12 +2,14 @@ import sys
 import cv2
 from time import strftime, time, sleep
 
+#import breeze_resources
+
 from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QWidget, QPushButton
 from PyQt5 import QtWidgets
 from PyQt5 import uic
 from PyQt5 import QtGui
 from functools import partial
-from PyQt5.QtCore import QSize
+from PyQt5.QtCore import QSize, QFile, QTextStream
 
 from flyrpc.launch import launch_server
 from flyvr.service import Service
@@ -109,9 +111,6 @@ class MainGui():
         self.ui.start_trial_button.setEnabled(False)
         self.ui.stop_trial_button.setEnabled(False)
 
-        # Setup quickstart button
-        self.ui.quick_start_button.clicked.connect(lambda x: self.quickStart())
-
         # Setup camera sliders
         self.ui.thresh_slider.setValue(200)
         self.ui.thresh_label.setText(str(self.ui.thresh_slider.value()))
@@ -127,16 +126,15 @@ class MainGui():
         self.ui.loop_gain_slider.valueChanged.connect(self.loopgainChange)
 
 
-        # Setup camera combo
-        self.ui.image_type_combo.setEnabled(False)
-        #self.ui.image_type_combo.activated['Original'].connect(lambda x: self.cam.original())
-        #self.ui.image_type_combo.activated['Greyscale'].connect(lambda x: self.cam.greyscale())
-        #self.ui.image_type_combo.activated['Inverted'].connect(lambda x: self.cam.inverted())
-        #self.ui.image_type_combo.activated['Blurred'].connect(lambda x: self.cam.blurred())
-        #self.ui.image_type_combo.activated['Threshold'].connect(lambda x: self.cam.threshold())
-        self.ui.draw_contours_checkbox.stateChanged.connect(lambda x: self.camContours())
+        # Setup camera checkboxes
+        #self.ui.image_type_combo.setEnabled(False)
+        #self.ui.image_type_combo.activated[str].connect(self.image_type)
         self.ui.draw_contours_checkbox.setChecked(True)
         self.ui.draw_contours_checkbox.setEnabled(False)
+        self.ui.show_threshold_checkbox.setChecked(False)
+        self.ui.show_threshold_checkbox.setEnabled(False)
+        self.ui.show_threshold_checkbox.stateChanged.connect(lambda x: self.camThreshold())
+        self.ui.draw_contours_checkbox.stateChanged.connect(lambda x: self.camContours())
 
         # Setup metadata input
         self.ui.save_metadata_button.clicked.connect(partial(self.saveMetadata, self.ui))
@@ -147,6 +145,13 @@ class MainGui():
         self.ui.stim_within_trial_button.clicked.connect(lambda x: self.stimWithinTrial())
         self.ui.stim_per_trial_button.setEnabled(False)
         self.ui.stim_within_trial_button.setEnabled(False)
+
+    def camThreshold(self):
+        if self.cam is not None:
+            if self.ui.show_threshold_checkbox.isChecked():
+                self.cam.show_threshold = True
+            else:
+                self.cam.show_threshold = False
 
     def camContours(self):
         if self.cam is not None:
@@ -273,16 +278,20 @@ class MainGui():
         self.cam.start()
         self.ui.camera_start_button.setEnabled(False)
         self.ui.camera_stop_button.setEnabled(True)
-        self.ui.image_type_combo.setEnabled(True)
         self.ui.draw_contours_checkbox.setEnabled(True)
+        self.ui.show_threshold_checkbox.setEnabled(True)
 
     def camStop(self):
         self.cam.cam.camera.StopGrabbing()
         self.cam.stop()
         self.cam = None
         cv2.destroyAllWindows()
+        self.ui.draw_contours_checkbox.setChecked(True)
+        self.ui.show_threshold_checkbox.setChecked(False)
         self.ui.camera_start_button.setEnabled(True)
         self.ui.camera_stop_button.setEnabled(False)
+        self.ui.draw_contours_checkbox.setEnabled(False)
+        self.ui.show_threshold_checkbox.setEnabled(False)
 
     def trackerStart(self):
         self.tracker = TrackThread(cncThread=self.cnc, camThread=self.cam)
