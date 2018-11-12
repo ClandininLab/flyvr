@@ -96,6 +96,7 @@ class MainGui():
         self.ui.opto_off_button.clicked.connect(lambda x: self.opto.off())
         self.ui.opto_pulse_button.clicked.connect(lambda x: self.opto.pulse())
         self.ui.opto_foraging_button.clicked.connect(lambda x: self.foraging())
+        self.ui.opto_foraging_button.setEnabled(False)
         self.ui.opto_stop_button.setEnabled(False)
         self.ui.opto_on_button.setEnabled(False)
         self.ui.opto_off_button.setEnabled(False)
@@ -319,6 +320,8 @@ class MainGui():
         self.ui.opto_on_button.setEnabled(True)
         self.ui.opto_off_button.setEnabled(True)
         self.ui.opto_pulse_button.setEnabled(True)
+        self.ui.opto_foraging_button.setEnabled(True)
+
 
     def optoStop(self):
         self.opto.stop()
@@ -328,6 +331,8 @@ class MainGui():
         self.ui.opto_on_button.setEnabled(False)
         self.ui.opto_off_button.setEnabled(False)
         self.ui.opto_pulse_button.setEnabled(False)
+        self.ui.opto_foraging_button.setEnabled(False)
+
 
     def foraging(self):
         self.opto.foraging = True
