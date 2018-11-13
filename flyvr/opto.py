@@ -19,7 +19,7 @@ class OptoThread(Service):
     ON_COMMAND = 0xbe
     OFF_COMMAND = 0xef
 
-    def __init__(self, cncThread=None, camThread=None, trackThread=None, TrialThread=None):
+    def __init__(self, cncThread=None, camThread=None, trackThread=None, trialThread=None):
         # Serial interface to opto arduino
         com = None
         if com is None:
@@ -42,7 +42,7 @@ class OptoThread(Service):
         self.camThread = camThread
         self.cncThread = cncThread
         self.trackThread = TrackThread
-        self.trialThread = TrialThread
+        self.trialThread = trialThread
 
         # Set foraging parameters
         self.foraging = False

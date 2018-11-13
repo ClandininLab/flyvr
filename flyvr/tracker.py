@@ -67,6 +67,8 @@ class TrackThread(Service):
 
     # overriding method from parent...
     def loopBody(self):
+        #print('cnc: ', self.cncThread)
+        #print('cam: ', self.camThread)
         # read current time
         thisTime = time()
         dt = thisTime - self.lastTime

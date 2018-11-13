@@ -53,10 +53,8 @@ class TrialThread(Service):
         os.makedirs(self.exp_dir)
 
         # start logging to dispenser
-        #try:
-        #    self.dispenser.start_logging(self.exp_dir)
-        #except OSError:
-        #    print('Could not set up dispenser logging.')
+        if self.dispenser is not None:
+            self.dispenser.start_logging(self.exp_dir)
 
         # call constructor from parent
         super().__init__(minTime=loopTime, maxTime=loopTime, iter_warn=False)
