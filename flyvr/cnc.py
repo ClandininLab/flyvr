@@ -93,6 +93,9 @@ class CncThread(Service):
         with self.logLock:
             return self.logState, self.logFile
 
+    def cleanup(self):
+        del self.cnc
+
 class CncStatus:
     def __init__(self, status):
         # compute checksum
@@ -185,6 +188,7 @@ class CNC:
         return CncStatus(byteArrIn)
 
     def __del__(self):
+        print('Deleting CNC object...')
         self.setVel(0, 0)
         self.ser.close()
     
