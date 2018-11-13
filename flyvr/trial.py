@@ -11,7 +11,7 @@ from threading import Lock
 from flyvr.tracker import TrackThread, ManualVelocity
 
 class TrialThread(Service):
-    def __init__(self, cam, dispenser, stim, opto, cnc, tracker, ui,
+    def __init__(self, cam, dispenser, stim, opto, tracker, ui,
                  loopTime=10e-3, fly_lost_timeout=2, fly_detected_timeout=2):
 
         self.trial_count = itertools.count(1)
@@ -19,7 +19,6 @@ class TrialThread(Service):
         self.prev_state = 'started'
 
         self.cam = cam
-        self.cnc = cnc
         self.dispenser = dispenser
         self.stim = stim
         self.opto = opto
@@ -74,7 +73,7 @@ class TrialThread(Service):
         self._trial_dir = _trial_dir
         os.makedirs(_trial_dir)
 
-        self.cnc.startLogging(os.path.join(_trial_dir, 'cnc.txt'))
+        self.tracker.startLogging(os.path.join(_trial_dir, 'cnc.txt'))
         self.cam.startLogging(os.path.join(_trial_dir, 'cam.txt'),os.path.join(_trial_dir, 'cam_compr.mkv'))
 
         if self.opto is not None:
@@ -86,7 +85,7 @@ class TrialThread(Service):
     def _stop_trial(self):
         print('Stopped trial.')
 
-        self.cnc.stopLogging()
+        self.tracker.stopLogging()
         self.cam.stopLogging()
         self.tracker.stopTracking()
 
@@ -135,12 +134,16 @@ class TrialThread(Service):
                 if self.prev_state == 'run':
                     print('Fly is gone.')
                     self._stop_trial()
-                self.tracker.move_to_center()
+                self.tracker.start_moving_to_center()
+                self.prev_state = 'fly lost'
+                self.state = 'moving back to center'
+        elif self.state == 'moving back to center':
+            if self.tracker.is_close_to_center():
                 if self.dispenser is not None:
                     self.dispenser.release_fly()
                 else:
                     print('Dispenser not connected, please manually release fly')
-                self.prev_state = 'fly lost'
+                self.prev_state = 'moving back to center'
                 self.state = 'started'
         else:
             raise Exception('Invalid state.')

@@ -26,7 +26,15 @@ class Service:
         self.done.set()
         self.thread.join()
 
+    def setup(self):
+        pass
+
+    def cleanup(self):
+        pass
+
     def loop(self):
+        self.setup()
+
         # initialize the loop iteration counter
         self.iterCount = 0
 
@@ -59,6 +67,8 @@ class Service:
 
         # record service stopping time
         self.stopTime = time()
+
+        self.cleanup()
 
     @property
     def avePeriod(self):

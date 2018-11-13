@@ -5,7 +5,7 @@ from time import strftime, time, sleep
 from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QWidget, QPushButton
 from PyQt5 import QtWidgets
 from PyQt5 import uic
-from PyQt5 import QtGui
+from PyQt5 import QtGui, QtCore
 from functools import partial
 from PyQt5.QtCore import QSize, QFile, QTextStream
 
@@ -32,9 +32,9 @@ class MainGui():
         # Set services to none
         self.dispenser = None
         self.opto = None
-        self.cam = None
-        self.cnc = None
+        self._cam = None
         self.stim = None
+        self.cam_view = None
 
         # Set background services to none
         self.trial = None
@@ -44,8 +44,6 @@ class MainGui():
         self.frameData = None
 
         self.cnc_shouldinitialize = None
-        self.ask_cnc_init = True
-        self.cncinit = False
         self.message = []
 
         #Launch GuiThread - helps to manage some types of events
@@ -59,10 +57,10 @@ class MainGui():
         #self.guiThread.start()
 
         # Setup cnc buttons
-        self.ui.cnc_start_button.clicked.connect(lambda x: self.cncStart())
-        self.ui.cnc_stop_button.clicked.connect(lambda x: self.cncStop())
-        self.ui.cnc_initialize_button.clicked.connect(lambda x: self.initializeCnc())
-        self.ui.cnc_move_center_button.clicked.connect(lambda x: self.tracker.move_to_center())
+        self.ui.cnc_start_button.clicked.connect(lambda x: self.trackerStart())
+        self.ui.cnc_stop_button.clicked.connect(lambda x: self.trackerStop())
+        self.ui.cnc_initialize_button.clicked.connect(lambda x: self.tracker.cnc_shouldinitialize.set())
+        self.ui.cnc_move_center_button.clicked.connect(lambda x: self.tracker.start_moving_to_center())
         self.ui.cnc_mark_center_button.clicked.connect(lambda x: self.markCenter())
         self.ui.cnc_initialize_button.setEnabled(False)
         self.ui.cnc_move_center_button.setEnabled(False)
@@ -153,6 +151,32 @@ class MainGui():
         self.ui.stim_per_trial_button.setEnabled(False)
         self.ui.stim_within_trial_button.setEnabled(False)
 
+    @property
+    def cnc(self):
+        try:
+            return self.tracker.cnc
+        except:
+            return None
+
+    @property
+    def cncinit(self):
+        try:
+            return self.tracker.is_init
+        except:
+            return False
+
+    @property
+    def cam(self):
+        return self._cam
+
+    @cam.setter
+    def cam(self, value):
+        self._cam = value
+        try:
+            self.tracker.camThread = value
+        except:
+            pass
+
     def camThreshold(self):
         if self.cam is not None:
             if self.ui.show_threshold_checkbox.isChecked():
@@ -234,66 +258,65 @@ class MainGui():
     def calibrateDispenser(self):
         self.dispenser.calibrate_gate()
 
-    def cncStart(self):
-        if self.ask_cnc_init:
-            mail = Mail()
-            CncPopup(mail)
-            self.cnc_shouldinitialize = mail.message
-            if self.cnc_shouldinitialize:
-                cnc_home()
-                self.cncinit = True
-        else:
-            cnc_home()
-        self.cnc = CncThread()
-        print(self.cnc)
-        self.cnc.start()
-        sleep(0.1)
-        self.trackerStart()
+    def trackerStart(self):
+        # find if we should initialize
+        mail = Mail()
+        CncPopup(mail)
+        cnc_shouldinitialize = mail.message
+
+        # start tracker
+        self.tracker = TrackThread(camThread=self.cam)
+
+        if cnc_shouldinitialize:
+            self.tracker.cnc_shouldinitialize.set()
+
+        self.tracker.start()
+
+        # set status of UI buttons
+        self.ui.cnc_up_button.setEnabled(True)
+        self.ui.cnc_down_button.setEnabled(True)
+        self.ui.cnc_left_button.setEnabled(True)
+        self.ui.cnc_right_button.setEnabled(True)
         self.ui.cnc_start_button.setEnabled(False)
         self.ui.cnc_stop_button.setEnabled(True)
         self.ui.cnc_initialize_button.setEnabled(True)
         self.ui.cnc_move_center_button.setEnabled(True)
         self.ui.cnc_mark_center_button.setEnabled(True)
 
-    def cncStop(self):
-        self.cnc.stop()
-        self.trackerStop()
-        self.cnc = None
+    def trackerStop(self):
+        self.tracker.stop()
+        self.tracker = None
+
+        # set status of UI buttons
+        self.ui.cnc_up_button.setEnabled(False)
+        self.ui.cnc_down_button.setEnabled(False)
+        self.ui.cnc_left_button.setEnabled(False)
+        self.ui.cnc_right_button.setEnabled(False)
         self.ui.cnc_start_button.setEnabled(True)
         self.ui.cnc_stop_button.setEnabled(False)
         self.ui.cnc_initialize_button.setEnabled(False)
         self.ui.cnc_move_center_button.setEnabled(False)
         self.ui.cnc_mark_center_button.setEnabled(False)
 
-    def initializeCnc(self):
-        self.cnc.stop()
-        self.tracker.stop()
-        cnc_home()
-        self.cnc = CncThread()
-        self.cnc.start()
-        sleep(0.1)
-        self.trackerStart()
-        self.tracker.move_to_center()
-        self.cncinit = True
-
     def markCenter(self):
-        self.tracker.set_center_pos(self.cnc.status.posX, self.cnc.status.posY)
-        self.cncinit = True
+        self.tracker.mark_center()
 
     def camStart(self):
-        cv2.namedWindow('image')
         self.cam = CamThread()
         self.cam.start()
+        self.cam_view = CameraView(self.cam)
+
         self.ui.camera_start_button.setEnabled(False)
         self.ui.camera_stop_button.setEnabled(True)
         self.ui.draw_contours_checkbox.setEnabled(True)
         self.ui.show_threshold_checkbox.setEnabled(True)
 
     def camStop(self):
-        self.cam.cam.camera.StopGrabbing()
+        self.cam_view.close()
+
         self.cam.stop()
         self.cam = None
-        cv2.destroyAllWindows()
+
         self.ui.draw_contours_checkbox.setChecked(True)
         self.ui.show_threshold_checkbox.setChecked(False)
         self.ui.camera_start_button.setEnabled(True)
@@ -301,25 +324,8 @@ class MainGui():
         self.ui.draw_contours_checkbox.setEnabled(False)
         self.ui.show_threshold_checkbox.setEnabled(False)
 
-    def trackerStart(self):
-        self.tracker = TrackThread(cncThread=self.cnc, camThread=self.cam)
-        self.tracker.start()
-        if self.cnc_shouldinitialize:
-            self.tracker.move_to_center()
-        self.ui.cnc_up_button.setEnabled(True)
-        self.ui.cnc_down_button.setEnabled(True)
-        self.ui.cnc_left_button.setEnabled(True)
-        self.ui.cnc_right_button.setEnabled(True)
-
-    def trackerStop(self):
-        self.tracker.stop()
-        self.ui.cnc_up_button.setEnabled(False)
-        self.ui.cnc_down_button.setEnabled(False)
-        self.ui.cnc_left_button.setEnabled(False)
-        self.ui.cnc_right_button.setEnabled(False)
-
     def optoStart(self):
-        self.opto = OptoThread(cncThread=self.cnc, camThread=self.cam,
+        self.opto = OptoThread(cncThread=self.tracker.cncThread, camThread=self.cam,
                                trackThread=self.tracker, trialThread = self.trial)
         self.opto.start()
         self.ui.opto_start_button.setEnabled(False)
@@ -348,7 +354,7 @@ class MainGui():
     def experimentStart(self):
         if self.cam is None:
             self.message.append("Turn on the camera before starting the experiment.")
-        if self.cnc is None:
+        if self.tracker is None:
             self.message.append("Turn on the cnc before starting the experiment.")
         if not self.cncinit:
             self.message.append("Initialize cnc or mark center before starting the experiment.")
@@ -357,7 +363,7 @@ class MainGui():
             MessagePopup(self.message)
             self.message = []
         else:
-            self.trial = TrialThread(cam=self.cam, dispenser=self.dispenser, cnc=self.cnc, tracker=self.tracker,
+            self.trial = TrialThread(cam=self.cam, dispenser=self.dispenser, tracker=self.tracker,
                                            opto=self.opto, stim=self.stim, ui=self.ui)
             self.trial.start()
             if self.dispenser is not None:
@@ -385,12 +391,12 @@ class MainGui():
         self.ui.start_trial_button.setEnabled(True)
         self.ui.stop_trial_button.setEnabled(False)
 
-    def quickStart(self):
-        self.ui.quick_start_button.setEnabled(False)
-        self.cnc_shouldinitialize = True
-        self.ask_cnc_init = False
-        self.camStart()
-        self.cncStart()
+    # def quickStart(self):
+    #     self.ui.quick_start_button.setEnabled(False)
+    #     self.cnc_shouldinitialize = True
+    #     self.ask_cnc_init = False
+    #     self.camStart()
+    #     self.cncStart()
 
     #def keyPressEvent(self, e):    
     #    if e.key() == Qt.Key_Escape:
@@ -401,11 +407,10 @@ class MainGui():
         if self.opto is not None:
             self.opto.off()
             self.opto.stop()
+        if self.cam_view is not None:
+            self.cam_view.close()
         if self.cam is not None:
             self.cam.stop()
-            cv2.destroyAllWindows()
-        if self.cnc is not None:
-            self.cnc.stop()
         if self.tracker is not None:
             self.tracker.stop()
         if self.trial is not None:
@@ -472,6 +477,54 @@ class MessagePopup(QMessageBox):
         self.setGeometry(self.left, self.top, self.width, self.height)
         QMessageBox.warning(self, 'Warning', '\n\n'.join(message))
         self.show()
+
+# ref: https://github.com/bsdnoobz/opencv-code/blob/master/opencv-qt-integration-1/python/ImageViewer.py
+class CameraView(QWidget):
+    def __init__(self, cam, fps=24):
+        super().__init__()
+        self.title = 'Camera View'
+        self.left = 600
+        self.top = 400
+        self.width = 700
+        self.height = 500
+
+        self.cam = cam
+
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.update_window)
+        self.timer.start(int(1/fps*1000))
+
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle(self.title)
+        self.setGeometry(self.left, self.top, self.width, self.height)
+
+        self.image_label = QtWidgets.QLabel()
+        self.main_layout = QtWidgets.QVBoxLayout()
+        self.main_layout.addWidget(self.image_label)
+        self.setLayout(self.main_layout)
+
+        self.show()
+
+    def update_window(self):
+        try:
+            img = self.cam.outFrame
+        except:
+            return
+
+        if img is not None:
+            height, width, bytesPerComponent = img.shape
+            bytesPerLine = 3 * width
+            cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)
+            q_img = QtGui.QImage(img.data, width, height, bytesPerLine, QtGui.QImage.Format_RGB888)
+
+            pixmap = QtGui.QPixmap.fromImage(q_img)
+            self.image_label.setPixmap(pixmap)
+
+    def close(self):
+        self.timer.stop()
+        super().close()
 
 def main():
     app = QApplication(sys.argv)

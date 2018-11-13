@@ -1,6 +1,7 @@
 import cv2
 import copy
 import numpy as np
+import sys
 
 from pypylon import pylon
 from math import pi, sqrt, hypot
@@ -29,6 +30,10 @@ class CamThread(Service):
         self.threshLock = Lock()
         self.threshold = defaultThresh
 
+        # Lock for the output frame
+        self._outFrame = None
+        self.outFrameLock = Lock()
+
         # File handle for logging
         self.logLock = Lock()
         self.logFile = None
@@ -40,6 +45,16 @@ class CamThread(Service):
 
         # call constructor from parent        
         super().__init__(maxTime=maxTime)
+
+    @property
+    def outFrame(self):
+        with self.outFrameLock:
+            return self._outFrame
+
+    @outFrame.setter
+    def outFrame(self, value):
+        with self.outFrameLock:
+            self._outFrame = value
 
     # overriding method from parent...
     def loopBody(self):
@@ -55,21 +70,19 @@ class CamThread(Service):
         # update the debugging frame variable
         self.frameData = frameData
 
-        # prepare string for logging
-        logStr = (str(time()) + ',' +
-                  str(flyData.flyPresent) + ',' +
-                  str(flyData.flyX) + ',' +
-                  str(flyData.flyY) + ',' +
-                  str(flyData.ma) + ',' +
-                  str(flyData.MA) + ',' +
-                  str(flyData.angle) + '\n')
-
         # write logs
         with self.logLock:
             if self.logState:
-                self.logFile.write(logStr)
-
-                if frameData.inFrame.shape != 0:
+                if flyData is not None:
+                    logStr = (str(time()) + ',' +
+                              str(flyData.flyPresent) + ',' +
+                              str(flyData.flyX) + ',' +
+                              str(flyData.flyY) + ',' +
+                              str(flyData.ma) + ',' +
+                              str(flyData.MA) + ',' +
+                              str(flyData.angle) + '\n')
+                    self.logFile.write(logStr)
+                if (frameData is not None) and (frameData.inFrame.shape != 0):
                     self.logFull.write(frameData.inFrame)
 
         # Process frame if desired
@@ -84,14 +97,8 @@ class CamThread(Service):
                 if self.draw_contours:
                     cv2.drawContours(outFrame, [frameData.flyContour], 0, (0, 255, 0), 2)
 
-        drawFrame = outFrame.copy()
-        cv2.imshow('image', drawFrame)
-        #cv2.moveWindow(40,30) ?try this. look more...
-        # display image
-        self.tLoop = 1/24
-        key = cv2.waitKey(int(round(1e3 * self.tLoop)))
-        if (key != -1):
-            print('key: {}'.format(key))
+            # locking assign
+            self.outFrame = outFrame
 
     @property
     def flyData(self):
@@ -165,6 +172,9 @@ class CamThread(Service):
             # close previous full log video
             if self.logFull is not None:
                 self.logFull.release()
+
+    def cleanup(self):
+        self.cam.camera.StopGrabbing()
 
 class FrameData:
     def __init__(self, inFrame, grayFrame, invertedFrame, blurFrame, threshFrame, flyContour):
@@ -250,76 +260,78 @@ class Camera:
                 (self.r_min <= ellipse.ma/ellipse.MA <= self.r_max))
 
     def processNext(self, threshold):
+        if not self.camera.IsGrabbing():
+            return None, None
+
         # Capture a single frame
-        if self.camera.IsGrabbing():
-            grabResult = self.camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
-            image = self.converter.Convert(grabResult)
-            inFrame = image.GetArray().copy()
-            grabResult.Release()
+        grabResult = self.camera.RetrieveResult(5000, pylon.TimeoutHandling_ThrowException)
+        image = self.converter.Convert(grabResult)
+        inFrame = image.GetArray().copy()
+        grabResult.Release()
 
-            # Convert frame to grayscale
-            grayFrame = cv2.cvtColor(inFrame, cv2.COLOR_BGR2GRAY)
-            invertedFrame = cv2.bitwise_not(grayFrame)   #TURN ON FOR IR SINCE FLY IS BRIGHT
-            blurFrame = cv2.GaussianBlur(invertedFrame, (11, 11), 0)
+        # Convert frame to grayscale
+        grayFrame = cv2.cvtColor(inFrame, cv2.COLOR_BGR2GRAY)
+        invertedFrame = cv2.bitwise_not(grayFrame)   #TURN ON FOR IR SINCE FLY IS BRIGHT
+        blurFrame = cv2.GaussianBlur(invertedFrame, (11, 11), 0)
 
-            # Threshold image according
-            rel_level = float(threshold)/255
-            auto_thresh = int(round(np.mean(blurFrame)*rel_level))
-            ret, threshFrame = cv2.threshold(blurFrame, auto_thresh, 255, cv2.THRESH_BINARY_INV)
+        # Threshold image according
+        rel_level = float(threshold)/255
+        auto_thresh = int(round(np.mean(blurFrame)*rel_level))
+        ret, threshFrame = cv2.threshold(blurFrame, auto_thresh, 255, cv2.THRESH_BINARY_INV)
 
-            rows, cols = threshFrame.shape
+        rows, cols = threshFrame.shape
 
-            # Find contours in image
-            im2, contours, hierarchy = cv2.findContours(threshFrame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # Find contours in image
+        im2, contours, hierarchy = cv2.findContours(threshFrame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-            # remove invalid contours
-            results = []
-            for cnt in contours:
-                if len(cnt) < 5:
-                    continue
-                (cx, cy), (d0, d1), angle = cv2.fitEllipse(cnt)
-                MA = max(d0, d1)
-                ma = min(d0, d1)
-                ellipse = Ellipse(cx_px=cx,
-                                  cy_px=cy,
-                                  cx=-(cx-(cols/2.0))/self.px_per_m,
-                                  cy=-(cy-(rows/2.0))/self.px_per_m,
-                                  ma=ma/self.px_per_m,
-                                  MA=MA/self.px_per_m,
-                                  angle=angle)
-                if self.flyCandidate(ellipse):
-                    results.append((ellipse, cnt))
+        # remove invalid contours
+        results = []
+        for cnt in contours:
+            if len(cnt) < 5:
+                continue
+            (cx, cy), (d0, d1), angle = cv2.fitEllipse(cnt)
+            MA = max(d0, d1)
+            ma = min(d0, d1)
+            ellipse = Ellipse(cx_px=cx,
+                              cy_px=cy,
+                              cx=-(cx-(cols/2.0))/self.px_per_m,
+                              cy=-(cy-(rows/2.0))/self.px_per_m,
+                              ma=ma/self.px_per_m,
+                              MA=MA/self.px_per_m,
+                              angle=angle)
+            if self.flyCandidate(ellipse):
+                results.append((ellipse, cnt))
 
-            # If there is a contour, compute its centroid and mark the fly as present
-            if len(results) > 0:
-                #bestResult = min(results, key=lambda x: hypot(x[0].cx, x[0].cy))
-                bestResult = max(results,key=lambda x: x[0].area)
+        # If there is a contour, compute its centroid and mark the fly as present
+        if len(results) > 0:
+            #bestResult = min(results, key=lambda x: hypot(x[0].cx, x[0].cy))
+            bestResult = max(results,key=lambda x: x[0].area)
 
-                ellipse = bestResult[0]
-                flyData = FlyData(flyX_px=ellipse.cx_px,
-                                  flyY_px=ellipse.cy_px,
-                                  flyX=ellipse.cx,
-                                  flyY=ellipse.cy,
-                                  ma=ellipse.ma,
-                                  MA=ellipse.MA,
-                                  angle=ellipse.angle,
-                                  flyPresent=True)
+            ellipse = bestResult[0]
+            flyData = FlyData(flyX_px=ellipse.cx_px,
+                              flyY_px=ellipse.cy_px,
+                              flyX=ellipse.cx,
+                              flyY=ellipse.cy,
+                              ma=ellipse.ma,
+                              MA=ellipse.MA,
+                              angle=ellipse.angle,
+                              flyPresent=True)
 
-                flyContour = bestResult[1]
-            else:
-                flyData = FlyData()
-                flyContour = None
+            flyContour = bestResult[1]
+        else:
+            flyData = FlyData()
+            flyContour = None
 
-            # wrap results
-            frameData = FrameData(inFrame=inFrame,
-                                  grayFrame=grayFrame,
-                                  invertedFrame=invertedFrame,
-                                  blurFrame=blurFrame,
-                                  threshFrame=threshFrame,
-                                  flyContour=flyContour)
+        # wrap results
+        frameData = FrameData(inFrame=inFrame,
+                              grayFrame=grayFrame,
+                              invertedFrame=invertedFrame,
+                              blurFrame=blurFrame,
+                              threshFrame=threshFrame,
+                              flyContour=flyContour)
 
-            # Return results
-            return flyData, frameData
+        # Return results
+        return flyData, frameData
 
     def __del__(self):
         # When everything done, release the capture handle
