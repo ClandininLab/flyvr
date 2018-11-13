@@ -2,8 +2,6 @@ import sys
 import cv2
 from time import strftime, time, sleep
 
-#import breeze_resources
-
 from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QWidget, QPushButton
 from PyQt5 import QtWidgets
 from PyQt5 import uic
@@ -21,6 +19,7 @@ import flyvr.dispenser
 from flyvr.opto import OptoThread
 from flyvr.stim import StimThread
 from flyvr.trial import TrialThread
+from qt.gui import GuiThread
 
 class MainGui():
     def __init__(self, dialog):
@@ -40,6 +39,7 @@ class MainGui():
         # Set background services to none
         self.trial = None
         self.tracker = None
+        self.guiThread = None
 
         self.frameData = None
 
@@ -48,8 +48,15 @@ class MainGui():
         self.cncinit = False
         self.message = []
 
-        # Launch GuiThread - helps to manage some types of events
-        self.GuiThread()
+        #Launch GuiThread - helps to manage some types of events
+        #self.guiThread = GuiThread(cam=self.cam,
+        #                            cnc=self.cnc,
+        #                            opto=self.opto,
+        #                            dispenser=self.dispenser,
+        #                            stim=self.stim,
+        #                            ui=self.ui,
+        #                            trial=self.trial)
+        #self.guiThread.start()
 
         # Setup cnc buttons
         self.ui.cnc_start_button.clicked.connect(lambda x: self.cncStart())
@@ -125,7 +132,6 @@ class MainGui():
         self.ui.r_min_slider.valueChanged.connect(self.rminChange)
         self.ui.r_max_slider.valueChanged.connect(self.rmaxChange)
         self.ui.loop_gain_slider.valueChanged.connect(self.loopgainChange)
-
 
         # Setup camera checkboxes
         #self.ui.image_type_combo.setEnabled(False)
@@ -239,6 +245,7 @@ class MainGui():
         else:
             cnc_home()
         self.cnc = CncThread()
+        print(self.cnc)
         self.cnc.start()
         sleep(0.1)
         self.trackerStart()
@@ -324,6 +331,7 @@ class MainGui():
 
 
     def optoStop(self):
+        self.opto.off()
         self.opto.stop()
         self.opto = None
         self.ui.opto_start_button.setEnabled(True)
@@ -405,71 +413,9 @@ class MainGui():
             self.trial.stop()
         if self.dispenser is not None:
             pass
+        if self.guiThread is not None:
+            self.guiThread.stop()
         print('Shutdown Called')
-
-    class GuiThread(Service):
-        def __init__(self):
-            # put shit in here
-
-            # call constructor from parent        
-            super().__init__()
-
-        # overriding method from parent...
-        def loopBody(self):
-
-            # Handle display of fly parameters
-            if self.camera.flyData.MA is not None:
-                self.ui.fly_major_axis_label.setText(str(self.camera.flyData.MA))
-            else:
-                self.ui.fly_major_axis_label.setText('N/A')
-
-            if self.camera.flyData.ma is not None:
-                self.ui.fly_minor_axis_label.setText(str(self.camera.flyData.ma))
-            else:
-                self.ui.fly_minor_axis_label.setText('N/A')
-
-            if self.camera.flyData.MA is not None:
-                self.ui.fly_aspect_ratio_label.setText(str(self.camera.flyData.MA/self.camera.flyData.ma))
-            else:
-                self.ui.fly_aspect_ratio_label.setText('N/A')
-
-            # Handle bigrig state
-            if self.trial is not None:
-                self.ui.bigrig_state_label.setText(self.trial.state)
-
-            # Handle experiment and trial display
-            if self.trial is not None:
-                self.ui.experiment_label.setText(str(self.trial.exp))
-            else:
-                self.ui.experiment_label.setText('N/A')
-
-            if self.trial is not None:
-                self.ui.trial_label.setText(str(self.trial.trial_count))
-            else:
-                self.ui.trial_label.setText('N/A')
-
-            # Handle gate close/open buttons
-            if self.dispenser is not None:
-                if self.dispenser.gate_state == 'open':
-                    self.ui.open_gate_button.setEnabled(False)
-                    self.ui.close_gate_button.setEnabled(True)
-                elif self.dispenser.gate_state == 'close':
-                    self.ui.open_gate_button.setEnabled(True)
-                    self.ui.close_gate_button.setEnabled(False)
-
-            # Handle trial duration
-            if self.trial is not None:
-                if self.trial is not None:
-                    trial_duration = self.trial.trial_start_t - time()
-            else:
-                trial_duration = 0
-            self.ui.trial_duration_label.setText(int(trial_duration))
-
-            # Handle stim label
-            if self.stim is not None:
-                self.ui.current_stim_label.setText(str(self.stim.stim_type))
-            else:
-                self.ui.current_stim_label.setText('N/A')
 
     # class GateState(QWidget):
     #     valueChanged = pyqtSignal(object)

@@ -21,6 +21,9 @@
   <property name="windowTitle">
    <string>FlyVR BigRig</string>
   </property>
+  <property name="autoFillBackground">
+   <bool>false</bool>
+  </property>
   <widget class="QPushButton" name="current_faulty_trial_button">
    <property name="geometry">
     <rect>
@@ -114,7 +117,7 @@
     </property>
     <property name="icon">
      <iconset>
-      <normaloff>left_arrow.png</normaloff>left_arrow.png</iconset>
+      <normaloff>icons/left_arrow.png</normaloff>icons/left_arrow.png</iconset>
     </property>
     <property name="iconSize">
      <size>
@@ -149,7 +152,7 @@
     </property>
     <property name="icon">
      <iconset>
-      <normaloff>down_arrow.png</normaloff>down_arrow.png</iconset>
+      <normaloff>icons/down_arrow.png</normaloff>icons/down_arrow.png</iconset>
     </property>
     <property name="iconSize">
      <size>
@@ -184,7 +187,7 @@
     </property>
     <property name="icon">
      <iconset>
-      <normaloff>right_arrow.png</normaloff>right_arrow.png</iconset>
+      <normaloff>icons/right_arrow.png</normaloff>icons/right_arrow.png</iconset>
     </property>
     <property name="iconSize">
      <size>
@@ -219,7 +222,7 @@
     </property>
     <property name="icon">
      <iconset>
-      <normaloff>up_arrow.png</normaloff>up_arrow.png</iconset>
+      <normaloff>icons/up_arrow.png</normaloff>icons/up_arrow.png</iconset>
     </property>
     <property name="iconSize">
      <size>
@@ -254,7 +257,7 @@
     </property>
     <property name="icon">
      <iconset>
-      <normaloff>home.png</normaloff>home.png</iconset>
+      <normaloff>icons/home.png</normaloff>icons/home.png</iconset>
     </property>
     <property name="iconSize">
      <size>
@@ -362,19 +365,44 @@
       <set>Qt::AlignCenter</set>
      </property>
     </widget>
-   </widget>
-   <widget class="QPushButton" name="pushButton">
-    <property name="geometry">
-     <rect>
-      <x>5</x>
-      <y>5</y>
-      <width>21</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
+    <widget class="QLabel" name="cnc_green_light">
+     <property name="geometry">
+      <rect>
+       <x>7</x>
+       <y>7</y>
+       <width>16</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="pixmap">
+      <pixmap>icons/green_light.png</pixmap>
+     </property>
+     <property name="scaledContents">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QLabel" name="cnc_red_light">
+     <property name="geometry">
+      <rect>
+       <x>7</x>
+       <y>7</y>
+       <width>16</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="pixmap">
+      <pixmap>icons/red_light.png</pixmap>
+     </property>
+     <property name="scaledContents">
+      <bool>true</bool>
+     </property>
+    </widget>
    </widget>
    <zorder>cnc_heading_frame</zorder>
    <zorder>cnc_mark_center_button</zorder>
@@ -386,7 +414,6 @@
    <zorder>cnc_initialize_button</zorder>
    <zorder>cnc_stop_button</zorder>
    <zorder>cnc_start_button</zorder>
-   <zorder>pushButton</zorder>
   </widget>
   <widget class="QFrame" name="frame_2">
    <property name="geometry">
@@ -1569,6 +1596,39 @@
       </widget>
      </item>
     </layout>
+   </widget>
+   <widget class="QLabel" name="label_67">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>170</x>
+      <y>180</y>
+      <width>71</width>
+      <height>81</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">background-color: rgba(255, 255, 255, 0);</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>icons/fly.png</pixmap>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
    </widget>
   </widget>
   <widget class="QFrame" name="frame_8">
