@@ -42,15 +42,15 @@ class MainGui():
         self.opto = None
         self._cam = None
         self.stim = None
-        self.cam_view = None
-        self.dispenser_view = None
 
         # Set background services to none
         self.trial = None
         self.tracker = None
-        self.guiThread = None
 
+        self.cam_view = None
+        self.dispenser_view = None
         self.frameData = None
+        self.centermarked = None
 
         self.cnc_shouldinitialize = None
         self.message = []
@@ -129,12 +129,12 @@ class MainGui():
         # Setup camera sliders
         self.ui.thresh_slider.setValue(200)
         self.ui.thresh_label.setText(str(self.ui.thresh_slider.value()))
-
         self.ui.r_min_slider.setValue(2)
         self.ui.r_min_label.setText(str(self.ui.r_min_slider.value()))
-
         self.ui.r_max_slider.setValue(8)
+        self.ui.r_max_label.setText(str(self.ui.r_max_slider.value()))
         self.ui.loop_gain_slider.setValue(80)
+        self.ui.loop_gain_label.setText(str(self.ui.loop_gain_slider.value()))
         self.ui.thresh_slider.valueChanged.connect(self.thresholdChange)
         self.ui.r_min_slider.valueChanged.connect(self.rminChange)
         self.ui.r_max_slider.valueChanged.connect(self.rmaxChange)
@@ -313,6 +313,7 @@ class MainGui():
 
     def markCenter(self):
         self.tracker.mark_center()
+        self.centermarked = True
 
     def camStart(self):
         self.cam = CamThread()
@@ -348,7 +349,6 @@ class MainGui():
         self.ui.opto_pulse_button.setEnabled(True)
         self.ui.opto_foraging_button.setEnabled(True)
 
-
     def optoStop(self):
         self.opto.off()
         self.opto.stop()
@@ -360,7 +360,6 @@ class MainGui():
         self.ui.opto_pulse_button.setEnabled(False)
         self.ui.opto_foraging_button.setEnabled(False)
 
-
     def foraging(self):
         self.opto.foraging = True
 
@@ -370,7 +369,8 @@ class MainGui():
         if self.tracker is None:
             self.message.append("Turn on the cnc before starting the experiment.")
         if not self.cncinit:
-            self.message.append("Initialize cnc or mark center before starting the experiment.")
+            if not self.centermarked:
+                self.message.append("Initialize cnc or mark center before starting the experiment.")
         if self.message:
             print(self.message)
             MessagePopup(self.message)
@@ -404,13 +404,6 @@ class MainGui():
         self.ui.start_trial_button.setEnabled(True)
         self.ui.stop_trial_button.setEnabled(False)
 
-    # def quickStart(self):
-    #     self.ui.quick_start_button.setEnabled(False)
-    #     self.cnc_shouldinitialize = True
-    #     self.ask_cnc_init = False
-    #     self.camStart()
-    #     self.cncStart()
-
     #def keyPressEvent(self, e):    
     #    if e.key() == Qt.Key_Escape:
     #        self.close()
@@ -429,10 +422,10 @@ class MainGui():
         if self.trial is not None:
             self.trial._stop_trial()
             self.trial.stop()
+        if self.dispenser_view is not None:
+            self.dispenser_view.close()
         if self.dispenser is not None:
             self.dispenser.stop()
-        if self.guiThread is not None:
-            self.guiThread.stop()
         print('Shutdown Called')
 
     # class GateState(QWidget):
@@ -496,10 +489,10 @@ class CameraView(QWidget):
     def __init__(self, cam, fps=24):
         super().__init__()
         self.title = 'Camera View'
-        self.left = 600
-        self.top = 400
-        self.width = 700
-        self.height = 500
+        self.left = 794
+        self.top = 23
+        self.width = 659
+        self.height = 496
 
         self.cam = cam
 
@@ -531,7 +524,6 @@ class CameraView(QWidget):
             bytesPerLine = 3 * width
             cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)
             q_img = QtGui.QImage(img.data, width, height, bytesPerLine, QtGui.QImage.Format_RGB888)
-
             pixmap = QtGui.QPixmap.fromImage(q_img)
             self.image_label.setPixmap(pixmap)
 
@@ -543,10 +535,10 @@ class DispenserView(QWidget):
     def __init__(self, dispenser, fps=24):
         super().__init__()
         self.title = 'Dispenser View'
-        self.left = 600
-        self.top = 400
-        self.width = 500
-        self.height = 500
+        self.left = 794
+        self.top = 562
+        self.width = 300
+        self.height = 300
 
         self.dispenser = dispenser
         self.plot_data = np.zeros((128, 128))
@@ -575,7 +567,7 @@ class DispenserView(QWidget):
             self.plot_data = self.plot_data.astype(np.uint8)
         img = QtGui.QImage(self.plot_data, self.plot_data.shape[0], self.plot_data.shape[1], QtGui.QImage.Format_Indexed8)
         pixmap = QtGui.QPixmap.fromImage(img)
-        pixmap = pixmap.scaledToWidth(500)
+        pixmap = pixmap.scaledToWidth(300)
         self.image_label.setPixmap(pixmap)
 
     def close(self):

@@ -56,7 +56,6 @@ class FlyDispenser(Service):
 
         # dispenser state
         self.state = 'Reset'
-        self.timer_ref = None
 
         # set gate region file location
         this_file = os.path.abspath(os.path.expanduser(__file__))
@@ -96,13 +95,11 @@ class FlyDispenser(Service):
 
         # log file management
         self.log_lock = Lock()
-        self.log_time_ref = None
         self.raw_data_file = None
-        self.open_times_file = None
-        self.close_times_file = None
+        self.gate_times_file = None
 
-        # save the start time
-        self.log_time_ref = time()
+        # for logging the cause of gate opening and closing
+        self.trigger = None
 
         # try to connect to the serial port
         try:
@@ -136,11 +133,13 @@ class FlyDispenser(Service):
         # handle manual command outside of state machine
         # this will always send the state machine back to Idle
         if self.should_open.is_set():
+            self.trigger = 'manual'
             self.send_open_gate_command()
             self.state ='Idle'
             print('Dispenser: going to Idle state.')
 
         if self.should_close.is_set():
+            self.trigger = 'manual'
             self.send_close_gate_command()
             self.state = 'Idle'
             print('Dispenser: going to Idle state.')
@@ -165,6 +164,7 @@ class FlyDispenser(Service):
             print('Dispenser: going to Idle state.')
         elif self.state == 'Idle':
             if self.should_release.is_set():
+                self.trigger = 'auto'
                 self.send_open_gate_command()
                 self.start_timer()
                 self.state = 'PreReleaseDelay'
@@ -175,6 +175,7 @@ class FlyDispenser(Service):
                 print('Dispenser: going to LookForFly state.')
         elif self.state == 'LookForFly':
             if self.gate_clear and self.fly_passed:
+                self.trigger = 'auto'
                 self.send_close_gate_command()
                 self.state = 'Idle'
                 print('Dispenser: going to Idle state.')
@@ -217,7 +218,7 @@ class FlyDispenser(Service):
             self.display_frame = display_frame
 
             # write frame to file
-            self.log(self.raw_data_file, frame)
+            self.log_raw(frame)
 
             # save previous frame for difference calculation if desired
             self.prev_frame = self.raw_data
@@ -227,7 +228,7 @@ class FlyDispenser(Service):
         else:
             if self.synced:
                 print('Dispenser camera lost sync')
-                synced = False
+                self.synced = False
 
     @property
     def gate_clear(self):
@@ -258,20 +259,17 @@ class FlyDispenser(Service):
     def timer_done(self, duration):
         return (time() - self.timer_ref) > duration
 
-    def log_time(self):
-        return time() - self.log_time_ref
-
     def send_open_gate_command(self):
         print('Dispenser: opening gate...')
         self.conn.write(bytes([1]))
-        self.log(self.open_times_file, [self.log_time()])
         self.gate_state = 'open'
+        self.log_gate(time(), self.gate_state)
 
     def send_close_gate_command(self):
         print('Dispenser: closing gate...')
         self.conn.write(bytes([0]))
-        self.log(self.close_times_file, [self.log_time()])
         self.gate_state = 'closed'
+        self.log_gate(time(), self.gate_state)
 
     def open_gate(self):
         self.should_open.set()
@@ -301,28 +299,33 @@ class FlyDispenser(Service):
         self.num_needed_pixels = value
 
     def close_all_open_files(self):
-        for f in [self.raw_data_file, self.open_times_file, self.close_times_file]:
+        for f in [self.raw_data_file, self.gate_times_file]:
             if f is not None:
                 f.close()
 
-    def log(self, f, values):
+    def log_gate(self, time, state):
         with self.log_lock:
-            if f is not None:
-                f.write(format_values(values))
-                f.flush()
+            if self.gate_times_file is not None:
+                self.gate_times_file.write('{}, {}, {}\n'.format(time, state, self.trigger))
+                self.gate_times_file.flush()
+                self.trigger = None
+
+    def log_raw(self, frame):
+        with self.log_lock:
+            if self.raw_data_file is not None:
+                self.raw_data_file.write(format_values(frame))
+                self.raw_data_file.flush()
 
     def start_logging(self, exp_dir):
         with self.log_lock:
             self.close_all_open_files()
 
             self.raw_data_file = open(os.path.join(exp_dir, 'raw_gate_data.txt'), 'w')
-            self.open_times_file = open(os.path.join(exp_dir, 'open_gate_data.txt'), 'w')
-            self.close_times_file = open(os.path.join(exp_dir, 'close_gate_data.txt'), 'w')
+            self.gate_times_file = open(os.path.join(exp_dir, 'gate_data.txt'), 'w')
 
     def stop_logging(self):
         with self.log_lock:
             self.close_all_open_files()
 
             self.raw_data_file = None
-            self.open_times_file = None
-            self.close_times_file = None
+            self.gate_times_file = None
