@@ -11,6 +11,7 @@ from flyrpc.transceiver import MySocketServer
 from flyrpc.util import get_kwargs
 
 from flyvr.util import serial_number_to_comport
+from flyvr.service import Service
 
 def format_values(values, delimeter='\t', line_ending='\n'):
     retval = [str(value) for value in values]
@@ -19,28 +20,23 @@ def format_values(values, delimeter='\t', line_ending='\n'):
 
     return retval
 
-class FlyDispenser:
-    def __init__(self, serial_port=None, serial_baud=None, serial_timeout=None, shutdown_flag=None):
+class FlyDispenser(Service):
+    def __init__(self, maxTime=12e-3):
         # set defaults
-        if serial_port is None:
-            if platform.system() == 'Darwin':
-                serial_port = '/dev/tty.usbmodem1411'
-            elif platform.system() == 'Linux':
-                try:
-                    serial_port = serial_number_to_comport('557393232373516180D1')
-                except:
-                    print('Could not connect to fly dispenser Arduino.')
-            else:
-                serial_port = 'COM4'
 
-        if serial_baud is None:
-            serial_baud = 115200
+        if platform.system() == 'Darwin':
+            serial_port = '/dev/tty.usbmodem1411'
+        elif platform.system() == 'Linux':
+            try:
+                serial_port = serial_number_to_comport('557393232373516180D1')
+            except:
+                print('Could not connect to fly dispenser Arduino.')
+        else:
+            serial_port = 'COM4'
 
-        if serial_timeout is None:
-            serial_timeout = 4
-
-        if shutdown_flag is None:
-            shutdown_flag = Event()
+        serial_baud = 115200
+        serial_timeout = 4
+        shutdown_flag = Event()
 
         # save settings
         self.serial_port = serial_port
@@ -105,20 +101,6 @@ class FlyDispenser:
         self.open_times_file = None
         self.close_times_file = None
 
-    @property
-    def display_frame(self):
-        with self.display_frame_lock:
-            return self._display_frame
-
-    @display_frame.setter
-    def display_frame(self, value):
-        with self.display_frame_lock:
-            self._display_frame = value
-
-    def loop(self):
-        if self.serial_port is None:
-            return
-
         # save the start time
         self.log_time_ref = time()
 
@@ -134,15 +116,20 @@ class FlyDispenser:
         sleep(1.0)
         self.conn.reset_input_buffer()
 
-        # main loop
-        while not self.shutdown_flag.is_set():
-            self.loop_body()
+        # call constructor from parent
+        super().__init__(maxTime=maxTime)
 
-        # cleanup tasks
-        self.send_close_gate_command()
-        self.conn.close()
+    @property
+    def display_frame(self):
+        with self.display_frame_lock:
+            return self._display_frame
 
-    def loop_body(self):
+    @display_frame.setter
+    def display_frame(self, value):
+        with self.display_frame_lock:
+            self._display_frame = value
+
+    def loopBody(self):
         # read next frame
         self.read_frame()
 
@@ -339,60 +326,3 @@ class FlyDispenser:
             self.raw_data_file = None
             self.open_times_file = None
             self.close_times_file = None
-
-def main():
-    # start the server
-    kwargs = get_kwargs()
-    if kwargs['port'] is None:
-        kwargs['port'] = 39855
-    server = MySocketServer(host=kwargs['host'], port=kwargs['port'], name='DispenseServer', threaded=True)
-
-    # create fly dispenser object
-    dispenser = FlyDispenser(serial_port=kwargs['serial_port'], serial_baud=kwargs['serial_baud'],
-                             serial_timeout=kwargs['serial_timeout'], shutdown_flag = server.shutdown_flag)
-
-    # start the dispener loop
-    t = Thread(target=dispenser.loop)
-    t.start()
-
-    # register methods
-    server.register_function(dispenser.start_logging)
-    server.register_function(dispenser.stop_logging)
-    server.register_function(dispenser.release_fly)
-    server.register_function(dispenser.open_gate)
-    server.register_function(dispenser.close_gate)
-    server.register_function(dispenser.calibrate_gate)
-    server.register_function(dispenser.set_display_threshold)
-    server.register_function(dispenser.set_fly_passed_threshold)
-    server.register_function(dispenser.set_gate_clear_threshold)
-    server.register_function(dispenser.set_num_needed_pixels)
-    server.register_function(dispenser.set_display_type)
-
-    # run the main event loop using matplotlib
-
-    should_plot = kwargs.get('should_plot', True)
-    plot_interval = kwargs.get('plot_interval', 0.01)
-
-    if should_plot:
-        plot_data = np.zeros((dispenser.num_pixels, dispenser.num_pixels))
-        lines = plt.matshow(plot_data, vmin=0, vmax=255)
-
-    # run the main event loop using matplotlib
-    while not server.shutdown_flag.is_set():
-        if should_plot:
-            display_frame = dispenser.display_frame
-            if display_frame is not None:
-                plot_data = np.vstack(([display_frame], plot_data[0:-1, :]))
-                lines.set_data(plot_data)
-
-        server.process_queue()
-
-        # pause function is required to actually update the display and provide GUI functionality
-        plt.pause(plot_interval)
-
-    # wait for dispenser thread to finish
-    t.join()
-
-
-if __name__ == '__main__':
-    main()
