@@ -50,12 +50,13 @@ class FlyDispenser:
 
         # save parameters
         self.num_pixels = 128
-        self.gate_start = 34
+        self.gate_start = 25
         self.gate_end = 45
         self.max_usable_pixel = 90
 
         # serial connection
         self.conn = None
+        self.synced = False
 
         # dispenser state
         self.state = 'Reset'
@@ -76,10 +77,13 @@ class FlyDispenser:
         # history of last few frames
         self.raw_data = np.zeros((self.num_pixels, ))
 
+        # last frame
+        self.prev_frame = None
+
         # initialize display settings
         self.display_type = 'raw'
         self.display_threshold = -11
-        self.gate_clear_threshold = -20
+        self.gate_clear_threshold = -8
         self.fly_passed_threshold = -11
         self.num_needed_pixels = 2
 
@@ -197,36 +201,46 @@ class FlyDispenser:
         self.should_release.clear()
 
     def read_frame(self):
-        while True:
-            start_byte = self.conn.read(1)[0]
+        start_byte = self.conn.read(1)[0]
+        if int(start_byte) == 0:
+            if not self.synced:
+                print('Dispenser camera is synced.')
+                self.synced = True
+            # read raw data into a list
+            frame = self.conn.read(self.num_pixels)
+            frame = list(frame)
 
-            if int(start_byte) == 0:
-                # read raw data into a list
-                frame = self.conn.read(self.num_pixels)
-                frame = list(frame)
+            # write frame to variable for matplotlib display
+            if self.display_type == 'raw':
+                display_frame = frame
+            elif self.display_type == 'corrected':
+                display_frame = frame
+                if self.background_region is not None:
+                    display_frame -= self.background_region
+            elif self.display_type == 'diff':
+                display_frame = frame
+                if self.prev_frame is not None:
+                    display_frame = np.abs(self.prev_frame - frame)
+            else:
+                display_frame = frame
+                if self.background_region is not None:
+                    display_frame -= self.background_region
+                display_frame = display_frame > self.display_threshold
 
-                # write frame to variable for matplotlib display
-                if self.display_type == 'raw':
-                    display_frame = frame
-                elif self.display_type == 'corrected':
-                    display_frame = frame
-                    if self.background_region is not None:
-                        display_frame -= self.background_region
-                else:
-                    display_frame = frame
-                    if self.background_region is not None:
-                        display_frame -= self.background_region
-                    display_frame = display_frame > self.display_threshold
+            self.display_frame = display_frame
 
-                self.display_frame = display_frame
+            # write frame to file
+            self.log(self.raw_data_file, frame)
 
-                # write frame to file
-                self.log(self.raw_data_file, frame)
+            # save previous frame for difference calculation if desired
+            self.prev_frame = self.raw_data
 
-                # add frame to history
-                self.raw_data = np.array(frame)
-
-                return
+            # add frame to history
+            self.raw_data = np.array(frame)
+        else:
+            if self.synced:
+                print('Dispenser camera lost sync')
+                synced = False
 
     @property
     def gate_clear(self):
@@ -243,8 +257,11 @@ class FlyDispenser:
         if self.background_region is None:
             return False
 
-        diff = (self.raw_data[self.gate_end:self.max_usable_pixel] -
-                self.background_region[self.gate_end:self.max_usable_pixel])
+        #diff = (self.raw_data[self.gate_end:self.max_usable_pixel] -
+        #        self.background_region[self.gate_end:self.max_usable_pixel])
+
+        diff = -np.abs(self.raw_data[self.gate_end:self.max_usable_pixel] -
+                       self.prev_frame[self.gate_end:self.max_usable_pixel])
 
         return np.sum(diff < self.fly_passed_threshold) > self.num_needed_pixels
 

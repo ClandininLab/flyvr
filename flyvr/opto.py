@@ -164,12 +164,13 @@ class OptoThread(Service):
     def write(self, cmd):
         self.ser.write(bytearray([cmd]))
 
-    def pulse(self, duration=1):
+    def pulse(self, on_duration=0.1, off_duration=9.9):
         def target():
-            with self.pulse_lock:
+            while True:
                 self.on()
-                sleep(duration)
+                sleep(on_duration)
                 self.off()
+                sleep(off_duration)
 
         Thread(target=target).start()
 
