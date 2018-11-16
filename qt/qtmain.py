@@ -1,8 +1,15 @@
 import sys
 import cv2
+import numpy as np
 from time import strftime, time, sleep
+from threading import Thread, Lock, Event
+import random
 
-from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QWidget, QPushButton
+#from matplotlib.backends.qt_compat import QtCore, QtWidgets
+#from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+#from matplotlib.figure import Figure
+
+from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QWidget, QPushButton, QSizePolicy
 from PyQt5 import QtWidgets
 from PyQt5 import uic
 from PyQt5 import QtGui, QtCore
@@ -15,10 +22,11 @@ from flyvr.service import Service
 from flyvr.cnc import CncThread, cnc_home
 from flyvr.camera import CamThread
 from flyvr.tracker import TrackThread, ManualVelocity
-import flyvr.dispenser
+from flyvr.dispenser import FlyDispenser
 from flyvr.opto import OptoThread
 from flyvr.stim import StimThread
 from flyvr.trial import TrialThread
+from qt.plotting import PlotWindow, ImgWindow
 from qt.gui import GuiThread
 
 class MainGui():
@@ -35,6 +43,7 @@ class MainGui():
         self._cam = None
         self.stim = None
         self.cam_view = None
+        self.dispenser_view = None
 
         # Set background services to none
         self.trial = None
@@ -234,16 +243,19 @@ class MainGui():
         self.tracker.a = value
 
     def dispenserStart(self):
-        self.dispenser = launch_server(flyvr.dispenser)
+        self.dispenser = FlyDispenser()
+        self.dispenser.start()
+        self.dispenser_view = DispenserView(self.dispenser)
         self.ui.dispenser_start_button.setEnabled(False)
         self.ui.dispenser_stop_button.setEnabled(True)
         self.ui.close_gate_button.setEnabled(True)
         self.ui.open_gate_button.setEnabled(True)
         self.ui.calibrate_gate_button.setEnabled(True)
-        #self.gate_state
 
     def dispenserStop(self):
-        #how to turn off?
+        self.dispenser_view.close()
+        self.dispenser.stop()
+        self.dispenser = None
         self.ui.dispenser_start_button.setEnabled(True)
         self.ui.dispenser_stop_button.setEnabled(False)
         self.ui.close_gate_button.setEnabled(False)
@@ -252,7 +264,6 @@ class MainGui():
 
     def openDispenser(self):
         self.dispenser.open_gate()
-        #self.ui.close_gate_button.setEnabled(False)
 
     def closeDispenser(self):
         self.dispenser.close_gate()
@@ -419,7 +430,7 @@ class MainGui():
             self.trial._stop_trial()
             self.trial.stop()
         if self.dispenser is not None:
-            pass
+            self.dispenser.stop()
         if self.guiThread is not None:
             self.guiThread.stop()
         print('Shutdown Called')
@@ -528,6 +539,49 @@ class CameraView(QWidget):
         self.timer.stop()
         super().close()
 
+class DispenserView(QWidget):
+    def __init__(self, dispenser, fps=24):
+        super().__init__()
+        self.title = 'Dispenser View'
+        self.left = 600
+        self.top = 400
+        self.width = 500
+        self.height = 500
+
+        self.dispenser = dispenser
+        self.plot_data = np.zeros((128, 128))
+
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.update_window)
+        self.timer.start(int(1/fps*1000))
+
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle(self.title)
+        self.setGeometry(self.left, self.top, self.width, self.height)
+
+        self.image_label = QtWidgets.QLabel()
+        self.main_layout = QtWidgets.QVBoxLayout()
+        self.main_layout.addWidget(self.image_label)
+        self.setLayout(self.main_layout)
+
+        self.show()
+
+    def update_window(self):
+        if self.dispenser.display_frame is not None:
+            self.plot_data = np.roll(self.plot_data, 1, 0)
+            self.plot_data[0] = self.dispenser.display_frame
+            self.plot_data = self.plot_data.astype(np.uint8)
+        img = QtGui.QImage(self.plot_data, self.plot_data.shape[0], self.plot_data.shape[1], QtGui.QImage.Format_Indexed8)
+        pixmap = QtGui.QPixmap.fromImage(img)
+        pixmap = pixmap.scaledToWidth(500)
+        self.image_label.setPixmap(pixmap)
+
+    def close(self):
+        self.timer.stop()
+        super().close()
+#
 def main():
     app = QApplication(sys.argv)
     dialog = QtWidgets.QMainWindow()
