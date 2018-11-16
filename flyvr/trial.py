@@ -89,6 +89,9 @@ class TrialThread(Service):
         self.cam.stopLogging()
         self.tracker.stopTracking()
 
+        if self.opto is not None:
+            self.opto.stopLogging()
+
         if self.stim is not None:
             self.stim.stopStim(self._trial_dir)
 

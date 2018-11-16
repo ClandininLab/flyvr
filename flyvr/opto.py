@@ -41,7 +41,7 @@ class OptoThread(Service):
         # Store thread handles
         self.camThread = camThread
         self.cncThread = cncThread
-        self.trackThread = TrackThread
+        self.trackThread = trackThread
         self.trialThread = trialThread
 
         # Set foraging parameters
