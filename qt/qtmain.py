@@ -239,6 +239,7 @@ class MainGui():
         self.ui.dispenser_stop_button.setEnabled(True)
         self.ui.close_gate_button.setEnabled(True)
         self.ui.open_gate_button.setEnabled(True)
+        self.ui.calibrate_gate_button.setEnabled(True)
         #self.gate_state
 
     def dispenserStop(self):
@@ -247,6 +248,7 @@ class MainGui():
         self.ui.dispenser_stop_button.setEnabled(False)
         self.ui.close_gate_button.setEnabled(False)
         self.ui.open_gate_button.setEnabled(False)
+        self.ui.calibrate_gate_button.setEnabled(False)
 
     def openDispenser(self):
         self.dispenser.open_gate()
