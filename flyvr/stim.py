@@ -65,7 +65,7 @@ class StimThread:
         self.stim_state = {}
 
     def get_random_direction(self):
-        return choice([-100, -20, 20, 100])
+        return choice([-400, -200, -100, -20, 20, 100, 200, 400])
 
     def updateStim(self, trial_dir):
         if self.manager is None:
