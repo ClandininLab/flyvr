@@ -210,6 +210,10 @@ class FlyData:
         self.angle = angle
         self.flyPresent = flyPresent
 
+    @property
+    def aspect_ratio(self):
+        return self.ma/self.MA
+
 class ImageProcResult:
     def __init__(self, area_px, perim_px, ellipse):
         self.area_px = area_px

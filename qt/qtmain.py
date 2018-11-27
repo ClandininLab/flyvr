@@ -14,7 +14,8 @@ from PyQt5 import QtWidgets
 from PyQt5 import uic
 from PyQt5 import QtGui, QtCore
 from functools import partial
-from PyQt5.QtCore import QSize, QFile, QTextStream
+from PyQt5.QtCore import QSize, QFile, QTextStream, QUrl
+from PyQt5.QtQuick import QQuickView
 
 from flyrpc.launch import launch_server
 from flyvr.service import Service
@@ -28,12 +29,15 @@ from flyvr.stim import StimThread
 from flyvr.trial import TrialThread
 from qt.plotting import PlotWindow, ImgWindow
 from qt.gui import GuiThread
+from rangeslider import QRangeSlider
 
 class MainGui():
     def __init__(self, dialog):
 
         self.ui = uic.loadUi('main.ui')
+        self.configure_range_sliders()
         self.ui.show()
+
         #self.left = 600
         #self.top = 400
 
@@ -129,15 +133,15 @@ class MainGui():
         # Setup camera sliders
         self.ui.thresh_slider.setValue(200)
         self.ui.thresh_label.setText(str(self.ui.thresh_slider.value()))
-        self.ui.r_min_slider.setValue(2)
-        self.ui.r_min_label.setText(str(self.ui.r_min_slider.value()))
-        self.ui.r_max_slider.setValue(8)
-        self.ui.r_max_label.setText(str(self.ui.r_max_slider.value()))
+        #self.ui.r_min_slider.setValue(2)
+        #self.ui.r_min_label.setText(str(self.ui.r_min_slider.value()))
+        #self.ui.r_max_slider.setValue(8)
+        #self.ui.r_max_label.setText(str(self.ui.r_max_slider.value()))
         self.ui.loop_gain_slider.setValue(80)
         self.ui.loop_gain_label.setText(str(self.ui.loop_gain_slider.value()))
         self.ui.thresh_slider.valueChanged.connect(self.thresholdChange)
-        self.ui.r_min_slider.valueChanged.connect(self.rminChange)
-        self.ui.r_max_slider.valueChanged.connect(self.rmaxChange)
+        #self.ui.r_min_slider.valueChanged.connect(self.rminChange)
+        #self.ui.r_max_slider.valueChanged.connect(self.rmaxChange)
         self.ui.loop_gain_slider.valueChanged.connect(self.loopgainChange)
 
         # Setup camera checkboxes
@@ -159,6 +163,43 @@ class MainGui():
         self.ui.stim_within_trial_button.clicked.connect(lambda x: self.stimWithinTrial())
         self.ui.stim_per_trial_button.setEnabled(False)
         self.ui.stim_within_trial_button.setEnabled(False)
+
+        # create timers
+        self.camera_timer = None
+        self.cnc_timer = None
+
+    def configure_range_sliders(self):
+        # add range slider
+        self.ar_range = QRangeSlider(self.ui)
+        self.ma_range = QRangeSlider(self.ui)
+        self.MA_range = QRangeSlider(self.ui)
+
+        self.ar_range.setMin(0)
+        self.ar_range.setMax(100)
+        self.ar_range.setRange(20, 75)
+        self.ar_range.setDrawValues(False)
+        self.ar_range.startValueChanged.connect(self.rminChange)
+        self.ar_range.endValueChanged.connect(self.rmaxChange)
+
+        self.ma_range.setMin(0)
+        self.ma_range.setMax(5000)
+        self.ma_range.setRange(250, 2000)
+        self.ma_range.startValueChanged.emit(250)
+        self.ma_range.endValueChanged.emit(2000)
+        self.ma_range.setDrawValues(False)
+        self.ma_range.startValueChanged.connect(self.ma_min_change)
+        self.ma_range.endValueChanged.connect(self.ma_max_change)
+
+        self.MA_range.setMin(0)
+        self.MA_range.setMax(5000)
+        self.MA_range.setRange(600, 5000)
+        self.MA_range.setDrawValues(False)
+        self.MA_range.startValueChanged.connect(self.MA_min_change)
+        self.MA_range.endValueChanged.connect(self.MA_max_change)
+
+        self.ui.tracker_grid_layout.addWidget(self.ar_range, 1, 1, 1, 1)
+        self.ui.tracker_grid_layout.addWidget(self.ma_range, 2, 1, 1, 1)
+        self.ui.tracker_grid_layout.addWidget(self.MA_range, 3, 1, 1, 1)
 
     @property
     def cnc(self):
@@ -227,20 +268,59 @@ class MainGui():
         self.ui.thresh_label.setText(str(value))
         self.cam.threshold = value
 
-    def rminChange(self):
-        value = self.ui.r_min_slider.value()
-        self.ui.r_min_label.setText(str(value))
-        self.cam.cam.r_min = value
+    def rminChange(self, val):
+        self.ui.ar_min_label.setText('{:0.2f}'.format(val / 100))
 
-    def rmaxChange(self):
-        value = self.ui.r_max_slider.value()
-        self.ui.r_max_label.setText(str(value))
-        self.cam.cam.r_max = value
+        try:
+            self.cam.cam.r_min = val/100
+        except:
+            pass
+
+    def rmaxChange(self, val):
+        self.ui.ar_max_label.setText('{:0.2f}'.format(val / 100))
+
+        try:
+            self.cam.cam.r_max = val/100
+        except:
+            pass
+
+    def ma_min_change(self, val):
+        self.ui.ma_min_label.setText('{:0.2f}'.format(val / 1e3))
+
+        try:
+            self.cam.cam.ma_min = val/1e6
+        except:
+            pass
+
+    def ma_max_change(self, val):
+        self.ui.ma_max_label.setText('{:0.2f}'.format(val / 1e3))
+
+        try:
+            self.cam.cam.ma_max = val/1e6
+        except:
+            pass
+
+    def MA_min_change(self, val):
+        self.ui.MA_min_label.setText('{:0.2f}'.format(val / 1e3))
+
+        try:
+            self.cam.cam.MA_min = val/1e6
+        except:
+            pass
+
+    def MA_max_change(self, val):
+        self.ui.MA_max_label.setText('{:0.2f}'.format(val / 1e3))
+
+        try:
+            self.cam.cam.MA_max = val/1e6
+        except:
+            pass
+
 
     def loopgainChange(self):
         value = self.ui.loop_gain_slider.value()
         self.ui.loop_gain_label.setText(str(value))
-        self.tracker.a = value
+        self.tracker.a = value/10.0
 
     def dispenserStart(self):
         self.dispenser = FlyDispenser()
@@ -296,6 +376,26 @@ class MainGui():
         self.ui.cnc_move_center_button.setEnabled(True)
         self.ui.cnc_mark_center_button.setEnabled(True)
 
+        self.cnc_timer = QtCore.QTimer()
+        self.cnc_timer.timeout.connect(self.gui_update_cnc)
+        self.cnc_timer.start(100)
+
+    def gui_update_cnc(self):
+        try:
+            cnc_status = self.tracker.cncThread.status
+        except:
+            return
+
+        if cnc_status is not None:
+            self.ui.cnc_x_label.setText('{:0.3f}'.format(cnc_status.posX))
+            self.ui.cnc_y_label.setText('{:0.3f}'.format(cnc_status.posY))
+        else:
+            self.reset_cnc_data()
+
+    def reset_cnc_data(self):
+        self.ui.cnc_x_label.setText('N/A')
+        self.ui.cnc_y_label.setText('N/A')
+
     def trackerStop(self):
         self.tracker.stop()
         self.tracker = None
@@ -311,6 +411,11 @@ class MainGui():
         self.ui.cnc_move_center_button.setEnabled(False)
         self.ui.cnc_mark_center_button.setEnabled(False)
 
+        if self.cnc_timer is not None:
+            self.cnc_timer.stop()
+
+        self.reset_cnc_data()
+
     def markCenter(self):
         self.tracker.mark_center()
         self.centermarked = True
@@ -325,6 +430,32 @@ class MainGui():
         self.ui.draw_contours_checkbox.setEnabled(True)
         self.ui.show_threshold_checkbox.setEnabled(True)
 
+        self.camera_timer = QtCore.QTimer()
+        self.camera_timer.timeout.connect(self.gui_update_camera)
+        self.camera_timer.start(100)
+
+    def gui_update_camera(self):
+        try:
+            fly_data = self.cam.flyData
+        except:
+            return
+
+        if fly_data is not None and fly_data.flyPresent:
+            self.ui.fly_minor_axis_label.setText('{:0.2f}'.format(fly_data.ma*1e3))
+            self.ui.fly_major_axis_label.setText('{:0.2f}'.format(fly_data.MA*1e3))
+            self.ui.fly_aspect_ratio_label.setText('{:0.2f}'.format(fly_data.aspect_ratio))
+            self.ui.fly_x_label.setText('{:0.2f}'.format(fly_data.flyX*1e3))
+            self.ui.fly_y_label.setText('{:0.2f}'.format(fly_data.flyY*1e3))
+        else:
+            self.reset_fly_data()
+
+    def reset_fly_data(self):
+        self.ui.fly_minor_axis_label.setText('N/A')
+        self.ui.fly_major_axis_label.setText('N/A')
+        self.ui.fly_aspect_ratio_label.setText('N/A')
+        self.ui.fly_x_label.setText('N/A')
+        self.ui.fly_y_label.setText('N/A')
+
     def camStop(self):
         self.cam_view.close()
 
@@ -337,6 +468,11 @@ class MainGui():
         self.ui.camera_stop_button.setEnabled(False)
         self.ui.draw_contours_checkbox.setEnabled(False)
         self.ui.show_threshold_checkbox.setEnabled(False)
+
+        if self.camera_timer is not None:
+            self.camera_timer.stop()
+
+        self.reset_fly_data()
 
     def optoStart(self):
         self.opto = OptoThread(cncThread=self.tracker.cncThread, camThread=self.cam,
