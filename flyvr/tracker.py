@@ -193,9 +193,9 @@ class TrackThread(Service):
     def manual_move_down(self):
         self.manualVelocity = ManualVelocity(velX=0, velY= -self.manual_jog_vel)
     def manual_move_right(self):
-        self.manualVelocity = ManualVelocity(velX= +self.manual_jog_vel, velY=0)
-    def manual_move_left(self):
         self.manualVelocity = ManualVelocity(velX= -self.manual_jog_vel, velY=0)
+    def manual_move_left(self):
+        self.manualVelocity = ManualVelocity(velX= +self.manual_jog_vel, velY=0)
 
     def manual_stop(self):
         self.manualVelocity = None
