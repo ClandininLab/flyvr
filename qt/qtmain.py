@@ -35,7 +35,6 @@ class MainGui():
     def __init__(self, dialog):
 
         self.ui = uic.loadUi('main.ui')
-        self.configure_range_sliders()
         self.ui.show()
 
         #self.left = 600
@@ -59,15 +58,22 @@ class MainGui():
         self.cnc_shouldinitialize = None
         self.message = []
 
-        #Launch GuiThread - helps to manage some types of events
-        #self.guiThread = GuiThread(cam=self.cam,
-        #                            cnc=self.cnc,
-        #                            opto=self.opto,
-        #                            dispenser=self.dispenser,
-        #                            stim=self.stim,
-        #                            ui=self.ui,
-        #                            trial=self.trial)
-        #self.guiThread.start()
+        # Fly detection parameters
+        self.ma_min = 0.2  # mm
+        self.ma_max = 2.0  # mm
+        self.MA_min = 0.6  # mm
+        self.MA_max = 5.0  # mm
+        self.r_min = 0.20
+        self.r_max = 0.80
+
+        # Setup fly detection range sliders
+        self.configure_range_sliders()
+        self.ui.ar_min_label.setText('{:0.2f}{}'.format(self.r_min,'    '))
+        self.ui.ar_max_label.setText('{:0.2f}{}'.format(self.r_max,'    '))
+        self.ui.ma_min_label.setText('{:0.1f}{}'.format(self.ma_min,'mm'))
+        self.ui.ma_max_label.setText('{:0.1f}{}'.format(self.ma_max,'mm'))
+        self.ui.MA_min_label.setText('{:0.1f}{}'.format(self.MA_min,'mm'))
+        self.ui.MA_max_label.setText('{:0.1f}{}'.format(self.MA_max,'mm'))
 
         # Setup cnc buttons
         self.ui.cnc_start_button.clicked.connect(lambda x: self.trackerStart())
@@ -169,37 +175,37 @@ class MainGui():
         self.cnc_timer = None
 
     def configure_range_sliders(self):
-        # add range slider
         self.ar_range = QRangeSlider(self.ui)
         self.ma_range = QRangeSlider(self.ui)
         self.MA_range = QRangeSlider(self.ui)
 
         self.ar_range.setMin(0)
-        self.ar_range.setMax(100)
-        self.ar_range.setRange(20, 75)
+        self.ar_range.setMax(102)
+        self.ar_range.setRange(int(self.r_min * 100), int(self.r_max * 100))
         self.ar_range.setDrawValues(False)
         self.ar_range.startValueChanged.connect(self.rminChange)
         self.ar_range.endValueChanged.connect(self.rmaxChange)
 
         self.ma_range.setMin(0)
-        self.ma_range.setMax(5000)
-        self.ma_range.setRange(250, 2000)
-        self.ma_range.startValueChanged.emit(250)
-        self.ma_range.endValueChanged.emit(2000)
+        self.ma_range.setMax(102)
+        self.ma_range.setRange(int(self.ma_min * 10), int(self.ma_max * 10))
         self.ma_range.setDrawValues(False)
         self.ma_range.startValueChanged.connect(self.ma_min_change)
         self.ma_range.endValueChanged.connect(self.ma_max_change)
 
         self.MA_range.setMin(0)
-        self.MA_range.setMax(5000)
-        self.MA_range.setRange(600, 5000)
+        self.MA_range.setMax(102)
+        self.MA_range.setRange(int(self.MA_min * 10), int(self.MA_max * 10))
         self.MA_range.setDrawValues(False)
         self.MA_range.startValueChanged.connect(self.MA_min_change)
         self.MA_range.endValueChanged.connect(self.MA_max_change)
 
-        self.ui.tracker_grid_layout.addWidget(self.ar_range, 1, 1, 1, 1)
-        self.ui.tracker_grid_layout.addWidget(self.ma_range, 2, 1, 1, 1)
-        self.ui.tracker_grid_layout.addWidget(self.MA_range, 3, 1, 1, 1)
+        self.ui.ar_grid.addWidget(self.ar_range, 1, 1, 1, 1)
+        self.ui.ma_grid.addWidget(self.ma_range, 1, 1, 1, 1)
+        self.ui.MA_grid.addWidget(self.MA_range, 1, 1, 1, 1)
+        self.ar_range.setEnabled(False)
+        self.ma_range.setEnabled(False)
+        self.MA_range.setEnabled(False)
 
     @property
     def cnc(self):
@@ -285,34 +291,34 @@ class MainGui():
             pass
 
     def ma_min_change(self, val):
-        self.ui.ma_min_label.setText('{:0.2f}'.format(val / 1e3))
+        self.ui.ma_min_label.setText('{:0.1f}{}'.format(val / 10, 'mm'))
 
         try:
-            self.cam.cam.ma_min = val/1e6
+            self.cam.cam.ma_min = val * 1e-4
         except:
             pass
 
     def ma_max_change(self, val):
-        self.ui.ma_max_label.setText('{:0.2f}'.format(val / 1e3))
+        self.ui.ma_max_label.setText('{:0.1f}{}'.format(val / 10, 'mm'))
 
         try:
-            self.cam.cam.ma_max = val/1e6
+            self.cam.cam.ma_max = val * 1e-4
         except:
             pass
 
     def MA_min_change(self, val):
-        self.ui.MA_min_label.setText('{:0.2f}'.format(val / 1e3))
+        self.ui.MA_min_label.setText('{:0.1f}{}'.format(val / 10, 'mm'))
 
         try:
-            self.cam.cam.MA_min = val/1e6
+            self.cam.cam.MA_min = val * 1e-4
         except:
             pass
 
     def MA_max_change(self, val):
-        self.ui.MA_max_label.setText('{:0.2f}'.format(val / 1e3))
+        self.ui.MA_max_label.setText('{:0.1f}{}'.format(val / 10, 'mm'))
 
         try:
-            self.cam.cam.MA_max = val/1e6
+            self.cam.cam.MA_max = val * 1e-4
         except:
             pass
 
@@ -423,12 +429,21 @@ class MainGui():
     def camStart(self):
         self.cam = CamThread()
         self.cam.start()
+        self.cam.ma_min = self.ma_min * 1e-3,
+        self.cam.ma_max = self.ma_max * 1e-3,
+        self.cam.MA_min = self.MA_min * 1e-3,
+        self.cam.MA_max = self.MA_max * 1e-3,
+        self.cam.r_min = self.r_min,
+        self.cam.r_max = self.r_max
         self.cam_view = CameraView(self.cam)
 
         self.ui.camera_start_button.setEnabled(False)
         self.ui.camera_stop_button.setEnabled(True)
         self.ui.draw_contours_checkbox.setEnabled(True)
         self.ui.show_threshold_checkbox.setEnabled(True)
+        self.ar_range.setEnabled(True)
+        self.ma_range.setEnabled(True)
+        self.MA_range.setEnabled(True)
 
         self.camera_timer = QtCore.QTimer()
         self.camera_timer.timeout.connect(self.gui_update_camera)
@@ -468,6 +483,9 @@ class MainGui():
         self.ui.camera_stop_button.setEnabled(False)
         self.ui.draw_contours_checkbox.setEnabled(False)
         self.ui.show_threshold_checkbox.setEnabled(False)
+        self.ar_range.setEnabled(False)
+        self.ma_range.setEnabled(False)
+        self.MA_range.setEnabled(False)
 
         if self.camera_timer is not None:
             self.camera_timer.stop()

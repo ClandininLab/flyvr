@@ -52,7 +52,7 @@ QRangeSlider > QSplitter::handle {
     background: #4f5b66;
 }
 QRangeSlider > QSplitter::handle:vertical {
-    height: 4px;
+    height: 1px;
 }
 QRangeSlider > QSplitter::handle:pressed {
     background: #ca5;
@@ -164,32 +164,32 @@ class Handle(Element):
         qp.drawText(event.rect(), QtCore.Qt.AlignLeft, str(self.main.start()))
         qp.drawText(event.rect(), QtCore.Qt.AlignRight, str(self.main.end()))
 
-    def mouseMoveEvent(self, event):
-        event.accept()
-        mx = event.globalX()
-        _mx = getattr(self, '__mx', None)
-        vrange = self.main.max() - self.main.min()
-        size = self.main.width()
-        step = vrange/size
-        if not _mx:
-            setattr(self, '__mx', mx)
-            dx = 0
-        else:
-            dx = mx - _mx
-        dx *= step
-        if -1 < dx < 1:
-            event.ignore()
-            return
-        dx = round(dx)
-        setattr(self, '__mx', mx)
-
-        s = self.main.start() + dx
-        e = self.main.end() + dx
-        if s >= self.main.min() and e <= self.main.max():
-            self.main.setRange(s, e)
-
-    def mousePressEvent(self, event):
-        setattr(self, '__mx', event.globalX())
+    # def mouseMoveEvent(self, event):
+    #     event.accept()
+    #     mx = event.globalX()
+    #     _mx = getattr(self, '__mx', None)
+    #     vrange = self.main.max() - self.main.min()
+    #     size = self.main.width()
+    #     step = vrange/size
+    #     if not _mx:
+    #         setattr(self, '__mx', mx)
+    #         dx = 0
+    #     else:
+    #         dx = mx - _mx
+    #     dx *= step
+    #     if -1 < dx < 1:
+    #         event.ignore()
+    #         return
+    #     dx = round(dx)
+    #     setattr(self, '__mx', mx)
+    #
+    #     s = self.main.start() + dx
+    #     e = self.main.end() + dx
+    #     if s >= self.main.min() and e <= self.main.max():
+    #         self.main.setRange(s, e)
+    #
+    # def mousePressEvent(self, event):
+    #     setattr(self, '__mx', event.globalX())
 
 
 class QRangeSlider(QWidget, Ui_Form):
@@ -338,8 +338,11 @@ class QRangeSlider(QWidget, Ui_Form):
         """sets the range slider start value"""
         assert type(value) is int
         v = self._valueToPos(value)
+        #print('value is: {}'.format(value), 'v is: {}'.format(v))
         self._splitter.splitterMoved.disconnect()
         self._splitter.moveSplitter(v, self._SPLIT_START)
+        self.moveSplitterWrapper(v, self._SPLIT_START)
+        #print('HIGH', self._splitter.getRange(2))
         self._splitter.splitterMoved.connect(self._handleMoveSplitter)
         self._setStart(value)
 
@@ -353,9 +356,17 @@ class QRangeSlider(QWidget, Ui_Form):
         assert type(value) is int
         v = self._valueToPos(value)
         self._splitter.splitterMoved.disconnect()
-        self._splitter.moveSplitter(v, self._SPLIT_END)
+        #print('value is: {}'.format(value), 'v is: {}'.format(v))
+        self.moveSplitterWrapper(v, self._SPLIT_END)
+        #self._splitter.moveSplitter(v, self._SPLIT_END)
         self._splitter.splitterMoved.connect(self._handleMoveSplitter)
         self._setEnd(value)
+
+    def moveSplitterWrapper(self, v, idx):
+        #pyqt thinks splitter is always a 0 to 100 scale
+        #here, you will be given v, which is some int out of width where it should go
+        self._splitter.moveSplitter(((v / self.width()) * 100), idx)
+        self._splitter.moveSplitter(((v / self.width()) * 100), idx)
 
     def drawValues(self):
         """:return: True if slider values will be drawn"""
@@ -404,6 +415,9 @@ class QRangeSlider(QWidget, Ui_Form):
         """converts slider value to local pixel x coord"""
         return scale(value, (self.min(), self.max()), (0, self.width()))
 
+    def getinfo(self):
+        return self.min(), self.max(), self.width()
+
     def _posToValue(self, xpos):
         """converts local pixel x coord to slider value"""
         return scale(xpos, (0, self.width()), (self.min(), self.max()))
@@ -440,7 +454,6 @@ class QRangeSlider(QWidget, Ui_Form):
             offset = -40
             w = self.width() - xpos + offset
             self._setEnd(v)
-
         _unlockWidth(self._tail)
         _unlockWidth(self._head)
         _unlockWidth(self._handle)
