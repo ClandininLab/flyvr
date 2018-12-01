@@ -805,27 +805,27 @@
    <widget class="QPushButton" name="stim_per_trial_button">
     <property name="geometry">
      <rect>
-      <x>50</x>
+      <x>10</x>
       <y>40</y>
-      <width>159</width>
+      <width>81</width>
       <height>21</height>
      </rect>
     </property>
     <property name="text">
-     <string>Per Trial</string>
+     <string>Single Stim</string>
     </property>
    </widget>
    <widget class="QPushButton" name="stim_within_trial_button">
     <property name="geometry">
      <rect>
-      <x>50</x>
+      <x>10</x>
       <y>70</y>
-      <width>159</width>
+      <width>81</width>
       <height>21</height>
      </rect>
     </property>
     <property name="text">
-     <string>Within Trial</string>
+     <string>Rotations</string>
     </property>
    </widget>
    <widget class="QLabel" name="current_stim_label">
@@ -860,6 +860,19 @@
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
+   <widget class="QPushButton" name="multi_stim_within_trial_button">
+    <property name="geometry">
+     <rect>
+      <x>100</x>
+      <y>40</y>
+      <width>81</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Multi Stim</string>
+    </property>
+   </widget>
    <zorder>cnc_heading_frame_6</zorder>
    <zorder>stim_stop_button</zorder>
    <zorder>stim_start_button</zorder>
@@ -867,6 +880,7 @@
    <zorder>stim_within_trial_button</zorder>
    <zorder>current_stim_label</zorder>
    <zorder>current_stim_label_2</zorder>
+   <zorder>multi_stim_within_trial_button</zorder>
   </widget>
   <widget class="QFrame" name="frame_5">
    <property name="geometry">

@@ -167,12 +167,14 @@ class MainGui():
         self.ui.stim_start_button.clicked.connect(lambda x: self.stimStart())
         self.ui.stim_per_trial_button.clicked.connect(lambda x: self.stimPerTrial())
         self.ui.stim_within_trial_button.clicked.connect(lambda x: self.stimWithinTrial())
+        self.ui.multi_stim_within_trial_button.clicked.connect(lambda x: self.multiStimWithinTrial())
         self.ui.stim_per_trial_button.setEnabled(False)
         self.ui.stim_within_trial_button.setEnabled(False)
 
-        # create timers
+        # create timers for displaying parameters on gui for user to see
         self.camera_timer = None
         self.cnc_timer = None
+        self.exp_data_timer = None
 
     def configure_range_sliders(self):
         self.ar_range = QRangeSlider(self.ui)
@@ -248,12 +250,16 @@ class MainGui():
                 self.cam.draw_contours = False
 
     def stimPerTrial(self):
-        self.stim.mode = 'random_stim'
+        self.stim.mode = 'single_stim'
 
     def stimWithinTrial(self):
-        self.stim.mode = 'random_direction'
+        self.stim.mode = 'multi_rotation'
         self.stim.pause_duration = 2.0
         self.stim.stim_duration = 2.0
+
+    def multiStimWithinTrial(self):
+        self.stim.mode = 'multi_stim'
+        self.stim.stim_duration = 3.0
 
     def stimStart(self):
         self.stim = StimThread()
@@ -539,6 +545,10 @@ class MainGui():
             self.ui.stop_experiment_button.setEnabled(True)
             self.ui.stop_trial_button.setEnabled(True)
 
+            self.exp_data_timer = QtCore.QTimer()
+            self.exp_data_timer.timeout.connect(self.gui_update_exp_info)
+            self.exp_data_timer.start(100)
+
     def experimentStop(self):
         self.trial._stop_trial()
         self.trial.stop()
@@ -548,15 +558,53 @@ class MainGui():
         self.ui.start_trial_button.setEnabled(False)
         self.ui.stop_trial_button.setEnabled(False)
 
+        if self.exp_data_timer is not None:
+            self.exp_data_timer.stop()
+
+        self.ui.experiment_label.setText('N/A')
+        self.ui.trial_label.setText('N/A')
+
     def trialStart(self):
         self.trial._start_trial()
+        if self.dispenser is not None:
+            self.dispenser.release_fly()
         self.ui.start_trial_button.setEnabled(False)
         self.ui.stop_trial_button.setEnabled(True)
+        self.ui.start_experiment_button.setEnabled(False)
+        self.ui.stop_experiment_button.setEnabled(True)
 
     def trialStop(self):
         self.trial._stop_trial()
+        if self.dispenser is not None:
+            self.dispenser.state = 'Reset'
+        self.tracker.start_moving_to_center()
         self.ui.start_trial_button.setEnabled(True)
         self.ui.stop_trial_button.setEnabled(False)
+        self.ui.start_experiment_button.setEnabled(False)
+        self.ui.stop_experiment_button.setEnabled(False)
+
+    def gui_update_exp_info(self):
+        exp = None
+        trial = None
+        try:
+            exp = self.trial.exp
+        except:
+            pass
+
+        try:
+            trial = self.trial.trial_num
+        except:
+            pass
+
+        if exp is not None:
+            self.ui.experiment_label.setText('{}'.format(str(exp)))
+        else:
+            self.ui.experiment_label.setText('N/A')
+
+        if trial is not None:
+            self.ui.trial_label.setText('{}'.format(str(trial)))
+        else:
+            self.ui.trial_label.setText('N/A')
 
     #def keyPressEvent(self, e):    
     #    if e.key() == Qt.Key_Escape:

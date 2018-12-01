@@ -66,9 +66,9 @@ class TrialThread(Service):
     def _start_trial(self):
         self.trial_start_t = time()
         self.tracker.startTracking()
-        trial_num = next(self.trial_count)
-        print('Started trial ' + str(trial_num))
-        folder = 'trial-' + str(trial_num) + '-' + strftime('%Y%m%d-%H%M%S')
+        self.trial_num = next(self.trial_count)
+        print('Started trial ' + str(self.trial_num))
+        folder = 'trial-' + str(self.trial_num) + '-' + strftime('%Y%m%d-%H%M%S')
         _trial_dir = os.path.join(self.exp_dir, folder)
         self._trial_dir = _trial_dir
         os.makedirs(_trial_dir)
@@ -80,7 +80,7 @@ class TrialThread(Service):
             self.opto.startLogging(os.path.join(_trial_dir, 'opto.txt'))
 
         if self.stim is not None:
-            self.stim.nextStim(self._trial_dir)
+            self.stim.nextTrial(self._trial_dir)
 
     def _stop_trial(self):
         print('Stopped trial.')

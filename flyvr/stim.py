@@ -67,6 +67,24 @@ class StimThread:
     def get_random_direction(self):
         return choice([-400, -200, -100, -20, 20, 100, 200, 400])
 
+    def get_random_stim(self):
+        stim_type = choice(['SineGrating', 'SineGrating', 'Dark', 'Bright', 'Grey', 'RandomCheckerboard'])
+        if stim_type is 'SineGrating':
+            angle = choice([0, 90])
+            kwargs = {'name': 'SineGrating', 'angle': angle, 'period': 20, 'rate': 0, 'color': 1.0,
+                      'background': 0.0}
+        elif stim_type is 'Grey':
+            kwargs = {'name': 'ConstantBackground', 'background': 0.5}
+        elif stim_type is 'Dark':
+            kwargs = {'name': 'ConstantBackground', 'background': 0.0}
+        elif stim_type is 'Bright':
+            kwargs = {'name': 'ConstantBackground', 'background': 1.0}
+        elif stim_type is 'RandomCheckerboard':
+            kwargs = {'name': 'RandomGrid', 'update_rate': 0}
+        else:
+            raise Exception('Invalid stimulus type.')
+        return kwargs
+
     def updateStim(self, trial_dir):
         if self.manager is None:
             return
@@ -74,9 +92,8 @@ class StimThread:
         if not self.stim_loaded:
             return
 
-        if self.mode == 'random_direction':
+        if self.mode == 'multi_rotation':
             t = time()
-
             if self.stim_state['paused']:
                 if (t-self.stim_state['last_update']) > self.pause_duration:
                     rate = self.get_random_direction()
@@ -92,8 +109,18 @@ class StimThread:
                 self.log_to_dir('PauseStim', trial_dir)
                 self.stim_state['last_update'] = t
                 self.stim_state['paused'] = True
-        elif self.mode == 'random_stim':
+        elif self.mode == 'single_stim':
             pass
+        elif self.mode == 'multi_stim':
+            t = time()
+            if (t - self.stim_state['last_update']) > self.stim_duration:
+                kwargs = self.get_random_stim()
+                #self.manager.update_stim(**kwargs)
+                self.manager.load_stim(**kwargs)
+                self.manager.start_stim()
+                self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
+
+                self.stim_state['last_update'] = t
         else:
             raise Exception('Invalid MrStim mode.')
 
@@ -106,36 +133,27 @@ class StimThread:
 
         self.log_to_dir('StopStim', trial_dir)
 
-    def nextStim(self, trial_dir):
+    def nextTrial(self, trial_dir): #was nextStim
         if self.manager is None:
             return
 
-        if self.mode == 'random_stim':
-            stim_type = choice(['SineGrating', 'SineGrating', 'Dark', 'Bright', 'Grey', 'RandomCheckerboard'])
-            if stim_type is 'SineGrating':
-                angle = choice([0, 90])
-                kwargs = {'name': 'SineGrating', 'angle': angle, 'period': 20, 'rate': 0, 'color': 1.0,
-                          'background': 0.0}
-            elif stim_type is 'Grey':
-                kwargs = {'name': 'ConstantBackground', 'background': 0.5}
-            elif stim_type is 'Dark':
-                kwargs = {'name': 'ConstantBackground', 'background': 0.0}
-            elif stim_type is 'Bright':
-                kwargs = {'name': 'ConstantBackground', 'background': 1.0}
-            elif stim_type is 'RandomCheckerboard':
-                kwargs = {'name': 'RandomGrid', 'update_rate': 0}
-            else:
-                raise Exception('Invalid stimulus type.')
-
+        if self.mode == 'single_stim':
+            kwargs = self.get_random_stim()
             self.stim_state = {}
-        elif self.mode == 'random_direction':
+
+        elif self.mode == 'multi_stim':
+            kwargs = self.get_random_stim()
+            self.stim_state = {'last_update': time()}
+
+        elif self.mode == 'multi_rotation':
             rate = self.get_random_direction()
             kwargs = {'name': 'SineGrating', 'angle': 0, 'period': 20, 'rate': rate, 'color': 1.0, 'background': 0.0}
             self.stim_state = {'last_update': time(), 'paused': False}
-        else:
-            raise Exception('Invalid MrStim mode.')
 
-        print('Moving to next stimulus.')
+        else:
+            raise Exception('Invalid Stim mode.')
+
+        print('Moving to next trial stimuli.')
 
         self.manager.load_stim(**kwargs)
         self.manager.start_stim()
