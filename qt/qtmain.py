@@ -163,6 +163,7 @@ class MainGui():
 
         # Setup metadata input
         self.ui.save_metadata_button.clicked.connect(partial(self.saveMetadata, self.ui))
+        self.ui.save_metadata_button.setEnabled(False)
 
         # Setup visual stimuli buttons
         self.ui.stim_start_button.clicked.connect(lambda x: self.stimStart())
@@ -291,25 +292,6 @@ class MainGui():
             fname = os.path.join(exp, 'metadata.txt')
             with open(fname, 'w') as f:
                 f.write(data)
-
-
-
-
-
-self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
-
-
-        self.stimuli_file = open(stimuli_file_name, file_mode)
-        self.stimuli_file.write('@{} {}\n'.format(time(), text))
-        self.stimuli_file.flush()
-        self.stimuli_file.close()
-
-        self.gate_times_file = open(os.path.join(exp_dir, 'gate_data.txt'), 'w')
-        if self.raw_data_file is not None:
-                self.raw_data_file.write(format_values(frame))
-                self.raw_data_file.flush()
-        #with open('somefile.txt', 'a') as f:
-        #    f.write(mytext)
 
     def thresholdChange(self):
         value = self.ui.thresh_slider.value()
@@ -580,6 +562,7 @@ self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
             self.ui.start_experiment_button.setEnabled(False)
             self.ui.stop_experiment_button.setEnabled(True)
             self.ui.stop_trial_button.setEnabled(True)
+            self.ui.save_metadata_button.setEnabled(True)
 
             self.exp_data_timer = QtCore.QTimer()
             self.exp_data_timer.timeout.connect(self.gui_update_exp_info)
@@ -593,6 +576,7 @@ self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
         self.ui.stop_experiment_button.setEnabled(False)
         self.ui.start_trial_button.setEnabled(False)
         self.ui.stop_trial_button.setEnabled(False)
+        self.ui.save_metadata_button.setEnabled(False)
 
         if self.exp_data_timer is not None:
             self.exp_data_timer.stop()
