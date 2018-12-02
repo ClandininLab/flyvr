@@ -4,6 +4,7 @@ import numpy as np
 from time import strftime, time, sleep
 from threading import Thread, Lock, Event
 import random
+import json
 
 #from matplotlib.backends.qt_compat import QtCore, QtWidgets
 #from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
@@ -268,10 +269,45 @@ class MainGui():
         self.ui.stim_per_trial_button.setEnabled(True)
         self.ui.stim_within_trial_button.setEnabled(True)
         
+    def pretty_json(self, d):
+        return json.dumps(d, indent=2, sort_keys=False)
+
     def saveMetadata(self):
+        user = self.user_textbox.toPlainText()
         age = self.age_textbox.toPlainText()
         timezone = self.timezone_textbox.toPlainText()
         genotype = self.genotype_textbox.toPlainText()
+
+        d = {'user': user, 'age': age, 'timezone': timezone, 'genotype': genotype}
+        data = self.pretty_json(d)
+
+        exp = None
+        try:
+            exp = self.trial.exp
+        except:
+            pass
+
+        if exp is not None:
+            fname = os.path.join(exp, 'metadata.txt')
+            with open(fname, 'w') as f:
+                f.write(data)
+
+
+
+
+
+self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
+
+
+        self.stimuli_file = open(stimuli_file_name, file_mode)
+        self.stimuli_file.write('@{} {}\n'.format(time(), text))
+        self.stimuli_file.flush()
+        self.stimuli_file.close()
+
+        self.gate_times_file = open(os.path.join(exp_dir, 'gate_data.txt'), 'w')
+        if self.raw_data_file is not None:
+                self.raw_data_file.write(format_values(frame))
+                self.raw_data_file.flush()
         #with open('somefile.txt', 'a') as f:
         #    f.write(mytext)
 
