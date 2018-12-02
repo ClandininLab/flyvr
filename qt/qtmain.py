@@ -178,6 +178,10 @@ class MainGui():
         self.cnc_timer = None
         self.exp_data_timer = None
 
+        self.light_checker = QtCore.QTimer()
+        self.cnc_timer.timeout.connect(self.gui_update_lights)
+        self.cnc_timer.start(100)
+
     def configure_range_sliders(self):
         self.ar_range = QRangeSlider(self.ui)
         self.ma_range = QRangeSlider(self.ui)
@@ -629,6 +633,32 @@ class MainGui():
     #def keyPressEvent(self, e):    
     #    if e.key() == Qt.Key_Escape:
     #        self.close()
+
+    def gui_update_lights(self):
+        if self.tracker is not None:
+            self.ui.cnc_red_light.hide()
+        else:
+            self.ui.cnc_red_light.show()
+
+        if self.cam is not None:
+            self.ui.cam_red_light.hide()
+        else:
+            self.ui.cam_red_light.show()
+
+        if self.opto is not None:
+            self.ui.opto_red_light.hide()
+        else:
+            self.ui.opto_red_light.show()
+
+        if self.dispenser is not None:
+            self.ui.dispenser_red_light.hide()
+        else:
+            self.ui.dispenser_red_light.show()
+
+        if self.stim is not None:
+            self.ui.stim_red_light.hide()
+        else:
+            self.ui.stim_red_light.show()
 
     def shutdown(self, app):
         app.exec_()
