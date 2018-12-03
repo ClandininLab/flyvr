@@ -59,6 +59,8 @@ class MainGui():
         self.cnc_shouldinitialize = None
         self.message = []
         self.trial_duration = None
+        self.inter_fly_wait = None
+        self.max_inter_fly_wait = 10 * 60 # min * sec
 
         # Fly detection parameters
         self.ma_min = 0.2  # mm
@@ -178,7 +180,11 @@ class MainGui():
         self.camera_timer = None
         self.cnc_timer = None
         self.exp_data_timer = None
-        self..dispenser_data_timer = None
+        self.dispenser_data_timer = None
+
+        self.trial_timer = QtCore.QTimer()
+        self.trial_timer.timeout.connect(self.trialTimer)
+        self.trial_timer.start(100)
 
         self.light_checker_timer = QtCore.QTimer()
         self.light_checker_timer.timeout.connect(self.gui_update_lights)
@@ -718,10 +724,39 @@ class MainGui():
     def flyPlotter(self):
         self.flypositionwindow = FlyPositionWindow()
 
+    def trialTimer(self):
+        # re-release fly if we've been waiting too long
+        if self.trial is not None:
+            if self.trial.trial_end_t is not None:
+                self.inter_fly_wait = self.trial.trial_end_t - time()
+                if self.inter_fly_wait > self.max_inter_fly_wait:
+                    if self.dispenser is not None:
+                        self.dispenser.release_fly()
+
+        # can add ability to trigger UV light after a trial had gone long or fly hasn't moved
+
     def shutdown(self, app):
         app.exec_()
+
+        # Shutdown timers
+        if self.camera_timer is not None:
+            self.camera_timer.stop()
+        if self.cnc_timer is not None:
+            self.cnc_timer.stop()
+        if self.exp_data_timer is not None:
+            self.exp_data_timer.stop()
+        if self.dispenser_data_timer is not None:
+            self.dispenser_data_timer.stop()
+        if self.trial_timer is not None:
+            self.trial_timer.stop()
         if self.light_checker_timer is not None:
             self.light_checker_timer.stop()
+
+        # Shutdown extra views
+        if self.dispenser_view is not None:
+            self.dispenser_view.close()
+
+        # Shutdown services
         if self.opto is not None:
             self.opto.off()
             self.opto.stop()
@@ -734,8 +769,6 @@ class MainGui():
         if self.trial is not None:
             self.trial._stop_trial()
             self.trial.stop()
-        if self.dispenser_view is not None:
-            self.dispenser_view.close()
         if self.dispenser is not None:
             self.dispenser.stop()
         print('Shutdown Called')
