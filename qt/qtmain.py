@@ -177,10 +177,11 @@ class MainGui():
         self.camera_timer = None
         self.cnc_timer = None
         self.exp_data_timer = None
+        self..dispenser_data_timer = None
 
-        self.light_checker = QtCore.QTimer()
-        self.cnc_timer.timeout.connect(self.gui_update_lights)
-        self.cnc_timer.start(100)
+        self.light_checker_timer = QtCore.QTimer()
+        self.light_checker_timer.timeout.connect(self.gui_update_lights)
+        self.light_checker_timer.start(100)
 
     def configure_range_sliders(self):
         self.ar_range = QRangeSlider(self.ui)
@@ -366,6 +367,10 @@ class MainGui():
         self.ui.open_gate_button.setEnabled(True)
         self.ui.calibrate_gate_button.setEnabled(True)
 
+        self.dispenser_data_timer = QtCore.QTimer()
+        self.dispenser_data_timer.timeout.connect(self.gui_dispenser_info)
+        self.dispenser_data_timer.start(100)
+
     def dispenserStop(self):
         self.dispenser_view.close()
         self.dispenser.stop()
@@ -375,6 +380,11 @@ class MainGui():
         self.ui.close_gate_button.setEnabled(False)
         self.ui.open_gate_button.setEnabled(False)
         self.ui.calibrate_gate_button.setEnabled(False)
+
+        if dispenser_data_timer is not None:
+            self.dispenser_data_timer.stop()
+
+        self.ui.dispenser_status_label.setText('N/A')
 
     def openDispenser(self):
         self.dispenser.open_gate()
@@ -660,8 +670,19 @@ class MainGui():
         else:
             self.ui.stim_red_light.show()
 
+    def gui_dispenser_info(self):
+        self.ui.dispenser_status_label.setText(self.dispenser.state)
+        if self.dispenser.gate_state == 'open'
+            self.ui.gate_label_open.show()
+            self.ui.gate_label_closed.hide()
+        elif self.dispenser.gate_state == 'close'
+            self.ui.gate_label_closed.show()
+            self.ui.gate_label_open.hide()
+
     def shutdown(self, app):
         app.exec_()
+        if self.light_checker_timer is not None:
+            self.light_checker_timer.stop()
         if self.opto is not None:
             self.opto.off()
             self.opto.stop()
