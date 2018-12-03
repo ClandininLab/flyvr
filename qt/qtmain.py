@@ -174,7 +174,7 @@ class MainGui():
         self.ui.stim_per_trial_button.setEnabled(False)
         self.ui.stim_within_trial_button.setEnabled(False)
 
-        # create timers for displaying parameters on gui for user to see
+        # Create timers for displaying parameters on gui for user to see
         self.camera_timer = None
         self.cnc_timer = None
         self.exp_data_timer = None
@@ -183,6 +183,9 @@ class MainGui():
         self.light_checker_timer = QtCore.QTimer()
         self.light_checker_timer.timeout.connect(self.gui_update_lights)
         self.light_checker_timer.start(100)
+
+        # Setup fly position plotter
+        self.ui.fly_position_plot_button.clicked.connect(lambda x: self.flyPlotter)
 
     def configure_range_sliders(self):
         self.ar_range = QRangeSlider(self.ui)
@@ -712,6 +715,9 @@ class MainGui():
             self.ui.gate_label_closed.show()
             self.ui.gate_label_open.hide()
 
+    def flyPlotter(self):
+        self.flypositionwindow = FlyPositionWindow()
+
     def shutdown(self, app):
         app.exec_()
         if self.light_checker_timer is not None:
@@ -733,22 +739,6 @@ class MainGui():
         if self.dispenser is not None:
             self.dispenser.stop()
         print('Shutdown Called')
-
-    # class GateState(QWidget):
-    #     valueChanged = pyqtSignal(object)
-
-    #     def __init__(self, parent=None):
-    #         super(GateState, self).__init__(parent)
-    #         self._t = self.dispenser.gate_state
-
-    #     @property
-    #     def t(self):
-    #         return self._t
-
-    #     @t.setter
-    #     def t(self, value):
-    #         self._t = value
-    #         self.valueChanged.emit(value)
 
 class Mail():
     def __init__(self):
@@ -879,7 +869,46 @@ class DispenserView(QWidget):
     def close(self):
         self.timer.stop()
         super().close()
-#
+
+class FlyPositionWindow(QWidget):
+    def __init__(self):
+        super().__init__
+        self.left = 10
+        self.top = 10
+        self.title = 'Fly Position'
+        self.width = 640
+        self.height = 400
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle(self.title)
+        self.setGeometry(self.left, self.top, self.width, self.height)
+ 
+        m = PlotCanvas(self, width=5, height=4)
+        m.move(0,0)
+ 
+        self.show()
+
+class FlyPositionPlot(FigureCanvas):
+    def __init__ (self, parent=None, width=5, height=4, dpi=100):
+
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+        FigureCanvas.__init__(self, fig)
+        self.setParent(parent)
+        FigureCanvas.setSizePolicy(self,
+                QSizePolicy.Expanding,
+                QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+        self.plot()
+ 
+    def plot(self):
+        data = [random.random() for i in range(25)]
+        ax = self.figure.add_subplot(111)
+        ax.plot(data, 'r-')
+        ax.set_title('PyQt Matplotlib Example')
+        self.draw()
+
 def main():
     app = QApplication(sys.argv)
     dialog = QtWidgets.QMainWindow()
