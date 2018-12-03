@@ -60,7 +60,8 @@ class MainGui():
         self.message = []
         self.trial_duration = None
         self.inter_fly_wait = None
-        self.max_inter_fly_wait = 10 * 60 # min * sec
+        self.max_inter_fly_wait = 10 * 60 # min*sec
+        self.turn_off_time = 2 * 60 * 60 # hr*min*sec
 
         # Fly detection parameters
         self.ma_min = 0.2  # mm
@@ -725,13 +726,20 @@ class MainGui():
         self.flypositionwindow = FlyPositionWindow()
 
     def trialTimer(self):
-        # re-release fly if we've been waiting too long
+        self.current_max_inter_fly_wait = self.max_inter_fly_wait
         if self.trial is not None:
             if self.trial.trial_end_t is not None:
                 self.inter_fly_wait = self.trial.trial_end_t - time()
-                if self.inter_fly_wait > self.max_inter_fly_wait:
+
+                # re-release fly if we've been waiting too long (and keep trying)
+                if self.inter_fly_wait > self.current_max_inter_fly_wait:
+                    self.current_max_inter_fly_wait = self.current_max_inter_fly_wait + self.max_inter_fly_wait
                     if self.dispenser is not None:
                         self.dispenser.release_fly()
+
+                #turn everything off if we have been waiting way too long
+                if self.inter_fly_wait > self.turn_off_time:
+                    self.shutdown()
 
         # can add ability to trigger UV light after a trial had gone long or fly hasn't moved
 
