@@ -182,6 +182,7 @@ class MainGui():
         self.cnc_timer = None
         self.exp_data_timer = None
         self.dispenser_data_timer = None
+        self.opto_timer = None
 
         self.trial_timer = QtCore.QTimer()
         self.trial_timer.timeout.connect(self.trialTimer)
@@ -552,7 +553,12 @@ class MainGui():
         self.ui.opto_pulse_button.setEnabled(True)
         self.ui.opto_foraging_button.setEnabled(True)
 
+        self.opto_timer = QtCore.QTimer()
+        self.opto_timer.timeout.connect(self.gui_update_opto)
+        self.opto_timer.start(100)
+
     def optoStop(self):
+        self.opto_timer.stop()
         self.opto.off()
         self.opto.stop()
         self.opto = None
@@ -713,6 +719,14 @@ class MainGui():
         else:
             self.ui.stim_red_light.show()
 
+    def gui_update_opto(self):
+        if self.opto.led_status == 'on'
+            self.ui.opto_label_on.show()
+            self.ui.opto_label_off.hide()
+        elif self.dispenser.gate_state == 'off'
+            self.ui.opto_label_off.show()
+            self.ui.opto_label_on.hide()
+
     def gui_dispenser_info(self):
         self.ui.dispenser_status_label.setText(self.dispenser.state)
         if self.dispenser.gate_state == 'open'
@@ -759,6 +773,8 @@ class MainGui():
             self.trial_timer.stop()
         if self.light_checker_timer is not None:
             self.light_checker_timer.stop()
+        if self.opto_timer is not None:
+            self.gui_update_opto.stop()
 
         # Shutdown extra views
         if self.dispenser_view is not None:
