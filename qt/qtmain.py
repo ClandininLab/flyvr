@@ -58,6 +58,7 @@ class MainGui():
 
         self.cnc_shouldinitialize = None
         self.message = []
+        self.trial_duration = None
 
         # Fly detection parameters
         self.ma_min = 0.2  # mm
@@ -619,14 +620,21 @@ class MainGui():
 
     def gui_update_exp_info(self):
         exp = None
-        trial = None
+        trial_num = None
+        trial_start_t = None
+
         try:
             exp = self.trial.exp
         except:
             pass
 
         try:
-            trial = self.trial.trial_num
+            trial_num = self.trial.trial_num
+        except:
+            pass
+
+        try:
+            trial_start_t = self.trial.trial_start_t
         except:
             pass
 
@@ -635,11 +643,21 @@ class MainGui():
         else:
             self.ui.experiment_label.setText('N/A')
 
-        if trial is not None:
-            self.ui.trial_label.setText('{}'.format(str(trial)))
+        if trial_num is not None:
+            self.ui.trial_num_label.setText('{}'.format(str(trial_num)))
         else:
-            self.ui.trial_label.setText('N/A')
+            self.ui.trial_num_label.setText('N/A')
 
+        if trial_start_t is not None:
+            self.trial_duration = trial_start_t - time()
+            mins = floor(self.trial_duration/60)
+            secs = self.trial_duration%60
+            if secs < 10:
+                secs = '0' + str(secs)
+            self.ui.trial_time_label.setText('{}:{}'.format(str(mins), str(secs)))
+        else:
+            self.ui.trial_time_label.setText('N/A')
+    
     #def keyPressEvent(self, e):    
     #    if e.key() == Qt.Key_Escape:
     #        self.close()
