@@ -27,6 +27,7 @@ class TrialThread(Service):
 
         self.timer_start = None
         self.trial_start_t = None
+        self.trial_end_t = None
 
         self.fly_lost_timeout = fly_lost_timeout
         self.fly_detected_timeout = fly_detected_timeout
@@ -89,6 +90,7 @@ class TrialThread(Service):
         self.cam.stopLogging()
         self.tracker.stopTracking()
         self.trial_start_t = None
+        self.trial_end_t = time()
 
         if self.opto is not None:
             self.opto.stopLogging()
