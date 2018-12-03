@@ -622,6 +622,7 @@ class MainGui():
         exp = None
         trial_num = None
         trial_start_t = None
+        big_rig_status = None
 
         try:
             exp = self.trial.exp
@@ -638,6 +639,11 @@ class MainGui():
         except:
             pass
 
+        try:
+            big_rig_status = self.trial.state()
+        except:
+            pass
+
         if exp is not None:
             self.ui.experiment_label.setText('{}'.format(str(exp)))
         else:
@@ -651,13 +657,22 @@ class MainGui():
         if trial_start_t is not None:
             self.trial_duration = trial_start_t - time()
             mins = floor(self.trial_duration/60)
-            secs = self.trial_duration%60
+            if mins == 0:
+                mins = '00'
+            elif mins < 10:
+                mins = '0' + str(mins)
+            secs = int(self.trial_duration)%60
             if secs < 10:
                 secs = '0' + str(secs)
             self.ui.trial_time_label.setText('{}:{}'.format(str(mins), str(secs)))
         else:
             self.ui.trial_time_label.setText('N/A')
-    
+
+        if big_rig_status is not None:
+            self.ui.bigrig_state_label.setText(big_rig_status)
+        else:
+            self.ui.bigrig_state_label.setText('N/A')
+
     #def keyPressEvent(self, e):    
     #    if e.key() == Qt.Key_Escape:
     #        self.close()
