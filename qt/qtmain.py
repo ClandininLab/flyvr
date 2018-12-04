@@ -181,6 +181,7 @@ class MainGui():
         self.ui.multi_stim_within_trial_button.clicked.connect(lambda x: self.multiStimWithinTrial())
         self.ui.stim_per_trial_button.setEnabled(False)
         self.ui.stim_within_trial_button.setEnabled(False)
+        self.ui.multi_stim_within_trial_button.setEnabled(False)
 
         # Create timers for displaying parameters on gui for user to see
         self.camera_timer = None
@@ -291,7 +292,8 @@ class MainGui():
         self.ui.stim_start_button.setEnabled(False)
         self.ui.stim_per_trial_button.setEnabled(True)
         self.ui.stim_within_trial_button.setEnabled(True)
-        
+        self.ui.multi_stim_within_trial_button.setEnabled(True)
+
     def pretty_json(self, d):
         return json.dumps(d, indent=2, sort_keys=False)
 
