@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>790</width>
+    <width>791</width>
     <height>591</height>
    </rect>
   </property>
@@ -24,44 +24,6 @@
   <property name="autoFillBackground">
    <bool>false</bool>
   </property>
-  <widget class="QPushButton" name="current_faulty_trial_button">
-   <property name="geometry">
-    <rect>
-     <x>530</x>
-     <y>560</y>
-     <width>41</width>
-     <height>16</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>8</pointsize>
-     <kerning>false</kerning>
-    </font>
-   </property>
-   <property name="text">
-    <string>Mark current trial as faulty</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="previous_faulty_trial_button">
-   <property name="geometry">
-    <rect>
-     <x>570</x>
-     <y>560</y>
-     <width>51</width>
-     <height>16</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>8</pointsize>
-     <kerning>false</kerning>
-    </font>
-   </property>
-   <property name="text">
-    <string>Mark previous trial as faulty</string>
-   </property>
-  </widget>
   <widget class="QFrame" name="frame">
    <property name="geometry">
     <rect>
@@ -496,9 +458,9 @@
      </property>
      <property name="geometry">
       <rect>
-       <x>10</x>
+       <x>20</x>
        <y>5</y>
-       <width>111</width>
+       <width>71</width>
        <height>21</height>
       </rect>
      </property>
@@ -511,10 +473,48 @@
       <string notr="true">background-color: rgba(255, 255, 255, 0);</string>
      </property>
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600; color:#ffffff;&quot;&gt;Camera Control&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600; color:#ffffff;&quot;&gt;Camera&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="greenlight">
+     <property name="geometry">
+      <rect>
+       <x>7</x>
+       <y>7</y>
+       <width>16</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="pixmap">
+      <pixmap>icons/green_light.png</pixmap>
+     </property>
+     <property name="scaledContents">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QLabel" name="cam_red_light">
+     <property name="geometry">
+      <rect>
+       <x>7</x>
+       <y>7</y>
+       <width>16</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="pixmap">
+      <pixmap>icons/red_light.png</pixmap>
+     </property>
+     <property name="scaledContents">
+      <bool>true</bool>
      </property>
     </widget>
    </widget>
@@ -556,7 +556,7 @@
      <x>270</x>
      <y>10</y>
      <width>251</width>
-     <height>101</height>
+     <height>121</height>
     </rect>
    </property>
    <property name="font">
@@ -631,7 +631,7 @@
      </property>
      <property name="geometry">
       <rect>
-       <x>10</x>
+       <x>20</x>
        <y>5</y>
        <width>81</width>
        <height>21</height>
@@ -652,11 +652,49 @@
       <set>Qt::AlignCenter</set>
      </property>
     </widget>
+    <widget class="QLabel" name="greenlight_3">
+     <property name="geometry">
+      <rect>
+       <x>7</x>
+       <y>7</y>
+       <width>16</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="pixmap">
+      <pixmap>icons/green_light.png</pixmap>
+     </property>
+     <property name="scaledContents">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QLabel" name="dispenser_red_light">
+     <property name="geometry">
+      <rect>
+       <x>7</x>
+       <y>7</y>
+       <width>16</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="pixmap">
+      <pixmap>icons/red_light.png</pixmap>
+     </property>
+     <property name="scaledContents">
+      <bool>true</bool>
+     </property>
+    </widget>
    </widget>
    <widget class="QPushButton" name="open_gate_button">
     <property name="geometry">
      <rect>
-      <x>40</x>
+      <x>10</x>
       <y>40</y>
       <width>80</width>
       <height>21</height>
@@ -669,7 +707,7 @@
    <widget class="QPushButton" name="close_gate_button">
     <property name="geometry">
      <rect>
-      <x>130</x>
+      <x>100</x>
       <y>40</y>
       <width>80</width>
       <height>21</height>
@@ -682,7 +720,7 @@
    <widget class="QPushButton" name="calibrate_gate_button">
     <property name="geometry">
      <rect>
-      <x>80</x>
+      <x>50</x>
       <y>70</y>
       <width>91</width>
       <height>21</height>
@@ -692,18 +730,85 @@
      <string>Calibrate Gate</string>
     </property>
    </widget>
+   <widget class="QLabel" name="gate_label_closed">
+    <property name="geometry">
+     <rect>
+      <x>185</x>
+      <y>50</y>
+      <width>61</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>icons/gate_closed.png</pixmap>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QLabel" name="gate_label_open">
+    <property name="geometry">
+     <rect>
+      <x>185</x>
+      <y>35</y>
+      <width>61</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>icons/gate_open.png</pixmap>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QWidget" name="gridLayoutWidget_3">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>100</y>
+      <width>161</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_3">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;State:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="dispenser_status_label">
+       <property name="text">
+        <string>N/A</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
    <zorder>cnc_heading_frame_5</zorder>
    <zorder>dispenser_stop_button</zorder>
    <zorder>dispenser_start_button</zorder>
    <zorder>open_gate_button</zorder>
    <zorder>close_gate_button</zorder>
    <zorder>calibrate_gate_button</zorder>
+   <zorder>gate_label_closed</zorder>
+   <zorder>gate_label_open</zorder>
+   <zorder>gridLayoutWidget_3</zorder>
   </widget>
   <widget class="QFrame" name="frame_4">
    <property name="geometry">
     <rect>
      <x>270</x>
-     <y>120</y>
+     <y>200</y>
      <width>251</width>
      <height>121</height>
     </rect>
@@ -780,7 +885,7 @@
      </property>
      <property name="geometry">
       <rect>
-       <x>10</x>
+       <x>23</x>
        <y>5</y>
        <width>101</width>
        <height>21</height>
@@ -799,6 +904,44 @@
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="greenlight_4">
+     <property name="geometry">
+      <rect>
+       <x>7</x>
+       <y>7</y>
+       <width>16</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="pixmap">
+      <pixmap>icons/green_light.png</pixmap>
+     </property>
+     <property name="scaledContents">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QLabel" name="stim_red_light">
+     <property name="geometry">
+      <rect>
+       <x>7</x>
+       <y>7</y>
+       <width>16</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="pixmap">
+      <pixmap>icons/red_light.png</pixmap>
+     </property>
+     <property name="scaledContents">
+      <bool>true</bool>
      </property>
     </widget>
    </widget>
@@ -963,9 +1106,9 @@
      </property>
      <property name="geometry">
       <rect>
-       <x>10</x>
+       <x>20</x>
        <y>5</y>
-       <width>101</width>
+       <width>51</width>
        <height>21</height>
       </rect>
      </property>
@@ -978,17 +1121,55 @@
       <string notr="true">background-color: rgba(255, 255, 255, 0);</string>
      </property>
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600; color:#ffffff;&quot;&gt;Opto Control&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600; color:#ffffff;&quot;&gt;Opto&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+    <widget class="QLabel" name="greenlight_2">
+     <property name="geometry">
+      <rect>
+       <x>7</x>
+       <y>7</y>
+       <width>16</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="pixmap">
+      <pixmap>icons/green_light.png</pixmap>
+     </property>
+     <property name="scaledContents">
+      <bool>true</bool>
+     </property>
+    </widget>
+    <widget class="QLabel" name="opto_red_light">
+     <property name="geometry">
+      <rect>
+       <x>7</x>
+       <y>7</y>
+       <width>16</width>
+       <height>16</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="pixmap">
+      <pixmap>icons/red_light.png</pixmap>
+     </property>
+     <property name="scaledContents">
+      <bool>true</bool>
      </property>
     </widget>
    </widget>
    <widget class="QPushButton" name="opto_on_button">
     <property name="geometry">
      <rect>
-      <x>40</x>
+      <x>10</x>
       <y>40</y>
       <width>80</width>
       <height>21</height>
@@ -1004,7 +1185,7 @@
     </property>
     <property name="geometry">
      <rect>
-      <x>130</x>
+      <x>100</x>
       <y>40</y>
       <width>80</width>
       <height>21</height>
@@ -1017,7 +1198,7 @@
    <widget class="QPushButton" name="opto_pulse_button">
     <property name="geometry">
      <rect>
-      <x>40</x>
+      <x>10</x>
       <y>70</y>
       <width>81</width>
       <height>21</height>
@@ -1030,7 +1211,7 @@
    <widget class="QPushButton" name="opto_foraging_button">
     <property name="geometry">
      <rect>
-      <x>130</x>
+      <x>100</x>
       <y>70</y>
       <width>81</width>
       <height>21</height>
@@ -1040,6 +1221,44 @@
      <string>Foraging</string>
     </property>
    </widget>
+   <widget class="QLabel" name="opto_label_off">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>50</y>
+      <width>15</width>
+      <height>26</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>icons/led_off.png</pixmap>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QLabel" name="opto_label_on">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>42</y>
+      <width>31</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>icons/led_on.png</pixmap>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+   </widget>
    <zorder>cnc_heading_frame_8</zorder>
    <zorder>opto_stop_button</zorder>
    <zorder>opto_start_button</zorder>
@@ -1047,6 +1266,8 @@
    <zorder>opto_off_button</zorder>
    <zorder>opto_pulse_button</zorder>
    <zorder>opto_foraging_button</zorder>
+   <zorder>opto_label_off</zorder>
+   <zorder>opto_label_on</zorder>
   </widget>
   <widget class="QFrame" name="frame_7">
    <property name="geometry">
@@ -1121,110 +1342,6 @@
       <set>Qt::AlignCenter</set>
      </property>
     </widget>
-   </widget>
-   <widget class="QWidget" name="gridLayoutWidget_15">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>40</y>
-      <width>91</width>
-      <height>42</height>
-     </rect>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_15">
-     <item row="1" column="0">
-      <widget class="QLabel" name="trial_duration_label">
-       <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;00:00&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_50">
-       <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Trial Duration&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="gridLayoutWidget_12">
-    <property name="geometry">
-     <rect>
-      <x>150</x>
-      <y>40</y>
-      <width>97</width>
-      <height>42</height>
-     </rect>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_12">
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_48">
-       <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Tracking State&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="bigrig_state_label">
-       <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Standby&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QWidget" name="gridLayoutWidget_13">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>90</y>
-      <width>231</width>
-      <height>42</height>
-     </rect>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_13">
-     <item row="1" column="1">
-      <widget class="QLabel" name="trial_label">
-       <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;N/A&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QLabel" name="experiment_label">
-       <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;N/A&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="bigrig_state_label_3">
-       <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Trial&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="bigrig_state_label_4">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Experiment&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
    </widget>
    <widget class="QWidget" name="gridLayoutWidget_2">
     <property name="geometry">
@@ -1443,6 +1560,89 @@
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
+   <widget class="QWidget" name="gridLayoutWidget_8">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>40</y>
+      <width>231</width>
+      <height>73</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_6">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_48">
+       <property name="maximumSize">
+        <size>
+         <width>91</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Tracking State&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="bigrig_state_label_4">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Experiment&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLabel" name="trial_time_label">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;00:00&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_50">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Trial Duration&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="bigrig_state_label_3">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Trial #&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="bigrig_state_label">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;N/A&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="trial_num_label">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;N/A&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="experiment_label">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;N/A&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
   </widget>
   <widget class="QFrame" name="frame_8">
    <property name="geometry">
@@ -1522,20 +1722,13 @@
     <property name="geometry">
      <rect>
       <x>40</x>
-      <y>40</y>
+      <y>30</y>
       <width>186</width>
-      <height>126</height>
+      <height>131</height>
      </rect>
     </property>
     <layout class="QGridLayout" name="gridLayout_14">
-     <item row="0" column="0">
-      <widget class="QLabel" name="bigrig_state_label_6">
-       <property name="text">
-        <string>Age</string>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0" colspan="2">
+     <item row="4" column="0" colspan="2">
       <widget class="QPushButton" name="save_metadata_button">
        <property name="text">
         <string>Save</string>
@@ -1543,13 +1736,33 @@
       </widget>
      </item>
      <item row="1" column="0">
+      <widget class="QLabel" name="bigrig_state_label_6">
+       <property name="text">
+        <string>Age</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="age_textbox"/>
+     </item>
+     <item row="3" column="1">
+      <widget class="QLineEdit" name="genotype_textbox">
+       <property name="text">
+        <string>isoD1</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="timezone_textbox"/>
+     </item>
+     <item row="2" column="0">
       <widget class="QLabel" name="bigrig_state_label_5">
        <property name="text">
         <string>Timezone</string>
        </property>
       </widget>
      </item>
-     <item row="2" column="0">
+     <item row="3" column="0">
       <widget class="QLabel" name="bigrig_state_label_7">
        <property name="text">
         <string>Genotype</string>
@@ -1557,15 +1770,16 @@
       </widget>
      </item>
      <item row="0" column="1">
-      <widget class="QLineEdit" name="lineEdit"/>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="lineEdit_2"/>
-     </item>
-     <item row="2" column="1">
-      <widget class="QLineEdit" name="lineEdit_3">
+      <widget class="QLineEdit" name="user_textbox">
        <property name="text">
-        <string>isoD1</string>
+        <string>Luke</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="bigrig_state_label_8">
+       <property name="text">
+        <string>User</string>
        </property>
       </widget>
      </item>
@@ -1709,7 +1923,7 @@
    <property name="geometry">
     <rect>
      <x>270</x>
-     <y>250</y>
+     <y>330</y>
      <width>251</width>
      <height>251</height>
     </rect>
@@ -1785,7 +1999,7 @@
       <x>10</x>
       <y>40</y>
       <width>231</width>
-      <height>48</height>
+      <height>35</height>
      </rect>
     </property>
     <layout class="QGridLayout" name="gridLayout">
@@ -1827,7 +2041,7 @@
       <x>10</x>
       <y>80</y>
       <width>231</width>
-      <height>48</height>
+      <height>35</height>
      </rect>
     </property>
     <layout class="QGridLayout" name="gridLayout_7">
@@ -1866,7 +2080,7 @@
       <x>10</x>
       <y>120</y>
       <width>231</width>
-      <height>42</height>
+      <height>35</height>
      </rect>
     </property>
     <layout class="QGridLayout" name="ar_grid">
@@ -1905,58 +2119,13 @@
      </item>
     </layout>
    </widget>
-   <widget class="QWidget" name="gridLayoutWidget_8">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>160</y>
-      <width>231</width>
-      <height>42</height>
-     </rect>
-    </property>
-    <layout class="QGridLayout" name="ma_grid">
-     <item row="0" column="0" colspan="3">
-      <widget class="QLabel" name="label_8">
-       <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Minor Axis&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="ma_min_label">
-       <property name="maximumSize">
-        <size>
-         <width>40</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>N/A</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="QLabel" name="ma_max_label">
-       <property name="maximumSize">
-        <size>
-         <width>40</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>N/A</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
    <widget class="QWidget" name="gridLayoutWidget_9">
     <property name="geometry">
      <rect>
       <x>10</x>
       <y>200</y>
       <width>231</width>
-      <height>42</height>
+      <height>35</height>
      </rect>
     </property>
     <layout class="QGridLayout" name="MA_grid">
@@ -1995,18 +2164,65 @@
      </item>
     </layout>
    </widget>
+   <widget class="QWidget" name="gridLayoutWidget_10">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>160</y>
+      <width>231</width>
+      <height>35</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="ma_grid">
+     <item row="0" column="0" colspan="3">
+      <widget class="QLabel" name="label_22">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;Minor Axis&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="ma_min_label">
+       <property name="maximumSize">
+        <size>
+         <width>40</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>N/A</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QLabel" name="ma_max_label">
+       <property name="maximumSize">
+        <size>
+         <width>40</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>N/A</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
   </widget>
-  <zorder>frame</zorder>
-  <zorder>current_faulty_trial_button</zorder>
-  <zorder>previous_faulty_trial_button</zorder>
-  <zorder>frame_2</zorder>
-  <zorder>frame_3</zorder>
-  <zorder>frame_4</zorder>
-  <zorder>frame_5</zorder>
-  <zorder>frame_7</zorder>
-  <zorder>frame_8</zorder>
-  <zorder>frame_9</zorder>
-  <zorder>frame_10</zorder>
+  <widget class="QPushButton" name="fly_position_plot_button">
+   <property name="geometry">
+    <rect>
+     <x>640</x>
+     <y>540</y>
+     <width>80</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Plot</string>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections/>

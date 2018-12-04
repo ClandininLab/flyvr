@@ -1,4 +1,5 @@
 import sys
+import os
 import cv2
 import numpy as np
 from time import strftime, time, sleep
@@ -6,9 +7,9 @@ from threading import Thread, Lock, Event
 import random
 import json
 
-#from matplotlib.backends.qt_compat import QtCore, QtWidgets
-#from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
-#from matplotlib.figure import Figure
+from matplotlib.backends.qt_compat import QtCore, QtWidgets
+from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+from matplotlib.figure import Figure
 
 from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QWidget, QPushButton, QSizePolicy
 from PyQt5 import QtWidgets
@@ -117,6 +118,8 @@ class MainGui():
         self.ui.close_gate_button.setEnabled(False)
         self.ui.open_gate_button.setEnabled(False)
         self.ui.calibrate_gate_button.setEnabled(False)
+        self.ui.gate_label_closed.hide()
+        self.ui.gate_label_open.hide()
 
         # Setup opto buttons
         self.ui.opto_start_button.clicked.connect(lambda x: self.optoStart())
@@ -130,6 +133,8 @@ class MainGui():
         self.ui.opto_on_button.setEnabled(False)
         self.ui.opto_off_button.setEnabled(False)
         self.ui.opto_pulse_button.setEnabled(False)
+        self.ui.opto_label_off.hide()
+        self.ui.opto_label_on.hide()
 
         # Setup main experiment buttons
         self.ui.start_experiment_button.clicked.connect(lambda x: self.experimentStart())
@@ -166,7 +171,7 @@ class MainGui():
         self.ui.draw_contours_checkbox.stateChanged.connect(lambda x: self.camContours())
 
         # Setup metadata input
-        self.ui.save_metadata_button.clicked.connect(partial(self.saveMetadata, self.ui))
+        self.ui.save_metadata_button.clicked.connect(lambda x: self.saveMetadata())
         self.ui.save_metadata_button.setEnabled(False)
 
         # Setup visual stimuli buttons
@@ -193,7 +198,7 @@ class MainGui():
         self.light_checker_timer.start(100)
 
         # Setup fly position plotter
-        self.ui.fly_position_plot_button.clicked.connect(lambda x: self.flyPlotter)
+        self.ui.fly_position_plot_button.clicked.connect(lambda x: self.flyPlotter())
 
     def configure_range_sliders(self):
         self.ar_range = QRangeSlider(self.ui)
@@ -291,22 +296,22 @@ class MainGui():
         return json.dumps(d, indent=2, sort_keys=False)
 
     def saveMetadata(self):
-        user = self.user_textbox.toPlainText()
-        age = self.age_textbox.toPlainText()
-        timezone = self.timezone_textbox.toPlainText()
-        genotype = self.genotype_textbox.toPlainText()
+        user = self.ui.user_textbox.text()
+        age = self.ui.age_textbox.text()
+        timezone = self.ui.timezone_textbox.text()
+        genotype = self.ui.genotype_textbox.text()
 
         d = {'user': user, 'age': age, 'timezone': timezone, 'genotype': genotype}
         data = self.pretty_json(d)
 
-        exp = None
+        exp_dir = None
         try:
-            exp = self.trial.exp
+            exp_dir = self.trial.exp_dir
         except:
             pass
 
-        if exp is not None:
-            fname = os.path.join(exp, 'metadata.txt')
+        if exp_dir is not None:
+            fname = os.path.join(exp_dir, 'metadata.txt')
             with open(fname, 'w') as f:
                 f.write(data)
 
@@ -393,7 +398,7 @@ class MainGui():
         self.ui.open_gate_button.setEnabled(False)
         self.ui.calibrate_gate_button.setEnabled(False)
 
-        if dispenser_data_timer is not None:
+        if self.dispenser_data_timer is not None:
             self.dispenser_data_timer.stop()
 
         self.ui.dispenser_status_label.setText('N/A')
@@ -609,11 +614,11 @@ class MainGui():
         self.ui.stop_trial_button.setEnabled(False)
         self.ui.save_metadata_button.setEnabled(False)
 
-        if self.exp_data_timer is not None:
-            self.exp_data_timer.stop()
+        #if self.exp_data_timer is not None:
+        #    self.exp_data_timer.stop()
 
-        self.ui.experiment_label.setText('N/A')
-        self.ui.trial_label.setText('N/A')
+        #self.ui.experiment_label.setText('N/A')
+        #self.ui.trial_num_label.setText('N/A')
 
     def trialStart(self):
         self.trial._start_trial()
@@ -656,7 +661,7 @@ class MainGui():
             pass
 
         try:
-            big_rig_status = self.trial.state()
+            big_rig_status = self.trial.state
         except:
             pass
 
@@ -671,8 +676,11 @@ class MainGui():
             self.ui.trial_num_label.setText('N/A')
 
         if trial_start_t is not None:
-            self.trial_duration = trial_start_t - time()
-            mins = floor(self.trial_duration/60)
+            self.trial_duration = time() - trial_start_t
+            mins = int(np.floor(self.trial_duration/60))
+            #print('dur:', self.trial_duration)
+            #print('floor:', np.floor(self.trial_duration/60))
+            #print('mins:', mins)
             if mins == 0:
                 mins = '00'
             elif mins < 10:
@@ -720,24 +728,36 @@ class MainGui():
             self.ui.stim_red_light.show()
 
     def gui_update_opto(self):
-        if self.opto.led_status == 'on'
+        if self.opto.led_status == 'on':
             self.ui.opto_label_on.show()
             self.ui.opto_label_off.hide()
-        elif self.dispenser.gate_state == 'off'
+        elif self.opto.led_status == 'off':
             self.ui.opto_label_off.show()
             self.ui.opto_label_on.hide()
 
     def gui_dispenser_info(self):
         self.ui.dispenser_status_label.setText(self.dispenser.state)
-        if self.dispenser.gate_state == 'open'
+        if self.dispenser.gate_state == 'open':
             self.ui.gate_label_open.show()
             self.ui.gate_label_closed.hide()
-        elif self.dispenser.gate_state == 'close'
+        elif self.dispenser.gate_state == 'closed':
             self.ui.gate_label_closed.show()
             self.ui.gate_label_open.hide()
 
     def flyPlotter(self):
-        self.flypositionwindow = FlyPositionWindow()
+        if self.cam is None:
+            self.message.append("Turn on the camera before starting the plotter.")
+        if self.tracker is None:
+            self.message.append("Turn on the cnc before starting the plotter.")
+        if not self.cncinit:
+            if not self.centermarked:
+                self.message.append("Initialize cnc or mark center before starting the plotter.")
+        if self.message:
+            print(self.message)
+            MessagePopup(self.message)
+            self.message = []
+        else:
+            self.flypositionwindow = FlyPositionWindow(cam=self.cam, cnc=self.tracker)
 
     def trialTimer(self):
         self.current_max_inter_fly_wait = self.max_inter_fly_wait
@@ -774,7 +794,7 @@ class MainGui():
         if self.light_checker_timer is not None:
             self.light_checker_timer.stop()
         if self.opto_timer is not None:
-            self.gui_update_opto.stop()
+            self.otpo_timer.stop()
 
         # Shutdown extra views
         if self.dispenser_view is not None:
@@ -928,43 +948,80 @@ class DispenserView(QWidget):
         super().close()
 
 class FlyPositionWindow(QWidget):
-    def __init__(self):
-        super().__init__
+    def __init__(self, cam, cnc):
+        super().__init__()
+        self.cam=cam
+        self.cnc=cnc
+        self.title = 'Fly Position'
         self.left = 10
         self.top = 10
-        self.title = 'Fly Position'
-        self.width = 640
-        self.height = 400
+        self.width = 600
+        self.height = 600
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
  
-        m = PlotCanvas(self, width=5, height=4)
+        m = FlyPositionPlot(self, width=6, height=6, cam=self.cam, cnc=self.cnc)
         m.move(0,0)
  
         self.show()
 
 class FlyPositionPlot(FigureCanvas):
-    def __init__ (self, parent=None, width=5, height=4, dpi=100):
+    def __init__ (self, parent=None, width=6, height=6, dpi=100, cam=None,cnc=None):
+
+        self.camThread = cam
+        self.cncThread = cnc
 
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)
         FigureCanvas.__init__(self, fig)
         self.setParent(parent)
-        FigureCanvas.setSizePolicy(self,
-                QSizePolicy.Expanding,
-                QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
-        self.plot()
- 
-    def plot(self):
-        data = [random.random() for i in range(25)]
-        ax = self.figure.add_subplot(111)
-        ax.plot(data, 'r-')
-        ax.set_title('PyQt Matplotlib Example')
-        self.draw()
+        self.ax = self.figure.add_subplot(111)
+        self.ax.set_ylim([0,80])
+        self.ax.set_xlim([0,80])
+
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.update_plot)
+        self.timer.start(100)
+
+    def update_plot(self):
+
+        self.flyX = None
+        self.flyY = None
+        #camX = None
+        #camY = None
+        #cncX = None
+        #cncY = None
+
+        if self.camThread is not None and self.camThread.flyData is not None:
+            camX = self.camThread.flyData.flyX
+            camY = self.camThread.flyData.flyY
+            flyPresent = self.camThread.flyData.flyPresent
+        else:
+            camX = None
+            camY = None
+            flyPresent = False
+
+        if self.cncThread is not None and self.cncThread.cncThread is not None and self.cncThread.cncThread.status is not None:
+            cncX = self.cncThread.cncThread.status.posX
+            cncY = self.cncThread.cncThread.status.posY
+        else:
+            cncX = None
+            cncY = None
+
+        if camX is not None and cncX is not None:
+            self.flyX = camX + cncX
+            self.flyY = camY + cncY
+        else:
+            self.flyX = None
+            self.flyY = None
+
+        if self.flyY is not None and self.flyX is not None and flyPresent is True:
+            self.ax.scatter(self.flyX*100, self.flyY*100, c='k', marker='o', s=2)
+            self.draw()
 
 def main():
     app = QApplication(sys.argv)
