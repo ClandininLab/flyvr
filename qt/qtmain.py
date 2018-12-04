@@ -284,7 +284,7 @@ class MainGui():
 
     def multiStimWithinTrial(self):
         self.stim.mode = 'multi_stim'
-        self.stim.stim_duration = 3.0
+        self.stim.stim_duration = 20.0
 
     def stimStart(self):
         self.stim = StimThread()
