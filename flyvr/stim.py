@@ -10,6 +10,8 @@ from random import choice
 from math import pi
 
 from flystim.screen import Screen
+from flyrpc.multicall import MyMultiCall
+from flystim.trajectory import RectangleTrajectory
 
 import os, os.path
 
@@ -26,12 +28,12 @@ def get_bigrig_screen(dir):
         offset = (-w/2, 0, h/2)
         fullscreen = True
     elif dir.lower() in ['n', 'north']:
-        id = 2
+        id = 3
         rotation = 0
         offset = (0, w/2, h/2)
         fullscreen = True
     elif dir.lower() in ['s', 'south']:
-        id = 3
+        id = 2
         rotation = pi
         offset = (0, -w/2, h/2)
         fullscreen = True
@@ -52,7 +54,7 @@ def get_bigrig_screen(dir):
                   name='BigRig {} Screen'.format(dir.title()))
 
 class StimThread:
-    def __init__(self):
+    def __init__(self, angle_change_thresh=3):
         screens = [get_bigrig_screen(dir) for dir in ['n', 'e', 's', 'w', 'gui']]
         self.manager = launch_stim_server(screens)
         self.manager.hide_corner_square()
@@ -63,6 +65,12 @@ class StimThread:
         self.mode = None
         self.stim_loaded = False
         self.stim_state = {}
+
+        self.closed_loop_pos = False
+        self.closed_loop_angle = False
+
+        self.angle_change_thresh = angle_change_thresh
+        self.last_angle = 0
 
     def get_random_direction(self):
         return choice([-400, -200, -100, -20, 20, 100, 200, 400])
@@ -85,12 +93,32 @@ class StimThread:
             raise Exception('Invalid stimulus type.')
         return kwargs
 
-    def updateStim(self, trial_dir):
+    def updateStim(self, trial_dir, fly_pos_x, fly_pos_y, fly_angle):
         if self.manager is None:
             return
 
         if not self.stim_loaded:
             return
+
+        # send fly position and orientation to stimulus
+        multicall = MyMultiCall(self.manager)
+
+        if self.closed_loop_pos:
+            if fly_pos_x is not None and fly_pos_y is not None:
+                multicall.set_global_fly_pos(fly_pos_x, fly_pos_y, 0)
+        else:
+            multicall.set_global_fly_pos(0, 0, 0)
+
+        if self.closed_loop_angle:
+            if fly_angle is not None:
+                if abs(fly_angle-self.last_angle) > self.angle_change_thresh:
+                    multicall.set_global_theta_offset(fly_angle)
+                    self.last_angle = fly_angle
+        else:
+            multicall.set_global_theta_offset(0)
+
+        if len(multicall.request_list) > 0:
+            multicall()
 
         if self.mode == 'multi_rotation':
             t = time()
@@ -138,7 +166,9 @@ class StimThread:
             return
 
         if self.mode == 'single_stim':
-            kwargs = self.get_random_stim()
+            #kwargs = self.get_random_stim()
+            trajectory = RectangleTrajectory(x=0, y=90, angle=0, w=3, h=180)
+            kwargs = {'name': 'MovingPatch', 'trajectory': trajectory.to_dict()}
             self.stim_state = {}
 
         elif self.mode == 'multi_stim':

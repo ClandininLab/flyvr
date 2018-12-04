@@ -165,10 +165,20 @@ class MainGui():
         #self.ui.image_type_combo.activated[str].connect(self.image_type)
         self.ui.draw_contours_checkbox.setChecked(True)
         self.ui.draw_contours_checkbox.setEnabled(False)
+
         self.ui.show_threshold_checkbox.setChecked(False)
         self.ui.show_threshold_checkbox.setEnabled(False)
+
+        self.ui.closed_loop_pos.setChecked(False)
+        self.ui.closed_loop_pos.setEnabled(True)
+
+        self.ui.closed_loop_angle.setChecked(False)
+        self.ui.closed_loop_angle.setEnabled(True)
+
         self.ui.show_threshold_checkbox.stateChanged.connect(lambda x: self.camThreshold())
         self.ui.draw_contours_checkbox.stateChanged.connect(lambda x: self.camContours())
+        self.ui.closed_loop_pos.stateChanged.connect(lambda x: self.closed_loop_pos_checked())
+        self.ui.closed_loop_angle.stateChanged.connect(lambda x: self.closed_loop_angle_checked())
 
         # Setup metadata input
         self.ui.save_metadata_button.clicked.connect(lambda x: self.saveMetadata())
@@ -518,6 +528,7 @@ class MainGui():
             self.ui.fly_aspect_ratio_label.setText('{:0.2f}'.format(fly_data.aspect_ratio))
             self.ui.fly_x_label.setText('{:0.2f}'.format(fly_data.flyX*1e3))
             self.ui.fly_y_label.setText('{:0.2f}'.format(fly_data.flyY*1e3))
+            self.ui.fly_angle_label.setText('{:0.1f}'.format(fly_data.angle))
         else:
             self.reset_fly_data()
 
@@ -527,6 +538,7 @@ class MainGui():
         self.ui.fly_aspect_ratio_label.setText('N/A')
         self.ui.fly_x_label.setText('N/A')
         self.ui.fly_y_label.setText('N/A')
+        self.ui.fly_angle_label.setText('N/A')
 
     def camStop(self):
         self.cam_view.close()
@@ -819,6 +831,24 @@ class MainGui():
             self.dispenser.stop()
         print('Shutdown Called')
 
+    def closed_loop_pos_checked(self):
+        if self.stim is not None:
+            if self.ui.closed_loop_pos.isChecked():
+                print('Enabling closed loop position...')
+                self.stim.closed_loop_pos = True
+            else:
+                print('Disabling closed loop position...')
+                self.stim.closed_loop_pos = False
+
+    def closed_loop_angle_checked(self):
+        if self.stim is not None:
+            if self.ui.closed_loop_angle.isChecked():
+                print('Enabling closed loop angle...')
+                self.stim.closed_loop_angle = True
+            else:
+                print('Disabling closed loop angle...')
+                self.stim.closed_loop_angle = False
+
 class Mail():
     def __init__(self):
         message = None
@@ -987,10 +1017,12 @@ class FlyPositionPlot(FigureCanvas):
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_plot)
-        self.timer.start(100)
+
+        # 100 ms was too fast...
+        self.timer.start(1000)
 
     def update_plot(self):
-
+        print('updating fly position plot {}'.format(time()))
         self.flyX = None
         self.flyY = None
         #camX = None
