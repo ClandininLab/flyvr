@@ -98,9 +98,47 @@ class TrialThread(Service):
         if self.stim is not None:
             self.stim.stopStim(self._trial_dir)
 
+    def get_fly_pos(self):
+        cam_x, cam_y = None, None
+        if self.cam is not None:
+            flyData = self.cam.flyData
+            if flyData is not None and flyData.flyPresent:
+                cam_x, cam_y = flyData.flyX, flyData.flyY
+
+        if cam_x is None or cam_y is None:
+            return None, None
+
+        cnc_x = None
+        cnc_y = None
+        if self.tracker is not None and self.tracker.cncThread is not None:
+            status = self.tracker.cncThread.status
+            if status is not None:
+                cnc_x, cnc_y = status.posX, status.posY
+
+        if cnc_x is None or cnc_y is None:
+            return None, None
+
+        # NOTE: this is not an error!  The coordinate definitions of X and Y are flipped for screen definitions
+        # as compared to the CNC and camera axes
+        fly_y = cam_x + cnc_x
+        fly_x = cam_y + cnc_y
+
+        return fly_x, fly_y
+
+    def get_fly_angle(self):
+        fly_angle = None
+        if self.cam is not None:
+            fly_data = self.cam.flyData
+            if fly_data is not None:
+                fly_angle = 180-fly_data.angle
+
+        return fly_angle
+
     def loopBody(self):
         if self.stim is not None:
-            self.stim.updateStim(self._trial_dir)
+            fly_pos_x, fly_pos_y = self.get_fly_pos()
+            fly_angle = self.get_fly_angle()
+            self.stim.updateStim(self._trial_dir, fly_pos_x=fly_pos_x, fly_pos_y=fly_pos_y, fly_angle=fly_angle)
 
         if self.state == 'started':
             if self.cam.flyData.flyPresent:

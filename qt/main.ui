@@ -808,9 +808,9 @@
    <property name="geometry">
     <rect>
      <x>270</x>
-     <y>200</y>
+     <y>140</y>
      <width>251</width>
-     <height>121</height>
+     <height>181</height>
     </rect>
    </property>
    <property name="font">
@@ -971,38 +971,6 @@
      <string>Rotations</string>
     </property>
    </widget>
-   <widget class="QLabel" name="current_stim_label">
-    <property name="geometry">
-     <rect>
-      <x>100</x>
-      <y>100</y>
-      <width>51</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;N/A&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignCenter</set>
-    </property>
-   </widget>
-   <widget class="QLabel" name="current_stim_label_2">
-    <property name="geometry">
-     <rect>
-      <x>10</x>
-      <y>100</y>
-      <width>101</width>
-      <height>20</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Current Stimulus:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignCenter</set>
-    </property>
-   </widget>
    <widget class="QPushButton" name="multi_stim_within_trial_button">
     <property name="geometry">
      <rect>
@@ -1016,14 +984,79 @@
      <string>Multi Stim</string>
     </property>
    </widget>
+   <widget class="QWidget" name="gridLayoutWidget_5">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>100</y>
+      <width>201</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <layout class="QGridLayout" name="gridLayout_5">
+     <item row="1" column="0">
+      <widget class="QLabel" name="current_stim_label_4">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Closed-loop angle&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="current_stim_label_2">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Current Stimulus:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="current_stim_label">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;N/A&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="current_stim_label_3">
+       <property name="text">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Closed-loop position&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QCheckBox" name="closed_loop_pos">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QCheckBox" name="closed_loop_angle">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </widget>
    <zorder>cnc_heading_frame_6</zorder>
    <zorder>stim_stop_button</zorder>
    <zorder>stim_start_button</zorder>
    <zorder>stim_per_trial_button</zorder>
    <zorder>stim_within_trial_button</zorder>
-   <zorder>current_stim_label</zorder>
-   <zorder>current_stim_label_2</zorder>
    <zorder>multi_stim_within_trial_button</zorder>
+   <zorder>gridLayoutWidget_5</zorder>
   </widget>
   <widget class="QFrame" name="frame_5">
    <property name="geometry">
@@ -1347,37 +1380,23 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>140</y>
+      <y>119</y>
       <width>148</width>
-      <height>140</height>
+      <height>181</height>
      </rect>
     </property>
     <layout class="QGridLayout" name="gridLayout_2">
-     <item row="5" column="1">
-      <widget class="QLabel" name="fly_x_label">
-       <property name="text">
-        <string>N/A</string>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="2">
-      <widget class="QLabel" name="label_18">
-       <property name="text">
-        <string>mm</string>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="label_11">
-       <property name="text">
-        <string>Minor Axis</string>
-       </property>
-      </widget>
-     </item>
      <item row="2" column="2">
       <widget class="QLabel" name="label_12">
        <property name="text">
         <string>mm</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QLabel" name="fly_x_label">
+       <property name="text">
+        <string>N/A</string>
        </property>
       </widget>
      </item>
@@ -1388,20 +1407,17 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="0" colspan="3">
-      <widget class="QLabel" name="label_10">
+     <item row="6" column="1">
+      <widget class="QLabel" name="fly_y_label">
        <property name="text">
-        <string>&lt;b&gt;Fly Data&lt;/b&gt;</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
+        <string>N/A</string>
        </property>
       </widget>
      </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_13">
+     <item row="6" column="0">
+      <widget class="QLabel" name="label_24">
        <property name="text">
-        <string>Major Axis</string>
+        <string>Y Coordinate</string>
        </property>
       </widget>
      </item>
@@ -1412,10 +1428,17 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="1">
-      <widget class="QLabel" name="fly_aspect_ratio_label">
+     <item row="6" column="2">
+      <widget class="QLabel" name="label_26">
        <property name="text">
-        <string>N/A</string>
+        <string>mm</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="2">
+      <widget class="QLabel" name="label_18">
+       <property name="text">
+        <string>mm</string>
        </property>
       </widget>
      </item>
@@ -1423,6 +1446,13 @@
       <widget class="QLabel" name="fly_major_axis_label">
        <property name="text">
         <string>N/A</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="label_11">
+       <property name="text">
+        <string>Minor Axis</string>
        </property>
       </widget>
      </item>
@@ -1440,24 +1470,48 @@
        </property>
       </widget>
      </item>
-     <item row="6" column="0">
-      <widget class="QLabel" name="label_24">
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_13">
        <property name="text">
-        <string>Y Coordinate</string>
+        <string>Major Axis</string>
        </property>
       </widget>
      </item>
-     <item row="6" column="1">
-      <widget class="QLabel" name="fly_y_label">
+     <item row="4" column="1">
+      <widget class="QLabel" name="fly_aspect_ratio_label">
        <property name="text">
         <string>N/A</string>
        </property>
       </widget>
      </item>
-     <item row="6" column="2">
-      <widget class="QLabel" name="label_26">
+     <item row="0" column="0" colspan="3">
+      <widget class="QLabel" name="label_10">
        <property name="text">
-        <string>mm</string>
+        <string>&lt;b&gt;Fly Data&lt;/b&gt;</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="0">
+      <widget class="QLabel" name="label_19">
+       <property name="text">
+        <string>Angle</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="1">
+      <widget class="QLabel" name="fly_angle_label">
+       <property name="text">
+        <string>N/A</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="2">
+      <widget class="QLabel" name="label_27">
+       <property name="text">
+        <string>deg</string>
        </property>
       </widget>
      </item>
@@ -1467,7 +1521,7 @@
     <property name="geometry">
      <rect>
       <x>10</x>
-      <y>290</y>
+      <y>310</y>
       <width>148</width>
       <height>69</height>
      </rect>
