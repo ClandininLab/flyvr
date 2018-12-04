@@ -1722,12 +1722,15 @@
     <property name="geometry">
      <rect>
       <x>40</x>
-      <y>30</y>
+      <y>40</y>
       <width>186</width>
-      <height>131</height>
+      <height>121</height>
      </rect>
     </property>
     <layout class="QGridLayout" name="gridLayout_14">
+     <property name="topMargin">
+      <number>0</number>
+     </property>
      <item row="4" column="0" colspan="2">
       <widget class="QPushButton" name="save_metadata_button">
        <property name="text">
