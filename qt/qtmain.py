@@ -948,9 +948,14 @@ class DispenserView(QWidget):
         self.dispenser = dispenser
         self.plot_data = np.zeros((128, 128))
 
+        self.gate_markers = np.zeros((128))
+        self.gate_markers[self.dispenser.gate_start] = 255
+        self.gate_markers[self.dispenser.gate_end] = 255
+        self.whole_plot = np.zeros((129, 128))
+
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_window)
-        self.timer.start(int(1/fps*1000))
+        self.timer.start(50)
 
         self.initUI()
 
@@ -969,10 +974,15 @@ class DispenserView(QWidget):
         if self.dispenser.display_frame is not None:
             self.plot_data = np.roll(self.plot_data, 1, 0)
             self.plot_data[0] = self.dispenser.display_frame
-            self.plot_data = self.plot_data.astype(np.uint8)
-        img = QtGui.QImage(self.plot_data, self.plot_data.shape[0], self.plot_data.shape[1], QtGui.QImage.Format_Indexed8)
+
+            # add gate markers
+            self.whole_plot = np.vstack((self.gate_markers, self.plot_data))
+            self.whole_plot = self.whole_plot.astype(np.uint8)
+            print(np.shape(self.whole_plot))
+
+        img = QtGui.QImage(self.whole_plot, self.whole_plot.shape[1], self.whole_plot.shape[0], QtGui.QImage.Format_Indexed8)
         pixmap = QtGui.QPixmap.fromImage(img)
-        pixmap = pixmap.scaledToWidth(300)
+        pixmap = pixmap.scaledToWidth(400)
         self.image_label.setPixmap(pixmap)
 
     def close(self):
