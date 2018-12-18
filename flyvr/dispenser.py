@@ -78,7 +78,7 @@ class FlyDispenser(Service):
         # initialize display settings
         self.display_type = 'raw'
         self.display_threshold = -11
-        self.gate_clear_threshold = -8
+        self.gate_clear_threshold = -20
         self.fly_passed_threshold = -11
         self.num_needed_pixels = 2
 

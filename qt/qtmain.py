@@ -11,6 +11,9 @@ from matplotlib.backends.qt_compat import QtCore, QtWidgets
 from matplotlib.backends.backend_qt5agg import (FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 from matplotlib.figure import Figure
 
+from pyqtgraph.Qt import QtGui, QtCore
+import pyqtgraph as pg
+
 from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QWidget, QPushButton, QSizePolicy
 from PyQt5 import QtWidgets
 from PyQt5 import uic
@@ -289,7 +292,7 @@ class MainGui():
 
     def stimWithinTrial(self):
         self.stim.mode = 'multi_rotation'
-        self.stim.pause_duration = 2.0
+        self.stim.pause_duration = 20.0
         self.stim.stim_duration = 2.0
 
     def multiStimWithinTrial(self):
@@ -978,7 +981,6 @@ class DispenserView(QWidget):
             # add gate markers
             self.whole_plot = np.vstack((self.gate_markers, self.plot_data))
             self.whole_plot = self.whole_plot.astype(np.uint8)
-            print(np.shape(self.whole_plot))
 
         img = QtGui.QImage(self.whole_plot, self.whole_plot.shape[1], self.whole_plot.shape[0], QtGui.QImage.Format_Indexed8)
         pixmap = QtGui.QPixmap.fromImage(img)
