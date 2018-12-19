@@ -14,7 +14,7 @@ from matplotlib.figure import Figure
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 
-from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QWidget, QPushButton, QSizePolicy
+from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog, QWidget, QPushButton, QSizePolicy, QGraphicsView, QGridLayout
 from PyQt5 import QtWidgets
 from PyQt5 import uic
 from PyQt5 import QtGui, QtCore
@@ -762,19 +762,19 @@ class MainGui():
             self.ui.gate_label_open.hide()
 
     def flyPlotter(self):
-        if self.cam is None:
-            self.message.append("Turn on the camera before starting the plotter.")
-        if self.tracker is None:
-            self.message.append("Turn on the cnc before starting the plotter.")
-        if not self.cncinit:
-            if not self.centermarked:
-                self.message.append("Initialize cnc or mark center before starting the plotter.")
-        if self.message:
-            print(self.message)
-            MessagePopup(self.message)
-            self.message = []
-        else:
-            self.flypositionwindow = FlyPositionWindow(cam=self.cam, cnc=self.tracker)
+        # if self.cam is None:
+        #     self.message.append("Turn on the camera before starting the plotter.")
+        # if self.tracker is None:
+        #     self.message.append("Turn on the cnc before starting the plotter.")
+        # if not self.cncinit:
+        #     if not self.centermarked:
+        #         self.message.append("Initialize cnc or mark center before starting the plotter.")
+        # if self.message:
+        #     print(self.message)
+        #     MessagePopup(self.message)
+        #     self.message = []
+        # else:
+        self.flypositionwindow = FlyPositionWindow(cam=self.cam, cnc=self.tracker)
 
     def trialTimer(self):
         self.current_max_inter_fly_wait = self.max_inter_fly_wait
@@ -994,8 +994,8 @@ class DispenserView(QWidget):
 class FlyPositionWindow(QWidget):
     def __init__(self, cam, cnc):
         super().__init__()
-        self.cam=cam
-        self.cnc=cnc
+        self.camThread=cam
+        self.cncThread=cnc
         self.title = 'Fly Position'
         self.left = 10
         self.top = 10
@@ -1003,38 +1003,26 @@ class FlyPositionWindow(QWidget):
         self.height = 600
         self.initUI()
 
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.update_plot)
+        self.timer.start(50)
+
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
- 
-        m = FlyPositionPlot(self, width=6, height=6, cam=self.cam, cnc=self.cnc)
-        m.move(0,0)
- 
+
+        self.flyplot = pg.PlotWidget()
+        self.layout = QGridLayout(self)
+        self.layout.addWidget(self.flyplot, 0, 0)
+        self.setLayout(self.layout)
+        pg.setConfigOptions(antialias=True)
         self.show()
-
-class FlyPositionPlot(FigureCanvas):
-    def __init__ (self, parent=None, width=6, height=6, dpi=100, cam=None,cnc=None):
-
-        self.camThread = cam
-        self.cncThread = cnc
-
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        FigureCanvas.__init__(self, fig)
-        self.setParent(parent)
-        FigureCanvas.updateGeometry(self)
-        self.ax = self.figure.add_subplot(111)
-        self.ax.set_ylim([0,80])
-        self.ax.set_xlim([0,80])
-
-        self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.update_plot)
-
-        # 100 ms was too fast...
-        self.timer.start(1000)
 
     def update_plot(self):
         print('updating fly position plot {}'.format(time()))
+
+        self.flyplot.plot(np.random.normal(size=100), np.random.normal(size=100), pen=(255, 0, 0), name="Red curve")
+
         self.flyX = None
         self.flyY = None
         #camX = None
