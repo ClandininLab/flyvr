@@ -945,11 +945,17 @@ class DispenserView(QWidget):
         self.title = 'Dispenser View'
         self.left = 794
         self.top = 562
-        self.width = 300
+        self.width = 600
         self.height = 300
 
         self.dispenser = dispenser
         self.plot_data = np.zeros((128, 128))
+        self.processed_data = np.zeros((128, 128))
+
+        # For processed data plot
+        self.start = np.zeros(self.dispenser.gate_start)
+        self.gate = np.zeros(self.dispenser.gate_end - self.dispenser.gate_start)
+        self.end = np.zeros(128 - self.dispenser.gate_end)
 
         self.gate_markers = np.zeros((128))
         self.gate_markers[self.dispenser.gate_start] = 255
@@ -975,16 +981,38 @@ class DispenserView(QWidget):
 
     def update_window(self):
         if self.dispenser.display_frame is not None:
+
+            # Create raw display
             self.plot_data = np.roll(self.plot_data, 1, 0)
             self.plot_data[0] = self.dispenser.display_frame
+            self.left_plot = np.vstack((self.gate_markers, self.plot_data))
 
-            # add gate markers
-            self.whole_plot = np.vstack((self.gate_markers, self.plot_data))
+            # Create processed display
+            if self.dispenser.prev_frame is not None:
+                # Process gate to end
+                diff = -np.abs(self.dispenser.raw_data[self.dispenser.gate_end:] - self.dispenser.prev_frame[self.dispenser.gate_end:])
+                self.end = diff < self.dispenser.fly_passed_threshold
+                self.end = self.end.astype(int)*255
+
+                # Process gate region
+                diff = (self.dispenser.raw_data[self.dispenser.gate_start:self.dispenser.gate_end] -
+                        self.dispenser.background_region[self.dispenser.gate_start:self.dispenser.gate_end])
+                self.gate = diff < self.dispenser.gate_clear_threshold
+                self.gate = self.gate.astype(int) * 255
+
+            processed_frame = np.concatenate((self.start,self.gate,self.end))
+            self.processed_data = np.roll(self.processed_data, 1, 0)
+            self.processed_data[0] = processed_frame
+            self.right_plot = np.vstack((self.gate_markers, self.processed_data))
+
+            # Concatenate left and right
+            self.whole_plot = np.hstack((self.left_plot, self.right_plot))
             self.whole_plot = self.whole_plot.astype(np.uint8)
 
         img = QtGui.QImage(self.whole_plot, self.whole_plot.shape[1], self.whole_plot.shape[0], QtGui.QImage.Format_Indexed8)
         pixmap = QtGui.QPixmap.fromImage(img)
-        pixmap = pixmap.scaledToWidth(400)
+        #pixmap = pixmap.scaledToWidth(800)
+        pixmap = pixmap.scaled(800, 400)
         self.image_label.setPixmap(pixmap)
 
     def close(self):
@@ -1002,33 +1030,42 @@ class FlyPositionWindow(QWidget):
         self.width = 600
         self.height = 600
         self.initUI()
+        self.time_prev = time()
+
+        self.fly_points = pg.ScatterPlotItem(size=2, pen=pg.mkPen(None), brush=pg.mkBrush(0, 0, 0, 120))
+        self.flyplot.addItem(self.fly_points)
+        self.x_plot = []
+        self.y_plot = []
+        self.max_vector_length = 1000
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_plot)
-        self.timer.start(50)
+        self.timer.start(100)
 
     def initUI(self):
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
 
+        pg.setConfigOptions(antialias=True)
+        pg.setConfigOption('background', 'w')
+        pg.setConfigOption('foreground', 'k')
+
         self.flyplot = pg.PlotWidget()
         self.layout = QGridLayout(self)
         self.layout.addWidget(self.flyplot, 0, 0)
         self.setLayout(self.layout)
-        pg.setConfigOptions(antialias=True)
+        self.flyplot.setXRange(-0.4, 0.4, padding=0)
+        self.flyplot.setYRange(-0.4, 0.4, padding=0)
         self.show()
 
     def update_plot(self):
-        print('updating fly position plot {}'.format(time()))
-
-        self.flyplot.plot(np.random.normal(size=100), np.random.normal(size=100), pen=(255, 0, 0), name="Red curve")
-
         self.flyX = None
         self.flyY = None
-        #camX = None
-        #camY = None
-        #cncX = None
-        #cncY = None
+
+        # limit num points to plot to maintain fast performance
+        if len(self.x_plot) > self.max_vector_length:
+            self.x_plot = self.x_plot[1:]
+            self.y_plot = self.y_plot[1:]
 
         if self.camThread is not None and self.camThread.flyData is not None:
             camX = self.camThread.flyData.flyX
@@ -1054,8 +1091,9 @@ class FlyPositionWindow(QWidget):
             self.flyY = None
 
         if self.flyY is not None and self.flyX is not None and flyPresent is True:
-            self.ax.scatter(self.flyX*100, self.flyY*100, c='k', marker='o', s=2)
-            self.draw()
+            self.x_plot.append((self.flyX - self.cncThread.center_pos_x)*-1) #-1 to flip y-axis
+            self.y_plot.append((self.flyY - self.cncThread.center_pos_y))
+            self.fly_points.setData(self.x_plot, self.y_plot)
 
 def main():
     app = QApplication(sys.argv)

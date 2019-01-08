@@ -48,7 +48,7 @@ class FlyDispenser(Service):
         self.num_pixels = 128
         self.gate_start = 25
         self.gate_end = 45
-        self.max_usable_pixel = 90
+        self.diff = None
 
         # serial connection
         self.conn = None
@@ -248,8 +248,7 @@ class FlyDispenser(Service):
         #diff = (self.raw_data[self.gate_end:self.max_usable_pixel] -
         #        self.background_region[self.gate_end:self.max_usable_pixel])
 
-        diff = -np.abs(self.raw_data[self.gate_end:self.max_usable_pixel] -
-                       self.prev_frame[self.gate_end:self.max_usable_pixel])
+        diff = -np.abs(self.raw_data[self.gate_end:] - self.prev_frame[self.gate_end:])
 
         return np.sum(diff < self.fly_passed_threshold) > self.num_needed_pixels
 
