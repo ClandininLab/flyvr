@@ -11,7 +11,7 @@ from threading import Lock
 from flyvr.tracker import TrackThread, ManualVelocity
 
 class TrialThread(Service):
-    def __init__(self, cam, dispenser, stim, opto, tracker, ui,
+    def __init__(self, cam, dispenser, stim, opto, tracker, ui, flyplot,
                  loopTime=10e-3, fly_lost_timeout=2, fly_detected_timeout=2):
 
         self.trial_count = itertools.count(1)
@@ -24,6 +24,7 @@ class TrialThread(Service):
         self.opto = opto
         self.ui = ui
         self.tracker = tracker
+        self.flyplot = flyplot
 
         self.timer_start = None
         self.trial_start_t = None
@@ -82,6 +83,9 @@ class TrialThread(Service):
 
         if self.stim is not None:
             self.stim.nextTrial(self._trial_dir)
+
+        if self.flyplot is not None:
+            self.flyplot.clear_plot()
 
     def _stop_trial(self):
         print('Stopped trial.')
