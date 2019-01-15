@@ -566,7 +566,7 @@ class MainGui():
 
     def optoStart(self):
         self.opto = OptoThread(cncThread=self.tracker.cncThread, camThread=self.cam,
-                               trackThread=self.tracker, trialThread = self.trial)
+                               trackThread=self.tracker)
         self.opto.start()
         self.ui.opto_start_button.setEnabled(False)
         self.ui.opto_stop_button.setEnabled(True)
@@ -774,7 +774,7 @@ class MainGui():
         #     MessagePopup(self.message)
         #     self.message = []
         # else:
-        self.flypositionwindow = FlyPositionWindow(cam=self.cam, cnc=self.tracker)
+        self.flypositionwindow = FlyPositionWindow(cam=self.cam, cnc=self.tracker, opto=self.opto)
 
     def trialTimer(self):
         self.current_max_inter_fly_wait = self.max_inter_fly_wait
@@ -811,7 +811,7 @@ class MainGui():
         if self.light_checker_timer is not None:
             self.light_checker_timer.stop()
         if self.opto_timer is not None:
-            self.otpo_timer.stop()
+            self.opto_timer.stop()
 
         # Shutdown extra views
         if self.dispenser_view is not None:
@@ -1020,10 +1020,11 @@ class DispenserView(QWidget):
         super().close()
 
 class FlyPositionWindow(QWidget):
-    def __init__(self, cam, cnc):
+    def __init__(self, cam, cnc, opto):
         super().__init__()
         self.camThread=cam
         self.cncThread=cnc
+        self.opto=opto
         self.title = 'Fly Position'
         self.left = 10
         self.top = 10
@@ -1036,6 +1037,13 @@ class FlyPositionWindow(QWidget):
         self.flyplot.addItem(self.fly_points)
         self.x_plot = []
         self.y_plot = []
+
+        self.food_points = pg.ScatterPlotItem(size=5, pen=pg.mkPen(None), brush=pg.mkBrush(255, 0, 0, 120))
+        self.flyplot.addItem(self.food_points)
+        self.food_x = []
+        self.food_y = []
+
+
         self.max_vector_length = 1000
 
         self.timer = QtCore.QTimer()
@@ -1091,13 +1099,20 @@ class FlyPositionWindow(QWidget):
             self.flyY = None
 
         if self.flyY is not None and self.flyX is not None and flyPresent is True:
-            self.x_plot.append((self.flyX - self.cncThread.center_pos_x)*-1) #-1 to flip y-axis
+            self.x_plot.append((self.flyX - self.cncThread.center_pos_x)*-1) #-1 to flip x-axis
             self.y_plot.append((self.flyY - self.cncThread.center_pos_y))
             self.fly_points.setData(self.x_plot, self.y_plot)
+
+        if self.opto is not None:
+            self.food_x = [(food['x'] - self.cncThread.center_pos_x*-1) for food in self.opto.foodspots] #-1 to flip x-axis
+            self.food_y = [(food['y'] - self.cncThread.center_pos_y) for food in self.opto.foodspots]
+            self.food_points.setData(self.food_x, self.food_y)
 
     def clear_plot(self):
         self.x_plot = []
         self.y_plot = []
+        self.food_x = []
+        self.food_y = []
 
 def main():
     app = QApplication(sys.argv)
