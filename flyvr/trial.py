@@ -80,6 +80,7 @@ class TrialThread(Service):
 
         if self.opto is not None:
             self.opto.startLogging(os.path.join(_trial_dir, 'opto.txt'))
+            self.opto.trial_start_t = self.trial_start_t
 
         if self.stim is not None:
             self.stim.nextTrial(self._trial_dir)

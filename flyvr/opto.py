@@ -19,7 +19,7 @@ class OptoThread(Service):
     ON_COMMAND = 0xbe
     OFF_COMMAND = 0xef
 
-    def __init__(self, cncThread=None, camThread=None, trackThread=None, trialThread=None):
+    def __init__(self, cncThread=None, camThread=None, trackThread=None, minTime=5e-3, maxTime=12e-3):
         # Serial interface to opto arduino
         com = None
         if com is None:
@@ -31,7 +31,7 @@ class OptoThread(Service):
         # set up serial connection
         self.ser = serial.Serial(port=com, baudrate=9600)
         sleep(2)
-        
+
         # Setup locks
         self.pulseLock = Lock()
         self.logLock = Lock()
@@ -42,7 +42,6 @@ class OptoThread(Service):
         self.camThread = camThread
         self.cncThread = cncThread
         self.trackThread = trackThread
-        self.trialThread = trialThread
 
         # Set foraging parameters
         self.foraging = False
@@ -65,87 +64,100 @@ class OptoThread(Service):
         self.shouldCreateFood = False
         self.led_status = 'off'
         self.fly_in_food = False
-        #self.food_to_food_min_distance =
+        self.close_to_food = False
+        self.min_dist_from_food = 10e-3
+
+        self.trial_start_t = None
 
         # call constructor from parent        
-        super().__init__()
+        super().__init__(maxTime=maxTime, minTime=minTime)
 
     # overriding method from parent...
     def loopBody(self):
-        if self.camThread is not None:
+        ### Get Fly Position ###
 
-            # get latest camera position
-            flyData = self.camThread.flyData
-            if flyData is not None:
-                camX = flyData.flyX
-                camY = flyData.flyY
-                flyPresent = flyData.flyPresent
-            else:
-                camX = 0
-                camY = 0
-                flyPresent = False
+        if self.camThread is not None and self.camThread.flyData is not None:
+            camX = self.camThread.flyData.flyX
+            camY = self.camThread.flyData.flyY
+            flyPresent = self.camThread.flyData.flyPresent
+        else:
+            camX = None
+            camY = None
+            flyPresent = False
 
-            # get latest cnc position
-            if self.cncThread is not None:
-                if self.cncThread.status is not None:
-                    cncX = self.cncThread.status.posX
-                    cncY = self.cncThread.status.posY
+        if self.cncThread is not None and self.cncThread.status is not None:
+            cncX = self.cncThread.status.posX
+            cncY = self.cncThread.status.posY
+        else:
+            cncX = None
+            cncY = None
+
+        if camX is not None and cncX is not None and flyPresent is True:
+            self.flyX = camX + cncX
+            self.flyY = camY + cncY
+        else:
+            self.flyX = None
+            self.flyY = None
+
+        ### Calculate parameters based on fly position ###
+
+        if self.flyX is not None and self.flyY is not None:
+            # calculate distance from center
+            x_dist = np.abs(self.flyX) - np.abs(self.trackThread.center_pos_x)
+            y_dist = np.abs(self.flyY) - np.abs(self.trackThread.center_pos_y)
+            self.dist_from_center = np.sqrt(x_dist*x_dist + y_dist*y_dist)
+
+            if self.foraging:
+                # define food spot if all requirements are met
+                self.checkFoodCreation()
+                if self.shouldCreateFood:
+                    self.defineFoodSpot()
+                    self.shouldCreateFood = False
+
+                # turn on LED if fly is in food spot
+                for foodspot in self.foodspots:
+                    if foodspot['x'] - self.food_rad <= self.flyX <= foodspot['x'] - self.food_rad and \
+                       foodspot['y'] - self.food_rad <= self.flyY <= foodspot['y'] - self.food_rad:
+                        self.time_since_last_food = time()
+                        self.fly_in_food = True
+
+                if self.fly_in_food:
+                    if self.led_status == 'off':
+                        self.on()
                 else:
-                    cncX = 0
-                    cncY = 0
-
-                # find fly position
-                self.flyX = camX + cncX
-                self.flyY = camY + cncY
-
-                # calculate distance from center
-                x_dist = np.abs(self.flyX - self.trackThread.center_pos_x)
-                y_dist = np.abs(self.flyY - self.trackThread.center_pos_y)
-                self.dist_from_center = np.sqrt(x_dist*x_dist + y_dist*y_dist)
-        
-                if self.foraging:
-                    # define food spot if all requirements are met
-                    self.checkFoodCreation()
-                    if self.shouldCreateFood:
-                        self.defineFoodSpot()
-                        self.shouldCreateFood = False
-
-
-                    # turn on LED if fly is in food spot
-                    for foodspot in self.foodspots:
-                        if foodspot.x - self.food_rad <= self.flyX <= foodspot.x - self.food_rad and \
-                           foodspot.y - self.food_rad <= self.flyY <= foodspot.y - self.food_rad:
-                            self.time_since_last_food = time()
-                            self.fly_in_food = True
-
-                    if self.fly_in_food:
-                        if self.led_status == 'off':
-                            self.on()
-                    else:
-                        if self.led_status == 'on':
-                            self.off()
-                    self.fly_in_food = False
+                    if self.led_status == 'on':
+                        self.off()
+                self.fly_in_food = False
 
     def checkFoodCreation(self):
-        # time is large or distance correct: (consider removing time override?)
-        if ((time() - self.trial.trial_start_t > self.foraging_time_override) or \
-            self.foraging_distance_max > self.dist_from_center > self.foraging_distance_min):
-            self.distance_correct = True
-
-        # make sure fly is moving
-        if abs(self.camX) > self.fly_movement_threshold or \
-           abs(self.camY) > self.fly_movement_threshold:
-           self.fly_moving = True
-
-        # make sure the fly hasn't recently passed through a spot
-        if self.time_since_last_food is not None:
-            if (time() - self.time_since_last_food > self.time_since_last_food_min):
-                self.long_time_since_food = True
+        # # check if distance from center is correct:
+        # if self.foraging_distance_max > self.dist_from_center > self.foraging_distance_min:
+        #     self.distance_correct = True
+        #
+        # # make sure fly is moving
+        # if abs(self.camX) > self.fly_movement_threshold or \
+        #    abs(self.camY) > self.fly_movement_threshold:
+        #    self.fly_moving = True
+        #
+        # # make sure the fly hasn't recently passed through a spot
+        # if self.time_since_last_food is not None:
+        #     if (time() - self.time_since_last_food > self.time_since_last_food_min):
+        #         self.long_time_since_food = True
 
         # make sure new foods aren't too close to other foods
-        #if self.flyX -
+        for food in self.foodspots:
+            x_dist = np.abs(self.flyX) - np.abs(food['x'])
+            y_dist = np.abs(self.flyX) - np.abs(food['y'])
+            self.dist_from_food = np.sqrt(x_dist * x_dist + y_dist * y_dist)
+            if self.dist_from_food <= self.min_dist_from_food:
+                print('too close to food')
+                self.close_to_food = True
+                continue
 
-        if self.distance_correct and self.fly_moving and self.long_time_since_food:
+        ## for trouble shooting, test each individually.
+        #if self.distance_correct and self.fly_moving and self.long_time_since_food:
+        #    self.shouldCreateFood = True
+        if not self.close_to_food:
             self.shouldCreateFood = True
 
     def defineFoodSpot(self):
