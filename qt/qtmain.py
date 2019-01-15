@@ -59,6 +59,7 @@ class MainGui():
         self.dispenser_view = None
         self.frameData = None
         self.centermarked = None
+        self.flypositionwindow = None
 
         self.cnc_shouldinitialize = None
         self.message = []
@@ -383,7 +384,6 @@ class MainGui():
         except:
             pass
 
-
     def loopgainChange(self):
         value = self.ui.loop_gain_slider.value()
         self.ui.loop_gain_label.setText(str(value))
@@ -608,7 +608,7 @@ class MainGui():
             self.message = []
         else:
             self.trial = TrialThread(cam=self.cam, dispenser=self.dispenser, tracker=self.tracker,
-                                           opto=self.opto, stim=self.stim, ui=self.ui)
+                                           opto=self.opto, stim=self.stim, ui=self.ui, flyplot=self.flypositionwindow)
             self.trial.start()
             if self.dispenser is not None:
                 self.dispenser.release_fly()
@@ -1094,6 +1094,10 @@ class FlyPositionWindow(QWidget):
             self.x_plot.append((self.flyX - self.cncThread.center_pos_x)*-1) #-1 to flip y-axis
             self.y_plot.append((self.flyY - self.cncThread.center_pos_y))
             self.fly_points.setData(self.x_plot, self.y_plot)
+
+    def clear_plot(self):
+        self.x_plot = []
+        self.y_plot = []
 
 def main():
     app = QApplication(sys.argv)
