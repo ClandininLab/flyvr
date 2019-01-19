@@ -98,6 +98,7 @@ class TrialThread(Service):
         self.trial_end_t = time()
 
         if self.opto is not None:
+            self.opto.trial_start_t = self.trial_start_t
             self.opto.stopLogging()
 
         if self.stim is not None:

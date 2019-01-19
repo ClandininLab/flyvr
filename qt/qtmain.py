@@ -593,6 +593,7 @@ class MainGui():
 
     def foraging(self):
         self.opto.foraging = True
+        self.foraging_details = ForagingDetails(opto=self.opto)
 
     def experimentStart(self):
         if self.cam is None:
@@ -818,6 +819,11 @@ class MainGui():
             self.dispenser_view.close()
 
         # Shutdown services
+        if self.tracker is not None:
+            self.tracker.stop()
+        if self.trial is not None:
+            self.trial._stop_trial()
+            self.trial.stop()
         if self.opto is not None:
             self.opto.off()
             self.opto.stop()
@@ -825,11 +831,6 @@ class MainGui():
             self.cam_view.close()
         if self.cam is not None:
             self.cam.stop()
-        if self.tracker is not None:
-            self.tracker.stop()
-        if self.trial is not None:
-            self.trial._stop_trial()
-            self.trial.stop()
         if self.dispenser is not None:
             self.dispenser.stop()
         print('Shutdown Called')
@@ -1038,7 +1039,7 @@ class FlyPositionWindow(QWidget):
         self.x_plot = []
         self.y_plot = []
 
-        self.food_points = pg.ScatterPlotItem(size=5, pen=pg.mkPen(None), brush=pg.mkBrush(255, 0, 0, 120))
+        self.food_points = pg.ScatterPlotItem(size=10, pen=pg.mkPen(None), brush=pg.mkBrush(255, 0, 0, 120))
         self.flyplot.addItem(self.food_points)
         self.food_x = []
         self.food_y = []
@@ -1104,7 +1105,7 @@ class FlyPositionWindow(QWidget):
             self.fly_points.setData(self.x_plot, self.y_plot)
 
         if self.opto is not None:
-            self.food_x = [(food['x'] - self.cncThread.center_pos_x*-1) for food in self.opto.foodspots] #-1 to flip x-axis
+            self.food_x = [((food['x'] - self.cncThread.center_pos_x)*-1) for food in self.opto.foodspots] #-1 to flip x-axis
             self.food_y = [(food['y'] - self.cncThread.center_pos_y) for food in self.opto.foodspots]
             self.food_points.setData(self.food_x, self.food_y)
 
@@ -1113,6 +1114,49 @@ class FlyPositionWindow(QWidget):
         self.y_plot = []
         self.food_x = []
         self.food_y = []
+
+class ForagingDetails():
+    def __init__(self, opto):
+        self.opto = opto
+        self.ui = uic.loadUi('foraging.ui')
+        self.ui.show()
+
+        self.text_update_timer = QtCore.QTimer()
+        self.text_update_timer.timeout.connect(self.update_text)
+        self.text_update_timer.start(100)
+
+    def update_text(self):
+        self.ui.num_food_label.setText('{}'.format(len(self.opto.foodspots)))
+        self.ui.fly_in_food_label.setText('{}'.format(self.opto.fly_in_food))
+
+        if self.opto.closest_food is not None:
+            self.ui.food_distance_label.setText('{:0.4f}'.format(self.opto.closest_food))
+        else:
+            self.ui.food_distance_label.setText('None')
+
+        if self.opto.far_from_food:
+            self.ui.food_distance_met_label.setText('True')
+        else:
+            self.ui.food_distance_met_label.setText('False')
+
+        if self.opto.flyX is not None:
+            self.ui.fly_x_label.setText('{:0.4f}'.format(self.opto.flyX))
+        else:
+            self.ui.fly_x_label.setText('None')
+
+        if self.opto.flyY is not None:
+            self.ui.fly_y_label.setText('{:0.4f}'.format(self.opto.flyY))
+        else:
+            self.ui.fly_y_label.setText('None')
+
+        if len(self.opto.foodspots) > 0:
+            self.ui.last_food_x_label.setText('{:0.4f}'.format(self.opto.foodspots[-1]['x']))
+            self.ui.last_food_y_label.setText('{:0.4f}'.format(self.opto.foodspots[-1]['y']))
+        else:
+            self.ui.last_food_x_label.setText('None')
+            self.ui.last_food_y_label.setText('None')
+
+
 
 def main():
     app = QApplication(sys.argv)

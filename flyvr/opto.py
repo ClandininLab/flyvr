@@ -64,10 +64,11 @@ class OptoThread(Service):
         self.shouldCreateFood = False
         self.led_status = 'off'
         self.fly_in_food = False
-        self.close_to_food = False
-        self.min_dist_from_food = 10e-3
+        self.far_from_food = False
+        self.min_dist_from_food = 0.010 #in m
 
         self.trial_start_t = None
+        self.closest_food = None
 
         # call constructor from parent        
         super().__init__(maxTime=maxTime, minTime=minTime)
@@ -101,7 +102,7 @@ class OptoThread(Service):
 
         ### Calculate parameters based on fly position ###
 
-        if self.flyX is not None and self.flyY is not None:
+        if self.flyX is not None and self.flyY is not None and self.trial_start_t is not None:
             # calculate distance from center
             x_dist = np.abs(self.flyX) - np.abs(self.trackThread.center_pos_x)
             y_dist = np.abs(self.flyY) - np.abs(self.trackThread.center_pos_y)
@@ -116,10 +117,13 @@ class OptoThread(Service):
 
                 # turn on LED if fly is in food spot
                 for foodspot in self.foodspots:
-                    if foodspot['x'] - self.food_rad <= self.flyX <= foodspot['x'] - self.food_rad and \
-                       foodspot['y'] - self.food_rad <= self.flyY <= foodspot['y'] - self.food_rad:
+                    if foodspot['x'] - self.food_rad <= self.flyX <= foodspot['x'] + self.food_rad and \
+                       foodspot['y'] - self.food_rad <= self.flyY <= foodspot['y'] + self.food_rad:
                         self.time_since_last_food = time()
                         self.fly_in_food = True
+                        continue
+                    else:
+                        self.fly_in_food = False
 
                 if self.fly_in_food:
                     if self.led_status == 'off':
@@ -127,7 +131,6 @@ class OptoThread(Service):
                 else:
                     if self.led_status == 'on':
                         self.off()
-                self.fly_in_food = False
 
     def checkFoodCreation(self):
         # # check if distance from center is correct:
@@ -145,19 +148,34 @@ class OptoThread(Service):
         #         self.long_time_since_food = True
 
         # make sure new foods aren't too close to other foods
-        for food in self.foodspots:
-            x_dist = np.abs(self.flyX) - np.abs(food['x'])
-            y_dist = np.abs(self.flyX) - np.abs(food['y'])
-            self.dist_from_food = np.sqrt(x_dist * x_dist + y_dist * y_dist)
-            if self.dist_from_food <= self.min_dist_from_food:
-                print('too close to food')
-                self.close_to_food = True
-                continue
+        self.far_from_food = True
+        if len(self.foodspots) > 0:
+            self.food_distances = []
+            for food in self.foodspots:
+                x_dist = self.flyX - food['x']
+                y_dist = self.flyY - food['y']
+                self.food_distances.append(np.sqrt(x_dist * x_dist + y_dist * y_dist))
+
+            self.closest_food = np.min(self.food_distances)
+
+            if self.closest_food >= self.min_dist_from_food:
+                self.far_from_food = True
+            else:
+                self.far_from_food = False
+
+                # if self.dist_from_food <= self.min_dist_from_food:
+                #     #print('too close to food (distance):', self.dist_from_food)
+                #     self.offending_food_dist = self.dist_from_food
+                #     self.close_to_food = True
+                #     continue
+                # else:
+                #     pass
+                #     #print('distance from food:', self.dist_from_food)
 
         ## for trouble shooting, test each individually.
         #if self.distance_correct and self.fly_moving and self.long_time_since_food:
         #    self.shouldCreateFood = True
-        if not self.close_to_food:
+        if self.far_from_food:
             self.shouldCreateFood = True
 
     def defineFoodSpot(self):
