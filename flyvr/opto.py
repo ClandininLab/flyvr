@@ -58,8 +58,9 @@ class OptoThread(Service):
         self.foodspots = []
         self.food_rad = 5e-3
         self.fly_movement_threshold = 0.5e-3
+        self.time_of_last_food = None
         self.time_since_last_food = None
-        self.time_since_last_food_min = 30 #sec
+        self.time_since_last_food_min = 30 #in sec
         self.long_time_since_food = True
         self.shouldCreateFood = False
         self.led_status = 'off'
@@ -67,8 +68,22 @@ class OptoThread(Service):
         self.far_from_food = False
         self.min_dist_from_food = 0.010 #in m
 
+        # Set food creation parameters false
+        self.far_from_food = False
+        self.distance_correct = False
+        self.long_time_since_food = False
+        self.fly_moving = False
+
+        self.dist_from_center = None
         self.trial_start_t = None
         self.closest_food = None
+        self.camX = None
+        self.camY = None
+
+        self.shouldCheckFoodDistance = True
+        self.shouldCheckFlyDistanceFromCenter = True
+        self.shouldCheckTimeSinceFood = True
+        self.shouldCheckFlyIsMoving = True
 
         # call constructor from parent        
         super().__init__(maxTime=maxTime, minTime=minTime)
@@ -119,7 +134,7 @@ class OptoThread(Service):
                 for foodspot in self.foodspots:
                     if foodspot['x'] - self.food_rad <= self.flyX <= foodspot['x'] + self.food_rad and \
                        foodspot['y'] - self.food_rad <= self.flyY <= foodspot['y'] + self.food_rad:
-                        self.time_since_last_food = time()
+                        self.time_of_last_food = time()
                         self.fly_in_food = True
                         continue
                     else:
@@ -133,22 +148,8 @@ class OptoThread(Service):
                         self.off()
 
     def checkFoodCreation(self):
-        # # check if distance from center is correct:
-        # if self.foraging_distance_max > self.dist_from_center > self.foraging_distance_min:
-        #     self.distance_correct = True
-        #
-        # # make sure fly is moving
-        # if abs(self.camX) > self.fly_movement_threshold or \
-        #    abs(self.camY) > self.fly_movement_threshold:
-        #    self.fly_moving = True
-        #
-        # # make sure the fly hasn't recently passed through a spot
-        # if self.time_since_last_food is not None:
-        #     if (time() - self.time_since_last_food > self.time_since_last_food_min):
-        #         self.long_time_since_food = True
 
-        # make sure new foods aren't too close to other foods
-        self.far_from_food = True
+        ### Check - make sure food isn't too close to other food ###
         if len(self.foodspots) > 0:
             self.food_distances = []
             for food in self.foodspots:
@@ -162,21 +163,57 @@ class OptoThread(Service):
                 self.far_from_food = True
             else:
                 self.far_from_food = False
+        else:
+            self.far_from_food = True
 
-                # if self.dist_from_food <= self.min_dist_from_food:
-                #     #print('too close to food (distance):', self.dist_from_food)
-                #     self.offending_food_dist = self.dist_from_food
-                #     self.close_to_food = True
-                #     continue
-                # else:
-                #     pass
-                #     #print('distance from food:', self.dist_from_food)
+        ### Check - far from center ###
+        if self.dist_from_center is not None:
+            if self.dist_from_center >= self.foraging_distance_min:
+                self.distance_correct = True
+            else:
+                self.distance_correct = False
 
-        ## for trouble shooting, test each individually.
-        #if self.distance_correct and self.fly_moving and self.long_time_since_food:
-        #    self.shouldCreateFood = True
-        if self.far_from_food:
-            self.shouldCreateFood = True
+        ### Check - make sure the fly hasn't recently passed through a spot ###
+        if self.time_of_last_food is not None:
+            self.time_since_last_food = time() - self.time_of_last_food
+            if self.time_since_last_food > self.time_since_last_food_min*1000:
+                self.long_time_since_food = True
+            else:
+                self.long_time_since_food = False
+        else:
+            self.long_time_since_food = True
+
+        ### Check - make sure fly is moving ###
+        if self.camX is not None:
+            if abs(self.camX) > self.fly_movement_threshold or \
+               abs(self.camY) > self.fly_movement_threshold:
+               self.fly_moving = True
+            else:
+                self.fly_moving = False
+
+        ### ARE ALL CONDITIONS MET? ###
+
+        if self.shouldCheckFoodDistance:
+            if not self.far_from_food:
+                self.shouldCreateFood = False
+                return
+
+        if self.shouldCheckFlyDistanceFromCenter:
+            if not self.distance_correct:
+                self.shouldCreateFood = False
+                return
+
+        if self.shouldCheckTimeSinceFood:
+            if not self.long_time_since_food:
+                self.shouldCreateFood = False
+                return
+
+        if self.shouldCheckFlyIsMoving:
+            if not self.fly_moving:
+                self.shouldCreateFood = False
+                return
+
+        self.shouldCreateFood = True
 
     def defineFoodSpot(self):
         self.foodspots.append({'x': self.flyX, 'y': self.flyY})
