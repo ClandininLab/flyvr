@@ -176,7 +176,7 @@ class OptoThread(Service):
         ### Check - make sure the fly hasn't recently passed through a spot ###
         if self.time_of_last_food is not None:
             self.time_since_last_food = time() - self.time_of_last_food
-            if self.time_since_last_food > self.time_since_last_food_min*1000:
+            if self.time_since_last_food > self.time_since_last_food_min:
                 self.long_time_since_food = True
             else:
                 self.long_time_since_food = False
@@ -217,15 +217,16 @@ class OptoThread(Service):
 
     def defineFoodSpot(self):
         self.foodspots.append({'x': self.flyX, 'y': self.flyY})
+        self.logFood(self.flyX, self.flyY)
 
     def on(self):
         self.led_status = 'on'
-        self.log(self.led_status)
+        self.logLED(self.led_status)
         self.write(self.ON_COMMAND)
 
     def off(self):
         self.led_status = 'off'
-        self.log(self.led_status)
+        self.logLED(self.led_status)
         self.write(self.OFF_COMMAND)
 
     def write(self, cmd):
@@ -241,10 +242,16 @@ class OptoThread(Service):
 
         Thread(target=target).start()
 
-    def log(self, led_status):
+    def logLED(self, led_status):
         with self.logLock:
             if self.logFile is not None:
-                self.logFile.write('{}, {}\n'.format(time(), led_status))
+                self.logFile.write('{}, {}, {}\n'.format('led', time(), led_status))
+                self.logFile.flush()
+
+    def logFood(self, x, y):
+        with self.logLock:
+            if self.logFile is not None:
+                self.logFile.write('{}, {}, {}, {}\n'.format('food', time(), x, y))
                 self.logFile.flush()
 
     def startLogging(self, logFile):
@@ -256,7 +263,7 @@ class OptoThread(Service):
                 self.logFile.close()
 
             self.logFile = open(logFile, 'w')
-            self.logFile.write('time, LED Status\n')
+            #self.logFile.write('time, LED Status\n')
 
     def stopLogging(self):
         with self.logLock:
@@ -265,3 +272,4 @@ class OptoThread(Service):
 
             if self.logFile is not None:
                 self.logFile.close()
+                self.logFile = None
