@@ -1154,7 +1154,7 @@ class ForagingDetails():
 
     def foodTimeSlider(self):
         value = self.ui.min_time_since_food_slider.value()
-        self.ui.min_time_since_food_label.setText('{:0.0f}mm'.format(value))
+        self.ui.min_time_since_food_label.setText('{:0.0f}sec'.format(value))
         self.opto.time_since_last_food_min = value
 
     ### Checkbox functions ###
@@ -1250,11 +1250,9 @@ class ForagingDetails():
             self.ui.fly_dist_from_center_label.setText('N/A')
 
         if self.opto.time_since_last_food is not None:
-            self.ui.time_since_food_label.setText('{:0.0f}sec'.format(self.opto.time_since_last_food/1000))
+            self.ui.time_since_food_label.setText('{:0.0f}sec'.format(self.opto.time_since_last_food))
         else:
             self.ui.time_since_food_label.setText('N/A')
-
-
 
 def main():
     app = QApplication(sys.argv)
