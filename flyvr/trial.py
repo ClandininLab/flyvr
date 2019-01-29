@@ -100,6 +100,7 @@ class TrialThread(Service):
         if self.opto is not None:
             self.opto.trial_start_t = self.trial_start_t
             self.opto.stopLogging()
+            self.opto.foodspots = []
 
         if self.stim is not None:
             self.stim.stopStim(self._trial_dir)

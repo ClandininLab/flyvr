@@ -56,7 +56,7 @@ class OptoThread(Service):
         #self.foragingNextFood_d_min =
 
         self.foodspots = []
-        self.food_rad = 5e-3
+        self.food_rad = 0.010
         self.fly_movement_threshold = 0.5e-3
         self.time_of_last_food = None
         self.time_since_last_food = None
