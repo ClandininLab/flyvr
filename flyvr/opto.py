@@ -85,6 +85,9 @@ class OptoThread(Service):
         self.shouldCheckTimeSinceFood = True
         self.shouldCheckFlyIsMoving = True
 
+        self.time_in_out_change = None
+        self.food_boundary_hysteresis = 0.01
+
         # call constructor from parent        
         super().__init__(maxTime=maxTime, minTime=minTime)
 
@@ -140,12 +143,15 @@ class OptoThread(Service):
                     else:
                         self.fly_in_food = False
 
-                if self.fly_in_food:
-                    if self.led_status == 'off':
-                        self.on()
-                else:
-                    if self.led_status == 'on':
-                        self.off()
+                if self.time_in_out_change is not None and self.time_in_out_change >= self.food_boundary_hysteresis:
+                    if self.fly_in_food:
+                        if self.led_status == 'off':
+                            self.time_in_out_change = time()
+                            self.on()
+                    else:
+                        if self.led_status == 'on':
+                            self.time_in_out_change = time()
+                            self.off()
 
     def checkFoodCreation(self):
 

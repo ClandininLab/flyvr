@@ -1131,6 +1131,7 @@ class ForagingDetails():
         self.ui.min_time_since_food_checkbox.stateChanged.connect(lambda x: self.timeSinceFood())
         self.ui.fly_moving_checkbox.stateChanged.connect(lambda x: self.flyMoving())
 
+
         # Setup sliders
         self.ui.min_food_distance_slider.setValue(self.opto.min_dist_from_food*1000)
         self.ui.min_food_distance_slider.valueChanged.connect(self.foodDistanceSlider)
@@ -1140,6 +1141,9 @@ class ForagingDetails():
 
         self.ui.min_time_since_food_slider.setValue(self.opto.time_since_last_food_min)
         self.ui.min_time_since_food_slider.valueChanged.connect(self.foodTimeSlider)
+
+        self.ui.size_food_spot_slider.setValue(self.opto.food_rad*1000)  #this is the size it starts--marks slider
+        self.ui.size_food_spot_slider.valueChanged.connect(self.foodSizeSlider)
 
     ### Slider functions ###
     def foodDistanceSlider(self):
@@ -1156,6 +1160,11 @@ class ForagingDetails():
         value = self.ui.min_time_since_food_slider.value()
         self.ui.min_time_since_food_label.setText('{:0.0f}sec'.format(value))
         self.opto.time_since_last_food_min = value
+
+    def foodSizeSlider(self): #to change the size
+        value = self.ui.size_food_spot_slider.value()
+        self.ui.food_size_label.setText('{:0.0f}mm'.format(value)) #update label
+        self.opto.food_rad = value/1000
 
     ### Checkbox functions ###
     def foodDistance(self):
@@ -1181,6 +1190,8 @@ class ForagingDetails():
             self.opto.shouldCheckFlyIsMoving = True
         else:
             self.opto.shouldCheckFlyIsMoving = False
+
+
 
     def update_text(self):
 
@@ -1237,6 +1248,7 @@ class ForagingDetails():
         self.ui.min_food_distance_label.setText('{:0.0f}mm'.format(self.opto.min_dist_from_food*1000))
         self.ui.min_fly_dist_from_center_label.setText('{:0.0f}mm'.format(self.opto.foraging_distance_min*1000))
         self.ui.min_time_since_food_label.setText('{:0.0f}sec'.format(self.opto.time_since_last_food_min))
+        self.ui.food_size_label.setText('{:0.0f}mm'.format(self.opto.food_rad*1000))
 
         ### Display current food creation values ###
         if self.opto.closest_food is not None:
