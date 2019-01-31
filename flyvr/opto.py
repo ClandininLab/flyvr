@@ -47,8 +47,9 @@ class OptoThread(Service):
         self.foraging = False
         self.foraging_time_min = 2
         self.foraging_time_override = 3*(60)
-        self.foraging_distance_min = 0.05
+        self.foraging_distance_min = 0.05 #from center
         self.foraging_distance_max = 0.2
+        self.path_distance_min = 0.01 #min walk distance
 
         #self.foragingNextFood_t_min =
         #self.foragingNextFood_t_max =
@@ -67,14 +68,17 @@ class OptoThread(Service):
         self.fly_in_food = False
         self.far_from_food = False
         self.min_dist_from_food = 0.010 #in m
+        self.distance_since_last_food = None
 
         # Set food creation parameters false
         self.far_from_food = False
-        self.distance_correct = False
+        self.distance_correct = False  #for center
+        self.path_distance_correct = False  #total path
         self.long_time_since_food = False
         self.fly_moving = False
 
         self.dist_from_center = None
+        self.total_distance = None
         self.trial_start_t = None
         self.closest_food = None
         self.camX = None
@@ -84,6 +88,7 @@ class OptoThread(Service):
         self.shouldCheckFlyDistanceFromCenter = True
         self.shouldCheckTimeSinceFood = True
         self.shouldCheckFlyIsMoving = True
+        self.shouldCheckTotalPathDistance = True
 
         self.time_in_out_change = None
         self.food_boundary_hysteresis = 0.01
@@ -126,6 +131,15 @@ class OptoThread(Service):
             y_dist = np.abs(self.flyY) - np.abs(self.trackThread.center_pos_y)
             self.dist_from_center = np.sqrt(x_dist*x_dist + y_dist*y_dist)
 
+            #calculate total length of fly travel path
+            list_prev_x = [0]
+            list_prev_y = [0]
+            immediate_distance = np.sqrt((abs(self.flyX)-abs(list_prev_x[-1]))**2 + (abs(self.flyY)-abs(list_prev_y[-1]))**2)
+            self.total_distance += immediate_distance  #running total
+            self.distance_since_last_food += immediate_distance #this should reset with every foodspot
+            list_prev_x.append(self.flyX)
+            list_prev_y.append(self.flyY)
+
             if self.foraging:
                 # define food spot if all requirements are met
                 self.checkFoodCreation()
@@ -138,6 +152,7 @@ class OptoThread(Service):
                     if foodspot['x'] - self.food_rad <= self.flyX <= foodspot['x'] + self.food_rad and \
                        foodspot['y'] - self.food_rad <= self.flyY <= foodspot['y'] + self.food_rad:
                         self.time_of_last_food = time()
+                        self.distance_since_last_food = 0 #reset distance when get to food
                         self.fly_in_food = True
                         continue
                     else:
@@ -179,6 +194,13 @@ class OptoThread(Service):
             else:
                 self.distance_correct = False
 
+        ### Check - walked far enough ###
+        if self.distance_since_last_food is not None:
+            if self.distance_since_last_food > self.path_distance_min:
+                self.path_distance_correct = True
+            else:
+                self.path_distance_correct = False
+
         ### Check - make sure the fly hasn't recently passed through a spot ###
         if self.time_of_last_food is not None:
             self.time_since_last_food = time() - self.time_of_last_food
@@ -206,6 +228,11 @@ class OptoThread(Service):
 
         if self.shouldCheckFlyDistanceFromCenter:
             if not self.distance_correct:
+                self.shouldCreateFood = False
+                return
+
+        if self.shouldCheckTotalPathDistance:
+            if not self.path_distance_correct:
                 self.shouldCreateFood = False
                 return
 
