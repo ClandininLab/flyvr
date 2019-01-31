@@ -108,9 +108,11 @@ class TrialThread(Service):
     def get_fly_pos(self):
         cam_x, cam_y = None, None
         if self.cam is not None:
-            flyData = self.cam.flyData
-            if flyData is not None and flyData.flyPresent:
-                cam_x, cam_y = flyData.flyX, flyData.flyY
+            #flyData = self.cam.flyData
+            if self.cam.flyPresent:
+                cam_x = self.camThread.fly.centerX
+                cam_y = self.camThread.fly.centerY
+                #cam_x, cam_y = flyData.flyX, flyData.flyY
 
         if cam_x is None or cam_y is None:
             return None, None
@@ -148,7 +150,7 @@ class TrialThread(Service):
             self.stim.updateStim(self._trial_dir, fly_pos_x=fly_pos_x, fly_pos_y=fly_pos_y, fly_angle=fly_angle)
 
         if self.state == 'started':
-            if self.cam.flyData.flyPresent:
+            if self.cam.flyPresent:
                 print('Fly possibly found...')
                 self.timer_start = time()
                 self.state = 'fly detected'
@@ -160,20 +162,20 @@ class TrialThread(Service):
                 self._start_trial()
                 self.prev_state = 'fly detected'
                 self.state = 'run'
-            elif not self.cam.flyData.flyPresent:
+            elif not self.cam.flyPresent:
                 print('Fly lost.')
                 self.timer_start = time()
                 self.prev_state = 'fly detected'
                 self.state = 'fly lost'
                 self.tracker.stopTracking()
         elif self.state == 'run':
-            if not self.cam.flyData.flyPresent:
+            if not self.cam.flyPresent:
                 print('Fly possibly lost...')
                 self.timer_start = time()
                 self.prev_state = 'run'
                 self.state = 'fly lost'
         elif self.state == 'fly lost':
-            if self.cam.flyData.flyPresent:
+            if self.cam.flyPresent:
                 print('Fly located again.')
                 self.timer_start = time()
                 self.tracker.startTracking()

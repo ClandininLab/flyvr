@@ -929,6 +929,7 @@ class CameraView(QWidget):
             return
 
         if img is not None:
+            #print('111111111111:', img.shape)
             height, width, bytesPerComponent = img.shape
             bytesPerLine = 3 * width
             cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)
