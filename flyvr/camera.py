@@ -11,10 +11,18 @@ import numpy as np
 
 from flyvr.service import Service
 
+#sys.path.append("/home/clandininlab/Documents/vrcam")
+from vrcam.train_angle import AnglePredictor
+from vrcam.finder import FlyFinder
+
 class CamThread(Service):
     def __init__(self, defaultThresh=150, maxTime=12e-3, bufX=200, bufY=200):
         # Serial I/O interface to CNC
         self.cam = Camera()
+
+        # Instaniate fly finder and predictor from vrcam package
+        angle_predictor = AnglePredictor()
+        fly_finder = FlyFinder()
 
         # Lock for communicating fly pose changes
         self.flyDataLock = Lock()
@@ -286,7 +294,7 @@ class Camera:
         rows, cols = threshFrame.shape
 
         # Find contours in image
-        im2, contours, hierarchy = cv2.findContours(threshFrame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours, hierarchy = cv2.findContours(threshFrame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         # remove invalid contours
         results = []
