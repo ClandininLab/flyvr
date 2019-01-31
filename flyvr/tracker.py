@@ -125,16 +125,26 @@ class TrackThread(Service):
         dt = thisTime - self.lastTime
 
         # get latest camera data
-        try:
-            flyData = self.camThread.flyData
-        except:
-            flyData = None
+        # try:
+        #     flyData = self.camThread.flyData
+        # except:
+        #     flyData = None
+        #
+        # # store fly position information
+        # if flyData is not None:
+        #     flyX = flyData.flyX
+        #     flyY = flyData.flyY
+        #     flyPresent = flyData.flyPresent
+        # else:
+        #     flyX = 0
+        #     flyY = 0
+        #     flyPresent = False
 
-        # store fly position information            
-        if flyData is not None:
-            flyX = flyData.flyX
-            flyY = flyData.flyY
-            flyPresent = flyData.flyPresent
+        # Switching to vrcam
+        if self.camThread is not None and self.camThread.fly is not None:
+            flyX = self.camThread.fly.centerX
+            flyY = self.camThread.fly.centerY
+            flyPresent = True
         else:
             flyX = 0
             flyY = 0

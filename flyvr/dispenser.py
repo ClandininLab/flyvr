@@ -24,6 +24,8 @@ class FlyDispenser(Service):
     def __init__(self, maxTime=12e-3):
         # set defaults
 
+        serial_port = None
+
         if platform.system() == 'Darwin':
             serial_port = '/dev/tty.usbmodem1411'
         elif platform.system() == 'Linux':
@@ -40,6 +42,7 @@ class FlyDispenser(Service):
 
         # save settings
         self.serial_port = serial_port
+        print('THIS IS SERIAL PORT:', self.serial_port)
         self.serial_baud = serial_baud
         self.serial_timeout = serial_timeout
         self.shutdown_flag = shutdown_flag
