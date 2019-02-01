@@ -68,7 +68,9 @@ class OptoThread(Service):
         self.fly_in_food = False
         self.far_from_food = False
         self.min_dist_from_food = 0.010 #in m
-        self.distance_since_last_food = None
+        self.distance_since_last_food = 0
+        self.list_prev_y = [0]
+        self.list_prev_x = [0]
 
         # Set food creation parameters false
         self.far_from_food = False
@@ -78,7 +80,7 @@ class OptoThread(Service):
         self.fly_moving = False
 
         self.dist_from_center = None
-        self.total_distance = None
+        self.total_distance = 0
         self.trial_start_t = None
         self.closest_food = None
         self.camX = None
@@ -91,23 +93,24 @@ class OptoThread(Service):
         self.shouldCheckTotalPathDistance = True
 
         self.time_in_out_change = None
-        self.food_boundary_hysteresis = 0.01
+        self.food_boundary_hysteresis = 0.1 #0.01
 
         # call constructor from parent        
         super().__init__(maxTime=maxTime, minTime=minTime)
 
     # overriding method from parent...
     def loopBody(self):
+        if self.trial_start_t is None:
+            self.off()
+
         ### Get Fly Position ###
 
-        if self.camThread is not None and self.camThread.flyData is not None:
-            camX = self.camThread.flyData.flyX
-            camY = self.camThread.flyData.flyY
-            flyPresent = self.camThread.flyData.flyPresent
+        if self.camThread is not None and self.camThread.fly is not None:
+            self.camX = self.camThread.fly.centerX
+            self.camY = self.camThread.fly.centerY
         else:
-            camX = None
-            camY = None
-            flyPresent = False
+            self.camX = None
+            self.camY = None
 
         if self.cncThread is not None and self.cncThread.status is not None:
             cncX = self.cncThread.status.posX
@@ -116,29 +119,27 @@ class OptoThread(Service):
             cncX = None
             cncY = None
 
-        if camX is not None and cncX is not None and flyPresent is True:
-            self.flyX = camX + cncX
-            self.flyY = camY + cncY
+        if self.camX is not None and cncX is not None:
+            self.flyX = self.camX + cncX
+            self.flyY = self.camY + cncY
         else:
             self.flyX = None
             self.flyY = None
 
         ### Calculate parameters based on fly position ###
 
-        if self.flyX is not None and self.flyY is not None and self.trial_start_t is not None:
+        if self.flyX is not None and self.flyY is not None: #and self.trial_start_t is not None:
             # calculate distance from center
             x_dist = np.abs(self.flyX) - np.abs(self.trackThread.center_pos_x)
             y_dist = np.abs(self.flyY) - np.abs(self.trackThread.center_pos_y)
             self.dist_from_center = np.sqrt(x_dist*x_dist + y_dist*y_dist)
 
-            #calculate total length of fly travel path
-            list_prev_x = [0]
-            list_prev_y = [0]
-            immediate_distance = np.sqrt((abs(self.flyX)-abs(list_prev_x[-1]))**2 + (abs(self.flyY)-abs(list_prev_y[-1]))**2)
-            self.total_distance += immediate_distance  #running total
-            self.distance_since_last_food += immediate_distance #this should reset with every foodspot
-            list_prev_x.append(self.flyX)
-            list_prev_y.append(self.flyY)
+            #Calculate total length of fly travel path
+            immediate_distance = np.sqrt((abs(x_dist)-abs(self.list_prev_x[-1]))**2 + (abs(y_dist)-abs(self.list_prev_y[-1]))**2)
+            self.list_prev_x.append(x_dist) #update list of checked values
+            self.list_prev_y.append(y_dist)
+            self.total_distance += immediate_distance  # running total
+            self.distance_since_last_food += immediate_distance  # this resets with every foodspot
 
             if self.foraging:
                 # define food spot if all requirements are met
@@ -158,7 +159,17 @@ class OptoThread(Service):
                     else:
                         self.fly_in_food = False
 
-                if self.time_in_out_change is not None and self.time_in_out_change >= self.food_boundary_hysteresis:
+                # if self.fly_in_food:
+                #     if self.led_status == 'off':
+                #         self.time_in_out_change = time()
+                #         self.on()
+                # else:
+                #     if self.led_status == 'on':
+                #         self.time_in_out_change = time()
+                #         self.off()
+
+
+                if self.time_in_out_change is None or time() - self.time_in_out_change >= self.food_boundary_hysteresis:
                     if self.fly_in_food:
                         if self.led_status == 'off':
                             self.time_in_out_change = time()
@@ -169,7 +180,6 @@ class OptoThread(Service):
                             self.off()
 
     def checkFoodCreation(self):
-
         ### Check - make sure food isn't too close to other food ###
         if len(self.foodspots) > 0:
             self.food_distances = []
@@ -253,6 +263,7 @@ class OptoThread(Service):
         self.logFood(self.flyX, self.flyY)
 
     def on(self):
+        print('TURNED ON')
         self.led_status = 'on'
         self.logLED(self.led_status)
         self.write(self.ON_COMMAND)

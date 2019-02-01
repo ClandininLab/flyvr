@@ -59,7 +59,7 @@ class Service:
                 sleep(self.minTime - dt)
 
             if (self.iter_warn) and (self.maxTime is not None) and (dt > self.maxTime):
-                print('Slow iteration: {} ({:0.1f} ms)'.format(self.__class__.__name__, dt*1e3))
+                #print('Slow iteration: {} ({:0.1f} ms)'.format(self.__class__.__name__, dt*1e3))
                 pass
 
             # increment the loop iteration counter
