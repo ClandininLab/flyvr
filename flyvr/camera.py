@@ -65,12 +65,10 @@ class CamThread(Service):
 
     # overriding method from parent...
     def loopBody(self):
-        # get the threshold setting
-        #threshold = self.threshold
         
         # read and process frame
-        #flyData, frameData = self.cam.processNext(threshold=threshold)
         self.fly, self.outFrame = self.cam.processNext()
+
         if self.fly is None:
             self.flyPresent = False
         else:
@@ -141,10 +139,6 @@ class CamThread(Service):
         with self.threshLock:
             self._threshold = val
 
-    #Q for steven: why not do threshold this way?:
-    #def threshold(self, val):
-    #   self.threshold = val
-
     def startLogging(self, logFile, logFull):
         with self.logLock:
             # save log state
@@ -187,75 +181,14 @@ class CamThread(Service):
     def cleanup(self):
         self.cam.camera.StopGrabbing()
 
-class FrameData:
-    def __init__(self, inFrame, grayFrame, invertedFrame, blurFrame, threshFrame, flyContour):
-        self.inFrame = inFrame
-        self.grayFrame = grayFrame
-        self.invertedFrame = invertedFrame,
-        self.blurFrame = blurFrame,
-        self.threshFrame = threshFrame
-        self.flyContour = flyContour
-
-class Ellipse:
-    def __init__(self, cx_px, cy_px, cx, cy, ma, MA, angle):
-        self.cx_px = cx_px
-        self.cy_px = cy_px
-        self.cx = cx
-        self.cy = cy
-        self.ma = ma
-        self.MA = MA
-        self.angle = angle
-
-    @property
-    def area(self):
-        return pi*self.ma*self.MA
-
-class FlyData:
-    def __init__(self, flyX_px=0, flyY_px=0, flyX=0, flyY=0, ma=0, MA=0, angle=0, flyPresent=False):
-        self.flyX_px = flyX_px
-        self.flyY_px = flyY_px
-        self.flyX = flyX
-        self.flyY = flyY
-        self.ma = ma
-        self.MA = MA
-        self.angle = angle
-        self.flyPresent = flyPresent
-
-    @property
-    def aspect_ratio(self):
-        return self.ma/self.MA
-
-class ImageProcResult:
-    def __init__(self, area_px, perim_px, ellipse):
-        self.area_px = area_px
-        self.perim_px = perim_px
-        self.ellipse = ellipse
-
 class Camera:
-    def __init__(self,
-                 px_per_m = 37023.1016957, # calibrated for 2x on 2/6/2018
-                 ma_min = 0.25e-3, # m
-                 ma_max = 2e-3, # m
-                 MA_min = 0.6e-3, # m
-                 MA_max = 5e-3, # m
-                 r_min = 0.2,
-                 r_max = 0.75
-                 ):
+    def __init__(self, px_per_m = 37023.1016957): # calibrated for 2x on 2/6/2018):
         # Instaniate fly finder and predictor from vrcam package
         self.angle_predictor = AnglePredictor()
         self.fly_finder = FlyFinder()
 
         # Store the number of pixels per meter
         self.px_per_m = px_per_m
-
-        # Compute minimum and maximum area in terms of pixel area
-        self.ma_min = ma_min
-        self.ma_max = ma_max
-        self.MA_min = MA_min
-        self.MA_max = MA_max
-
-        self.r_min = r_min
-        self.r_max = r_max
 
         # Open the capture stream
         self.camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
@@ -279,11 +212,6 @@ class Camera:
                 (self.r_min <= ellipse.ma/ellipse.MA <= self.r_max))
 
     def arrow_from_point(self, img, point, angle, length=30, thickness=3, color=(0, 0, 255)):
-        #print('length: {}. np.cos(angle): {}. point[0]: {}.'.format(length, np.cos(angle), point[0]))
-        #print('(in arrow) outFrame: {}.'.format(np.shape(img)))
-        #print('(in arrow) disp_center: {}.'.format(point))
-        #print('(in arrow) angle: {}.',format(angle))
-        #print('(in arrow) length: {}.'.format(length))
         ax = point[0] + length * np.cos(angle)
         ay = point[1] - length * np.sin(angle)
         tip = bound_point((ax, ay), img)
@@ -301,64 +229,6 @@ class Camera:
 
         # Convert frame to grayscale
         grayFrame = cv2.cvtColor(inFrame, cv2.COLOR_BGR2GRAY)
-        #invertedFrame = cv2.bitwise_not(grayFrame)   #TURN ON FOR IR SINCE FLY IS BRIGHT
-        #blurFrame = cv2.GaussianBlur(invertedFrame, (11, 11), 0)
-
-        # Threshold image according
-        #rel_level = float(threshold)/255
-        #auto_thresh = int(round(np.mean(blurFrame)*rel_level))
-        #ret, threshFrame = cv2.threshold(blurFrame, auto_thresh, 255, cv2.THRESH_BINARY_INV)
-
-        #rows, cols = threshFrame.shape
-
-        # Find contours in image
-        #contours, hierarchy = cv2.findContours(threshFrame, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-        # remove invalid contours
-        # results = []
-        # for cnt in contours:
-        #     if len(cnt) < 5:
-        #         continue
-        #     (cx, cy), (d0, d1), angle = cv2.fitEllipse(cnt)
-        #     MA = max(d0, d1)
-        #     ma = min(d0, d1)
-        #     ellipse = Ellipse(cx_px=cx,
-        #                       cy_px=cy,
-        #                       cx=-(cx-(cols/2.0))/self.px_per_m,
-        #                       cy=-(cy-(rows/2.0))/self.px_per_m,
-        #                       ma=ma/self.px_per_m,
-        #                       MA=MA/self.px_per_m,
-        #                       angle=angle)
-        #     if self.flyCandidate(ellipse):
-        #         results.append((ellipse, cnt))
-        #
-        # # If there is a contour, compute its centroid and mark the fly as present
-        # if len(results) > 0:
-        #     #bestResult = min(results, key=lambda x: hypot(x[0].cx, x[0].cy))
-        #     bestResult = max(results,key=lambda x: x[0].area)
-        #
-        #     ellipse = bestResult[0]
-        #     flyData = FlyData(flyX_px=ellipse.cx_px,
-        #                       flyY_px=ellipse.cy_px,
-        #                       flyX=ellipse.cx,
-        #                       flyY=ellipse.cy,
-        #                       ma=ellipse.ma,
-        #                       MA=ellipse.MA,
-        #                       angle=ellipse.angle,
-        #                       flyPresent=True)
-        #
-        #     flyContour = bestResult[1]
-        # else:
-        #     flyData = FlyData()
-        #     flyContour = None
-
-        # wrap results
-        # frameData = FrameData(inFrame=inFrame,
-        #                       grayFrame=grayFrame,
-        #                       invertedFrame=invertedFrame,
-        #                       blurFrame=blurFrame,
-        #                       threshFrame=threshFrame,
-        #                       flyContour=flyContour)
 
         # Find fly using vrcam
         fly = self.fly_finder.locate(grayFrame)
@@ -382,19 +252,6 @@ class Camera:
 
             #draw contour on frame
             cv2.drawContours(outFrame, [fly.contour], 0, (0, 255, 0), 2)
-
-
-        # Return results
-        #return fly #, frameData
-
-
-
-        #print('outFrame: {}.'.format(np.shape(outFrame)))
-        #print('disp_center: {}.'.format(disp_center))
-        #print('angle: {}.',format(angle))
-
-        #show_image(img)
-
 
         return fly, outFrame
 

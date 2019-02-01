@@ -1077,14 +1077,12 @@ class FlyPositionWindow(QWidget):
             self.x_plot = self.x_plot[1:]
             self.y_plot = self.y_plot[1:]
 
-        if self.camThread is not None and self.camThread.flyData is not None:
-            camX = self.camThread.flyData.flyX
-            camY = self.camThread.flyData.flyY
-            flyPresent = self.camThread.flyData.flyPresent
+        if self.camThread is not None and self.camThread.fly is not None:
+            camX = self.camThread.fly.centerX
+            camY = self.camThread.fly.centerY
         else:
             camX = None
             camY = None
-            flyPresent = False
 
         if self.cncThread is not None and self.cncThread.cncThread is not None and self.cncThread.cncThread.status is not None:
             cncX = self.cncThread.cncThread.status.posX
@@ -1100,7 +1098,7 @@ class FlyPositionWindow(QWidget):
             self.flyX = None
             self.flyY = None
 
-        if self.flyY is not None and self.flyX is not None and flyPresent is True:
+        if self.flyY is not None and self.flyX is not None:
             self.x_plot.append((self.flyX - self.cncThread.center_pos_x)*-1) #-1 to flip x-axis
             self.y_plot.append((self.flyY - self.cncThread.center_pos_y))
             self.fly_points.setData(self.x_plot, self.y_plot)
@@ -1147,7 +1145,7 @@ class ForagingDetails():
         self.ui.size_food_spot_slider.setValue(self.opto.food_rad*1000)  #this is the size it starts--marks slider
         self.ui.size_food_spot_slider.valueChanged.connect(self.foodSizeSlider)
 
-        self.ui.fly_path_distance_slider.setValue(self.opto.path_distance_min * 100)
+        self.ui.fly_path_distance_slider.setValue(self.opto.path_distance_min * 1000) #100
         self.ui.fly_path_distance_slider.setRange(self.opto.path_distance_min*100, 50)
         self.ui.fly_path_distance_slider.valueChanged.connect(self.flyPathDistanceSlider)
 
@@ -1174,8 +1172,8 @@ class ForagingDetails():
 
     def flyPathDistanceSlider(self):
         value = self.ui.fly_path_distance_slider.value()
-        self.ui.min_fly_path_distance_label.setText('{:0.1f}cm'.format(value))
-        self.opto.path_distance_min = value/100 #reset min distance
+        self.ui.min_fly_path_distance_label.setText('{:0.0f}cm'.format(value))
+        self.opto.path_distance_min = value/100 #100 #reset min distance
 
     ### Checkbox functions ###
     def foodDistance(self):
@@ -1240,7 +1238,7 @@ class ForagingDetails():
             self.ui.last_food_y_label.setText('None')
 
         if self.opto.total_distance is not None:
-            self.ui.total_path_label.setText('{:0.3f}cm'.format(self.opto.total_distance*100)) #in m
+            self.ui.total_path_label.setText('{:0.0f}mm'.format(self.opto.total_distance *1000)) #*100 cm
         else:
             self.ui.total_path_label.setText('None')
 
@@ -1276,7 +1274,7 @@ class ForagingDetails():
         self.ui.min_fly_dist_from_center_label.setText('{:0.0f}mm'.format(self.opto.foraging_distance_min*1000))
         self.ui.min_time_since_food_label.setText('{:0.0f}sec'.format(self.opto.time_since_last_food_min))
         self.ui.food_size_label.setText('{:0.0f}mm'.format(self.opto.food_rad*1000))
-        self.ui.min_fly_path_distance_label.setText('{:0.1f}cm'.format(self.opto.path_distance_min * 100))
+        self.ui.min_fly_path_distance_label.setText('{:0.0f}mm'.format(self.opto.path_distance_min * 1000)) #100
 
         ### Display current food creation values ###
         if self.opto.closest_food is not None:
@@ -1295,7 +1293,7 @@ class ForagingDetails():
             self.ui.time_since_food_label.setText('N/A')
 
         if self.opto.distance_since_last_food is not None:
-            self.ui.current_path_distance_label.setText('{:0.1f}cm'.format(self.opto.distance_since_last_food*100))
+            self.ui.current_path_distance_label.setText('{:0.0f}mm'.format(self.opto.distance_since_last_food*1000)) #100
         else:
             self.ui.current_path_distance_label.setText('N/A')
 
