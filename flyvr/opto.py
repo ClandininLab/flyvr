@@ -95,6 +95,18 @@ class OptoThread(Service):
         self.time_in_out_change = None
         self.food_boundary_hysteresis = 0.1 #0.01
 
+        #parameters for food pulse times
+        self.set_off_time = False
+        self.set_on_time = False
+        self.min_off_time = 0.0
+        self.max_on_time = 0.1  #100ms?
+        self.off_time_track = 0  #0
+        self.on_time_track = 0
+        self.on_time_correct = False
+        self.off_time_correct = False
+        self.current_off_time = 0
+        self.current_on_time = 0
+
         # call constructor from parent        
         super().__init__(maxTime=maxTime, minTime=minTime)
 
@@ -173,11 +185,21 @@ class OptoThread(Service):
                     if self.fly_in_food:
                         if self.led_status == 'off':
                             self.time_in_out_change = time()
-                            self.on()
+                            if self.set_off_time == False:
+                                self.on()
+                            if self.set_off_time == True: #turn the light on only if off time has passed
+                                if (time() - self.off_time_track) > self.min_off_time:
+                                    self.on()
+                        if self.led_status == 'on':
+                            if self.set_on_time == True: #turn the light off if it has been on too long
+                                if (time() - self.on_time_track) > self.max_on_time:
+                                    self.off()
                     else:
                         if self.led_status == 'on':
                             self.time_in_out_change = time()
                             self.off()
+
+
 
     def checkFoodCreation(self):
         ### Check - make sure food isn't too close to other food ###
@@ -256,6 +278,13 @@ class OptoThread(Service):
                 self.shouldCreateFood = False
                 return
 
+        if self.set_off_time:  #if should check off time to see if another spot should be made
+            if (time() - self.off_time_track) <= self.min_off_time: #if min time hasn't passed
+                self.shouldCreateFood = False
+                self.off_time_correct = False
+                return
+
+
         self.shouldCreateFood = True
 
     def defineFoodSpot(self):
@@ -267,11 +296,13 @@ class OptoThread(Service):
         self.led_status = 'on'
         self.logLED(self.led_status)
         self.write(self.ON_COMMAND)
+        self.on_time_track = time()
 
     def off(self):
         self.led_status = 'off'
         self.logLED(self.led_status)
         self.write(self.OFF_COMMAND)
+        self.off_time_track = time()
 
     def write(self, cmd):
         self.ser.write(bytearray([cmd]))
