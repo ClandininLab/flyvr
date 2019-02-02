@@ -1130,7 +1130,8 @@ class ForagingDetails():
         self.ui.min_time_since_food_checkbox.stateChanged.connect(lambda x: self.timeSinceFood())
         self.ui.fly_moving_checkbox.stateChanged.connect(lambda x: self.flyMoving())
         self.ui.fly_path_distance_checkbox.stateChanged.connect(lambda x: self.flyPathDistance())
-
+        self.ui.min_off_time_checkbox.stateChanged.connect(lambda x: self.minOffTime())
+        self.ui.max_on_time_checkbox.stateChanged.connect(lambda x: self.maxOnTime())
 
         # Setup sliders
         self.ui.min_food_distance_slider.setValue(self.opto.min_dist_from_food*1000)
@@ -1148,6 +1149,13 @@ class ForagingDetails():
         self.ui.fly_path_distance_slider.setValue(self.opto.path_distance_min * 1000) #100
         self.ui.fly_path_distance_slider.setRange(self.opto.path_distance_min*100, 50)
         self.ui.fly_path_distance_slider.valueChanged.connect(self.flyPathDistanceSlider)
+
+        self.ui.min_off_time_slider.setValue(self.opto.min_off_time)
+        self.ui.min_off_time_slider.valueChanged.connect(self.offTimeSlider)
+
+        self.ui.max_on_time_slider.setValue(self.opto.max_on_time*1000)
+        self.ui.max_on_time_slider.setRange(0, 3000)
+        self.ui.max_on_time_slider.valueChanged.connect(self.onTimeSlider)
 
     ### Slider functions ###
     def foodDistanceSlider(self):
@@ -1174,6 +1182,17 @@ class ForagingDetails():
         value = self.ui.fly_path_distance_slider.value()
         self.ui.min_fly_path_distance_label.setText('{:0.0f}cm'.format(value))
         self.opto.path_distance_min = value/100 #100 #reset min distance
+
+    def offTimeSlider(self):
+        value = self.ui.min_off_time_slider.value()
+        self.ui.set_min_off_time.setText('{:0.0f}sec'.format(value))
+        self.opto.min_off_time = value
+
+    def onTimeSlider(self):
+        value = self.ui.max_on_time_slider.value()
+        self.ui.set_max_on_time.setText('{:0.0f}msec'.format(value))
+        self.opto.max_on_time = value/1000
+
 
     ### Checkbox functions ###
     def foodDistance(self):
@@ -1206,6 +1225,17 @@ class ForagingDetails():
         else:
             self.opto.shouldCheckTotalPathDistance = False
 
+    def minOffTime(self):
+        if self.ui.min_off_time_checkbox.isChecked():
+            self.opto.set_off_time = True
+        else:
+            self.opto.set_off_time = False
+
+    def maxOnTime(self):
+        if self.ui.max_on_time_checkbox.isChecked():
+            self.opto.set_on_time = True
+        else:
+            self.opto.set_on_time = False
 
 
     def update_text(self):
@@ -1269,12 +1299,24 @@ class ForagingDetails():
         else:
             self.ui.fly_path_distance_met_label.setText('False')
 
+        if (time() - self.opto.off_time_track) > self.opto.min_off_time:
+            self.ui.min_off_time_met_label.setText('True')
+        else:
+            self.ui.min_off_time_met_label.setText('False')
+
+        if (time() - self.opto.on_time_track) <= self.opto.max_on_time:
+            self.ui.max_on_time_met_label.setText('True')
+        else:
+            self.ui.max_on_time_met_label.setText('False')
+
         ### Display set food creation values ###
         self.ui.min_food_distance_label.setText('{:0.0f}mm'.format(self.opto.min_dist_from_food*1000))
         self.ui.min_fly_dist_from_center_label.setText('{:0.0f}mm'.format(self.opto.foraging_distance_min*1000))
         self.ui.min_time_since_food_label.setText('{:0.0f}sec'.format(self.opto.time_since_last_food_min))
         self.ui.food_size_label.setText('{:0.0f}mm'.format(self.opto.food_rad*1000))
         self.ui.min_fly_path_distance_label.setText('{:0.0f}mm'.format(self.opto.path_distance_min * 1000)) #100
+        self.ui.set_min_off_time.setText('{:0.0f}sec'.format(self.opto.min_off_time))
+        self.ui.set_max_on_time.setText('{:0.0f}msec'.format(self.opto.max_on_time *1000))
 
         ### Display current food creation values ###
         if self.opto.closest_food is not None:
@@ -1296,6 +1338,17 @@ class ForagingDetails():
             self.ui.current_path_distance_label.setText('{:0.0f}mm'.format(self.opto.distance_since_last_food*1000)) #100
         else:
             self.ui.current_path_distance_label.setText('N/A')
+
+        if self.opto.off_time_track is not None and self.opto.set_off_time:
+            self.ui.off_time_track_label.setText('{:0.0f}sec'.format(time() - self.opto.off_time_track))
+        else:
+            self.ui.off_time_track_label.setText('N/A')
+
+        if self.opto.led_status == 'on' and self.opto.on_time_track is not None:
+                self.ui.on_time_track_label.setText('{:0.2f}sec'.format((time() - self.opto.on_time_track)*1000))
+        else:
+            self.ui.on_time_track_label.setText('N/A')
+
 
 def main():
     app = QApplication(sys.argv)
