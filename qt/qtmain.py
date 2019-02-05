@@ -1132,6 +1132,7 @@ class ForagingDetails():
         self.ui.fly_path_distance_checkbox.stateChanged.connect(lambda x: self.flyPathDistance())
         self.ui.min_off_time_checkbox.stateChanged.connect(lambda x: self.minOffTime())
         self.ui.max_on_time_checkbox.stateChanged.connect(lambda x: self.maxOnTime())
+        self.ui.max_foodspots_checkbox.stateChanged.connect(lambda x: self.countFoodspots())
 
         # Setup sliders
         self.ui.min_food_distance_slider.setValue(self.opto.min_dist_from_food*1000)
@@ -1156,6 +1157,9 @@ class ForagingDetails():
         self.ui.max_on_time_slider.setValue(self.opto.max_on_time*1000)
         self.ui.max_on_time_slider.setRange(0, 3000)
         self.ui.max_on_time_slider.valueChanged.connect(self.onTimeSlider)
+
+        self.ui.number_foodspots_slider.setValue(self.opto.max_foodspots) #set to default max foodspots
+        self.ui.number_foodspots_slider.valueChanged.connect(self.numberFoodspotsSlider)
 
     ### Slider functions ###
     def foodDistanceSlider(self):
@@ -1190,8 +1194,13 @@ class ForagingDetails():
 
     def onTimeSlider(self):
         value = self.ui.max_on_time_slider.value()
-        self.ui.set_max_on_time.setText('{:0.0f}msec'.format(value))
+        self.ui.set_max_on_time.setText('{:0.0f}ms'.format(value))
         self.opto.max_on_time = value/1000
+
+    def numberFoodspotsSlider(self):
+        value = self.ui.number_foodspots_slider.value()
+        self.ui.set_number_foodspots_label.setText('{:0.0f}'.format(value))
+        self.opto.max_foodspots = value #change opto maxfoodspots to slider value
 
 
     ### Checkbox functions ###
@@ -1236,6 +1245,12 @@ class ForagingDetails():
             self.opto.set_on_time = True
         else:
             self.opto.set_on_time = False
+
+    def countFoodspots(self):
+        if self.ui.max_foodspots_checkbox.isChecked():
+            self.opto.shouldCheckNumberFoodspots = True
+        else:
+            self.opto.shouldCheckNumberFoodspots = False
 
 
     def update_text(self):
@@ -1309,6 +1324,11 @@ class ForagingDetails():
         else:
             self.ui.max_on_time_met_label.setText('False')
 
+        if self.opto.more_food:
+            self.ui.foodspots_met_label.setText('True')
+        else:
+            self.ui.foodspots_met_label.setText('False')
+
         ### Display set food creation values ###
         self.ui.min_food_distance_label.setText('{:0.0f}mm'.format(self.opto.min_dist_from_food*1000))
         self.ui.min_fly_dist_from_center_label.setText('{:0.0f}mm'.format(self.opto.foraging_distance_min*1000))
@@ -1316,7 +1336,8 @@ class ForagingDetails():
         self.ui.food_size_label.setText('{:0.0f}mm'.format(self.opto.food_rad*1000))
         self.ui.min_fly_path_distance_label.setText('{:0.0f}mm'.format(self.opto.path_distance_min * 1000)) #100
         self.ui.set_min_off_time.setText('{:0.0f}sec'.format(self.opto.min_off_time))
-        self.ui.set_max_on_time.setText('{:0.0f}msec'.format(self.opto.max_on_time *1000))
+        self.ui.set_max_on_time.setText('{:0.0f}ms'.format(self.opto.max_on_time *1000))
+        self.ui.set_number_foodspots_label.setText('{:0.0f}'.format(self.opto.max_foodspots))
 
         ### Display current food creation values ###
         if self.opto.closest_food is not None:
@@ -1348,6 +1369,9 @@ class ForagingDetails():
                 self.ui.on_time_track_label.setText('{:0.2f}sec'.format((time() - self.opto.on_time_track)*1000))
         else:
             self.ui.on_time_track_label.setText('N/A')
+
+        self.ui.current_number_foodspots_label.setText('{}'.format(len(self.opto.foodspots))) #set number foodspots in lower portion too
+
 
 
 def main():

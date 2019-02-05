@@ -78,6 +78,8 @@ class OptoThread(Service):
         self.path_distance_correct = False  #total path
         self.long_time_since_food = False
         self.fly_moving = False
+        self.max_foodspots = 10
+        self.more_food = False #if false then reached max foodspots
 
         self.dist_from_center = None
         self.total_distance = 0
@@ -91,6 +93,8 @@ class OptoThread(Service):
         self.shouldCheckTimeSinceFood = True
         self.shouldCheckFlyIsMoving = True
         self.shouldCheckTotalPathDistance = True
+        self.shouldCheckNumberFoodspots = True
+
 
         self.time_in_out_change = None
         self.food_boundary_hysteresis = 0.1 #0.01
@@ -106,6 +110,8 @@ class OptoThread(Service):
         self.off_time_correct = False
         self.current_off_time = 0
         self.current_on_time = 0
+
+
 
         # call constructor from parent        
         super().__init__(maxTime=maxTime, minTime=minTime)
@@ -251,6 +257,14 @@ class OptoThread(Service):
             else:
                 self.fly_moving = False
 
+        ### see if number of foodspots is less than max ##
+        if len(self.foodspots) < self.max_foodspots:
+            self.more_food = True
+        else:
+            self.more_food = False
+
+
+
         ### ARE ALL CONDITIONS MET? ###
 
         if self.shouldCheckFoodDistance:
@@ -275,6 +289,11 @@ class OptoThread(Service):
 
         if self.shouldCheckFlyIsMoving:
             if not self.fly_moving:
+                self.shouldCreateFood = False
+                return
+
+        if self.shouldCheckNumberFoodspots:
+            if not self.more_food:
                 self.shouldCreateFood = False
                 return
 
