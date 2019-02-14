@@ -47,7 +47,7 @@ class OptoThread(Service):
         self.foraging = False
         self.foraging_time_min = 2
         self.foraging_time_override = 3*(60)
-        self.foraging_distance_min = 0.05 #from center
+        self.foraging_distance_min = 0.03 #from center
         self.foraging_distance_max = 0.2
         self.path_distance_min = 0.01 #min walk distance
 
@@ -57,7 +57,7 @@ class OptoThread(Service):
         #self.foragingNextFood_d_min =
 
         self.foodspots = []
-        self.food_rad = 0.010
+        self.food_rad = 0.005
         self.fly_movement_threshold = 0.5e-3
         self.time_of_last_food = None
         self.time_since_last_food = None
@@ -67,10 +67,11 @@ class OptoThread(Service):
         self.led_status = 'off'
         self.fly_in_food = False
         self.far_from_food = False
-        self.min_dist_from_food = 0.010 #in m
+        self.min_dist_from_food = 0.2 #in m
         self.distance_since_last_food = 0
         self.list_prev_y = [0]
         self.list_prev_x = [0]
+        self.min_distance_removes_food = .20 #20cm  #dancing radius allowed
 
         # Set food creation parameters false
         self.far_from_food = False
@@ -80,6 +81,7 @@ class OptoThread(Service):
         self.fly_moving = False
         self.max_foodspots = 10
         self.more_food = False #if false then reached max foodspots
+
 
         self.dist_from_center = None
         self.total_distance = 0
@@ -94,6 +96,7 @@ class OptoThread(Service):
         self.shouldCheckFlyIsMoving = True
         self.shouldCheckTotalPathDistance = True
         self.shouldCheckNumberFoodspots = True
+        self.shouldAllowDancing = False
 
 
         self.time_in_out_change = None
@@ -102,8 +105,8 @@ class OptoThread(Service):
         #parameters for food pulse times
         self.set_off_time = False
         self.set_on_time = False
-        self.min_off_time = 0.0
-        self.max_on_time = 0.1  #100ms?
+        self.min_off_time = 9.0
+        self.max_on_time = 1.0 #100ms?
         self.off_time_track = 0  #0
         self.on_time_track = 0
         self.on_time_correct = False
@@ -146,7 +149,7 @@ class OptoThread(Service):
 
         ### Calculate parameters based on fly position ###
 
-        if self.flyX is not None and self.flyY is not None: #and self.trial_start_t is not None:
+        if self.flyX is not None and self.flyY is not None and self.trial_start_t is not None:
             # calculate distance from center
             x_dist = np.abs(self.flyX) - np.abs(self.trackThread.center_pos_x)
             y_dist = np.abs(self.flyY) - np.abs(self.trackThread.center_pos_y)
@@ -162,6 +165,10 @@ class OptoThread(Service):
             if self.foraging:
                 # define food spot if all requirements are met
                 self.checkFoodCreation()
+
+                if self.shouldAllowDancing == True:
+                    self.dance()
+
                 if self.shouldCreateFood:
                     self.defineFoodSpot()
                     self.shouldCreateFood = False
@@ -297,6 +304,8 @@ class OptoThread(Service):
                 self.shouldCreateFood = False
                 return
 
+
+
         if self.set_off_time:  #if should check off time to see if another spot should be made
             if (time() - self.off_time_track) <= self.min_off_time: #if min time hasn't passed
                 self.shouldCreateFood = False
@@ -310,6 +319,15 @@ class OptoThread(Service):
         self.foodspots.append({'x': self.flyX, 'y': self.flyY})
         self.logFood(self.flyX, self.flyY)
 
+    def dance(self):
+        if self.closest_food is not None and self.closest_food > self.min_distance_removes_food:
+            self.foodspots = []  #removes all previous foodspots if it gets far away from one
+            self.logFoodRemoval()
+        if self.closest_food is not None and self.closest_food <= self.min_distance_removes_food:
+            #prevent more food from being created
+            self.shouldCreateFood = False
+
+
     def on(self):
         print('TURNED ON')
         self.led_status = 'on'
@@ -318,6 +336,7 @@ class OptoThread(Service):
         self.on_time_track = time()
 
     def off(self):
+        #print('TURNED OFF')
         self.led_status = 'off'
         self.logLED(self.led_status)
         self.write(self.OFF_COMMAND)
@@ -346,6 +365,12 @@ class OptoThread(Service):
         with self.logLock:
             if self.logFile is not None:
                 self.logFile.write('{}, {}, {}, {}\n'.format('food', time(), x, y))
+                self.logFile.flush()
+
+    def logFoodRemoval(self):
+        with self.logLock:
+            if self.logFile is not None:
+                self.logFile.write('{}, {}\n'.format('food-removed', time()))
                 self.logFile.flush()
 
     def startLogging(self, logFile):

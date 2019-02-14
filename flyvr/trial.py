@@ -101,6 +101,22 @@ class TrialThread(Service):
             self.opto.trial_start_t = self.trial_start_t
             self.opto.stopLogging()
             self.opto.foodspots = []
+            self.opto.closest_food = None
+            self.fly_in_food = False
+
+            self.dist_from_center = None
+            self.total_distance = 0
+            self.closest_food = None
+            self.far_from_food = False
+            self.distance_correct = False  # for center
+            self.path_distance_correct = False  # total path
+            self.long_time_since_food = False
+            self.fly_moving = False
+
+            self.long_time_since_food = True
+            self.shouldCreateFood = False
+            self.time_of_last_food = None
+            self.time_since_last_food = None
 
         if self.stim is not None:
             self.stim.stopStim(self._trial_dir)
