@@ -318,6 +318,12 @@ class MainGui():
         genotype = self.ui.genotype_textbox.text()
 
         d = {'user': user, 'age': age, 'timezone': timezone, 'genotype': genotype}
+        #add more stuff to metadata  (do I want to do this here? or have a separate foraging metadatafile?
+        #if checkboxes checked
+        #if self.opto.foraging = True:
+
+        #include sliders for checked boxes
+        #d = {'user': user, 'age': age, 'timezone': timezone, 'genotype': genotype,
         data = self.pretty_json(d)
 
         exp_dir = None
@@ -1134,6 +1140,7 @@ class ForagingDetails():
         self.ui.max_on_time_checkbox.stateChanged.connect(lambda x: self.maxOnTime())
         self.ui.max_foodspots_checkbox.stateChanged.connect(lambda x: self.countFoodspots())
         self.ui.remove_prev_foodspots_checkbox.stateChanged.connect(lambda x: self.removeFoodspotsforDance())
+        self.ui.prevent_food_revisit_checkbox.stateChanged.connect(lambda x: self.preventFoodRevisits())
 
         # Setup sliders
         self.ui.min_food_distance_slider.setValue(self.opto.min_dist_from_food*100)
@@ -1260,6 +1267,11 @@ class ForagingDetails():
         else:
             self.opto.shouldAllowDancing = False
 
+    def preventFoodRevisits(self):
+        if self.ui.prevent_food_revisit_checkbox.isChecked():
+            self.opto.shouldPreventFoodRevisit = True
+        else:
+            self.opto.shouldPreventFoodRevisit = False
 
     def update_text(self):
 
