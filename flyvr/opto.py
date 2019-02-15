@@ -90,13 +90,19 @@ class OptoThread(Service):
         self.camX = None
         self.camY = None
 
+        self.flyInQuadrant1 = False
+        self.flyInQuadrant2 = False
+        self.flyInQuadrant3 = False
+        self.flyInQuadrant4 = False
+
         self.shouldCheckFoodDistance = True
         self.shouldCheckFlyDistanceFromCenter = True
         self.shouldCheckTimeSinceFood = True
         self.shouldCheckFlyIsMoving = True
         self.shouldCheckTotalPathDistance = True
-        self.shouldCheckNumberFoodspots = True
+        self.shouldCheckNumberFoodspots = False
         self.shouldAllowDancing = False
+        self.shouldPreventFoodRevisit = False
 
 
         self.time_in_out_change = None
@@ -170,7 +176,7 @@ class OptoThread(Service):
                     self.dance()
 
                 if self.shouldCreateFood:
-                    self.defineFoodSpot()
+                    self.defineFoodSpot()  #this records the foodspot so the led will turn on
                     self.shouldCreateFood = False
 
                 # turn on LED if fly is in food spot
@@ -180,6 +186,8 @@ class OptoThread(Service):
                         self.time_of_last_food = time()
                         self.distance_since_last_food = 0 #reset distance when get to food
                         self.fly_in_food = True
+                        if self.shouldPreventFoodRevisit == True:
+                            self.foodspots = []  #ideally I'd like to keep the foodspot list (possibly create new storage list?)
                         continue
                     else:
                         self.fly_in_food = False
@@ -270,7 +278,8 @@ class OptoThread(Service):
         else:
             self.more_food = False
 
-
+        ##determine quadrant fly is in
+        self.determineQuadrant()
 
         ### ARE ALL CONDITIONS MET? ###
 
@@ -304,7 +313,14 @@ class OptoThread(Service):
                 self.shouldCreateFood = False
                 return
 
-
+        # ##this may be the wrong place for this, but it should work.
+        #       ##each time check foodspots happens then there shouldn't be any and if all reqs are met
+        #       ##for new food then it will create new food
+        #       ##does break a lot of other things if clean out foodspots. maybe check if the new spot is already in foodspots?
+        # if self.shouldPreventFoodRevisit:
+        #     if len(self.foodspots) > 0:
+        #         self.foodspots = []
+        #         self.logFoodRemoval()
 
         if self.set_off_time:  #if should check off time to see if another spot should be made
             if (time() - self.off_time_track) <= self.min_off_time: #if min time hasn't passed
@@ -326,6 +342,17 @@ class OptoThread(Service):
         if self.closest_food is not None and self.closest_food <= self.min_distance_removes_food:
             #prevent more food from being created
             self.shouldCreateFood = False
+
+    def determineQuadrant(self):
+        if self.flyX > self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
+            self.flyInQuadrant1 = True
+        if self.flyX > self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
+            self.flyInQuadrant2 = True
+        if self.flyX < self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
+            self.flyInQuadrant3 = True
+        if self.flyX < self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
+            self.flyInQuadrant4 = True
+
 
 
     def on(self):
@@ -371,6 +398,12 @@ class OptoThread(Service):
         with self.logLock:
             if self.logFile is not None:
                 self.logFile.write('{}, {}\n'.format('food-removed', time()))
+                self.logFile.flush()
+
+    def logFoodRevisitNoFood(self):
+        with self.logLock:
+            if self.logFile is not None:
+                self.logFile.write('{}, {}, {}, {}\n'.format('food-revisited but not given food', time(), x, y))
                 self.logFile.flush()
 
     def startLogging(self, logFile):
