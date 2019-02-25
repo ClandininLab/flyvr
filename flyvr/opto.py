@@ -102,7 +102,7 @@ class OptoThread(Service):
         self.shouldCheckTotalPathDistance = True
         self.shouldCheckNumberFoodspots = False
         self.shouldAllowDancing = False
-        self.shouldPreventFoodRevisit = False
+
 
 
         self.time_in_out_change = None
@@ -186,8 +186,6 @@ class OptoThread(Service):
                         self.time_of_last_food = time()
                         self.distance_since_last_food = 0 #reset distance when get to food
                         self.fly_in_food = True
-                        if self.shouldPreventFoodRevisit == True:
-                            self.foodspots = []  #ideally I'd like to keep the foodspot list (possibly create new storage list?)
                         continue
                     else:
                         self.fly_in_food = False
