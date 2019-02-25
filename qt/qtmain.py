@@ -1140,7 +1140,7 @@ class ForagingDetails():
         self.ui.max_on_time_checkbox.stateChanged.connect(lambda x: self.maxOnTime())
         self.ui.max_foodspots_checkbox.stateChanged.connect(lambda x: self.countFoodspots())
         self.ui.remove_prev_foodspots_checkbox.stateChanged.connect(lambda x: self.removeFoodspotsforDance())
-        self.ui.prevent_food_revisit_checkbox.stateChanged.connect(lambda x: self.preventFoodRevisits())
+
 
         # Setup sliders
         self.ui.min_food_distance_slider.setValue(self.opto.min_dist_from_food*100)
@@ -1267,11 +1267,7 @@ class ForagingDetails():
         else:
             self.opto.shouldAllowDancing = False
 
-    def preventFoodRevisits(self):
-        if self.ui.prevent_food_revisit_checkbox.isChecked():
-            self.opto.shouldPreventFoodRevisit = True
-        else:
-            self.opto.shouldPreventFoodRevisit = False
+
 
     def update_text(self):
 
