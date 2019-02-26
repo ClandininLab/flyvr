@@ -35,8 +35,9 @@ class CamThread(Service):
         self.threshold = defaultThresh
 
         # Lock for the output frame
-        self._outFrame = None
-        self.outFrameLock = Lock()
+        self._saveFrame = None
+        self.saveFrameLock = Lock()
+        self.drawFrame = None
 
         # File handle for logging
         self.logLock = Lock()
@@ -54,20 +55,20 @@ class CamThread(Service):
         super().__init__(maxTime=maxTime)
 
     @property
-    def outFrame(self):
-        with self.outFrameLock:
-            return self._outFrame
+    def saveFrame(self):
+        with self.saveFrameLock:
+            return self._saveFrame
 
-    @outFrame.setter
-    def outFrame(self, value):
-        with self.outFrameLock:
-            self._outFrame = value
+    @saveFrame.setter
+    def saveFrame(self, value):
+        with self.saveFrameLock:
+            self._saveFrame = value
 
     # overriding method from parent...
     def loopBody(self):
         
         # read and process frame
-        self.fly, self.outFrame = self.cam.processNext()
+        self.fly, self.saveFrame, self.drawFrame = self.cam.processNext()
 
         if self.fly is None:
             self.flyPresent = False
@@ -91,8 +92,8 @@ class CamThread(Service):
                               str(self.fly.centerY) + ',' +
                               str(self.fly.angle) + '\n')
                     self.logFile.write(logStr)
-                if self.outFrame is not None and self.outFrame.shape != 0:
-                    self.logFull.write(self.outFrame)
+                if self.saveFrame is not None and self.saveFrame.shape != 0:
+                    self.logFull.write(self.saveFrame)
 
         # # Process frame if desired
         # if frameData is not None:
@@ -232,11 +233,14 @@ class Camera:
 
         # Find fly using vrcam
         fly = self.fly_finder.locate(grayFrame)
-        outFrame = cv2.cvtColor(grayFrame, cv2.COLOR_GRAY2BGR)
+        saveFrame = cv2.cvtColor(grayFrame, cv2.COLOR_GRAY2BGR)
 
         rows, cols = grayFrame.shape
 
+        drawFrame = saveFrame.copy()
+
         if fly is not None:
+
             center = fly.center
             angle = self.angle_predictor.predict(fly.patch)
 
@@ -246,14 +250,14 @@ class Camera:
             cy = -(cy - (rows / 2.0)) / self.px_per_m
             fly.centerX = cx
             fly.centerY = cy
-            disp_center = bound_point(center, outFrame)
-            self.arrow_from_point(outFrame, disp_center, angle)
+            disp_center = bound_point(center, drawFrame)
+            self.arrow_from_point(drawFrame, disp_center, angle)
             fly.angle = angle
 
             #draw contour on frame
-            cv2.drawContours(outFrame, [fly.contour], 0, (0, 255, 0), 2)
+            cv2.drawContours(drawFrame, [fly.contour], 0, (0, 255, 0), 2)
 
-        return fly, outFrame
+        return fly, saveFrame, drawFrame
 
     def __del__(self):
         # When everything done, release the capture handle
