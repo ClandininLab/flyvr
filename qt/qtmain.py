@@ -193,6 +193,8 @@ class MainGui():
         self.ui.stim_per_trial_button.clicked.connect(lambda x: self.stimPerTrial())
         self.ui.stim_within_trial_button.clicked.connect(lambda x: self.stimWithinTrial())
         self.ui.multi_stim_within_trial_button.clicked.connect(lambda x: self.multiStimWithinTrial())
+        self.ui.minseung_stim_button.clicked.connect(lambda x: self.minseungStim())
+        self.ui.avery_stim_button.clicked.connect(lambda x: self.averyStim())
         self.ui.stim_per_trial_button.setEnabled(False)
         self.ui.stim_within_trial_button.setEnabled(False)
         self.ui.multi_stim_within_trial_button.setEnabled(False)
@@ -299,6 +301,12 @@ class MainGui():
     def multiStimWithinTrial(self):
         self.stim.mode = 'multi_stim'
         self.stim.stim_duration = 20.0
+
+    def minseungStim(self):
+        self.stim.mode = 'minseung'
+
+    def averyStim(self):
+        self.stim.mode = 'avery'
 
     def stimStart(self):
         self.stim = StimThread()
@@ -614,7 +622,7 @@ class MainGui():
             MessagePopup(self.message)
             self.message = []
         else:
-            self.trial = TrialThread(cam=self.cam, dispenser=self.dispenser, tracker=self.tracker,
+            self.trial = TrialThread(cam=self.cam, cnc=self.tracker.cncThread, dispenser=self.dispenser, tracker=self.tracker,
                                            opto=self.opto, stim=self.stim, ui=self.ui, flyplot=self.flypositionwindow)
             self.trial.start()
             if self.dispenser is not None:
