@@ -974,7 +974,7 @@
    <widget class="QPushButton" name="multi_stim_within_trial_button">
     <property name="geometry">
      <rect>
-      <x>100</x>
+      <x>90</x>
       <y>40</y>
       <width>81</width>
       <height>21</height>
@@ -1050,6 +1050,32 @@
      </item>
     </layout>
    </widget>
+   <widget class="QPushButton" name="minseung_stim_button">
+    <property name="geometry">
+     <rect>
+      <x>90</x>
+      <y>70</y>
+      <width>80</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Minseung</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="avery_stim_button">
+    <property name="geometry">
+     <rect>
+      <x>170</x>
+      <y>70</y>
+      <width>80</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Avery</string>
+    </property>
+   </widget>
    <zorder>cnc_heading_frame_6</zorder>
    <zorder>stim_stop_button</zorder>
    <zorder>stim_start_button</zorder>
@@ -1057,6 +1083,8 @@
    <zorder>stim_within_trial_button</zorder>
    <zorder>multi_stim_within_trial_button</zorder>
    <zorder>gridLayoutWidget_5</zorder>
+   <zorder>minseung_stim_button</zorder>
+   <zorder>avery_stim_button</zorder>
   </widget>
   <widget class="QFrame" name="frame_5">
    <property name="geometry">

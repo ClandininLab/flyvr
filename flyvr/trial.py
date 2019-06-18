@@ -11,7 +11,7 @@ from threading import Lock
 from flyvr.tracker import TrackThread, ManualVelocity
 
 class TrialThread(Service):
-    def __init__(self, cam, dispenser, stim, opto, tracker, ui, flyplot,
+    def __init__(self, cam, cnc, dispenser, stim, opto, tracker, ui, flyplot,
                  loopTime=10e-3, fly_lost_timeout=2, fly_detected_timeout=2):
 
         self.trial_count = itertools.count(1)
@@ -19,6 +19,7 @@ class TrialThread(Service):
         self.prev_state = 'started'
 
         self.cam = cam
+        self.cnc = cnc
         self.dispenser = dispenser
         self.stim = stim
         self.opto = opto
@@ -82,11 +83,38 @@ class TrialThread(Service):
             self.opto.startLogging(os.path.join(_trial_dir, 'opto.txt'))
             self.opto.trial_start_t = self.trial_start_t
 
+
+            # added resets tp start pf trial to try to fix foodspot issue and reset time when trial starts
+            # reset opto
+            self.opto.trial_start_t = self.trial_start_t
+            self.opto.stopLogging()
+            self.opto.foodspots = []
+            self.opto.closest_food = None
+            self.opto.fly_in_food = False
+
+            self.opto.dist_from_center = None
+            self.opto.total_distance = 0
+            self.opto.distance_since_last_food = 0
+            self.opto.closest_food = None
+            self.opto.far_from_food = False
+            self.opto.distance_correct = False  # for center
+            self.opto.path_distance_correct = False  # total path
+            self.opto.long_time_since_food = False
+            self.opto.fly_moving = False
+            self.opto.list_prev_y = [0]
+            self.opto.list_prev_x = [0]
+
+            self.opto.long_time_since_food = True
+            self.opto.shouldCreateFood = False
+            self.opto.time_of_last_food = None
+            self.opto.time_since_last_food = None
+
         if self.stim is not None:
             self.stim.nextTrial(self._trial_dir)
 
         if self.flyplot is not None:
             self.flyplot.clear_plot()
+            print('plot cleared')
 
     def _stop_trial(self):
         print('Stopped trial.')
@@ -125,33 +153,29 @@ class TrialThread(Service):
             self.stim.stopStim(self._trial_dir)
 
     def get_fly_pos(self):
-        cam_x, cam_y = None, None
-        if self.cam is not None:
-            #flyData = self.cam.flyData
-            if self.cam.flyPresent:
-                cam_x = self.camThread.fly.centerX
-                cam_y = self.camThread.fly.centerY
-                #cam_x, cam_y = flyData.flyX, flyData.flyY
+        ### Get Fly Position ###
 
-        if cam_x is None or cam_y is None:
-            return None, None
+        if self.cam is not None and self.cam.fly is not None:
+            camX = self.cam.fly.centerX
+            camY = self.cam.fly.centerY
+        else:
+            camX = None
+            camY = None
 
-        cnc_x = None
-        cnc_y = None
-        if self.tracker is not None and self.tracker.cncThread is not None:
-            status = self.tracker.cncThread.status
-            if status is not None:
-                cnc_x, cnc_y = status.posX, status.posY
+        if self.cnc is not None and self.cnc.status is not None:
+            cncX = self.cnc.status.posX
+            cncY = self.cnc.status.posY
+        else:
+            cncX = None
+            cncY = None
 
-        if cnc_x is None or cnc_y is None:
-            return None, None
-
-        # NOTE: this is not an error!  The coordinate definitions of X and Y are flipped for screen definitions
-        # as compared to the CNC and camera axes
-        fly_y = cam_x + cnc_x
-        fly_x = cam_y + cnc_y
-
-        return fly_x, fly_y
+        if camX is not None and cncX is not None:
+            flyX = camX + cncX
+            flyY = camY + cncY
+        else:
+            flyX = None
+            flyY = None
+        return flyX, flyY
 
     def get_fly_angle(self):
         fly_angle = None
@@ -181,6 +205,14 @@ class TrialThread(Service):
                 self._start_trial()
                 self.prev_state = 'fly detected'
                 self.state = 'run'
+                ## if fly is found make sure the gate is closed and if not, close it
+                ##new part--verify works
+                if self.dispenser is not None and self.dispenser.gate_state == 'open' and self.dispenser.gate_clear:
+                  self.dispenser.trigger = 'auto'
+                  self.dispenser.send_close_gate_command()
+                  self.dispenser.state = 'Idle'
+                  print('Dispenser: fly found, going to Idle state.')
+
             elif not self.cam.flyPresent:
                 print('Fly lost.')
                 self.timer_start = time()

@@ -149,6 +149,8 @@ class StimThread:
                 self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
 
                 self.stim_state['last_update'] = t
+        elif self.mode == 'minseung':
+            pass
         else:
             raise Exception('Invalid MrStim mode.')
 
@@ -179,6 +181,10 @@ class StimThread:
             rate = self.get_random_direction()
             kwargs = {'name': 'SineGrating', 'angle': 0, 'period': 20, 'rate': rate, 'color': 1.0, 'background': 0.0}
             self.stim_state = {'last_update': time(), 'paused': False}
+
+        elif self.mode == 'avery':
+            trajectory = RectangleTrajectory(x=0, y=90, angle=0, w=3, h=180)
+            kwargs = {'name': 'MovingPatch', 'trajectory': trajectory.to_dict()}
 
         else:
             raise Exception('Invalid Stim mode.')
