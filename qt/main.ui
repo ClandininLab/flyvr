@@ -1833,7 +1833,7 @@
      <item row="3" column="1">
       <widget class="QLineEdit" name="genotype_textbox">
        <property name="text">
-        <string>isoD1</string>
+        <string/>
        </property>
       </widget>
      </item>
@@ -1857,7 +1857,7 @@
      <item row="0" column="1">
       <widget class="QLineEdit" name="user_textbox">
        <property name="text">
-        <string>Luke</string>
+        <string>Change me</string>
        </property>
       </widget>
      </item>

@@ -151,6 +151,8 @@ class StimThread:
                 self.stim_state['last_update'] = t
         elif self.mode == 'minseung':
             pass
+        elif self.mode == 'avery':
+            pass
         else:
             raise Exception('Invalid MrStim mode.')
 
@@ -183,8 +185,8 @@ class StimThread:
             self.stim_state = {'last_update': time(), 'paused': False}
 
         elif self.mode == 'avery':
-            trajectory = RectangleTrajectory(x=0, y=90, angle=0, w=3, h=180)
-            kwargs = {'name': 'MovingPatch', 'trajectory': trajectory.to_dict()}
+            kwargs = {'name': 'RandomBars', 'period': 90, 'vert_extent': 180, 'width': 10, 'rand_min': 0.0,\
+                      'rand_max': 0.0, 'start_seed': 0, 'update_rate': 0.0, 'background': 0.5}
 
         else:
             raise Exception('Invalid Stim mode.')
