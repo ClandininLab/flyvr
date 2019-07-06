@@ -8,12 +8,14 @@ from math import pi, sqrt, hypot
 from time import time
 from threading import Lock
 import numpy as np
+from time import sleep
 
 from flyvr.service import Service
 
 from vrcam.train_angle import AnglePredictor
 from vrcam.finder import FlyFinder
 from vrcam.image import bound_point
+from leap.leap import LeapModel
 
 class CamThread(Service):
     def __init__(self, defaultThresh=150, maxTime=12e-3, bufX=200, bufY=200):
@@ -70,45 +72,22 @@ class CamThread(Service):
         # read and process frame
         self.fly, self.saveFrame, self.drawFrame = self.cam.processNext()
 
-        if self.fly is None:
-            self.flyPresent = False
-        else:
+        if self.fly_present:
             self.flyPresent = True
+        else:
+            self.flyPresent = False
 
-        #fly.center is x, y tuple
-
-        # update fly data variable
-        #self.flyData = flyData
-
-        # update the debugging frame variable
-        #self.frameData = frameData
-
-        # write logs
-        with self.logLock:
-            if self.logState:
-                if self.fly is not None:
-                    logStr = (str(time()) + ',' +
-                              str(self.fly.centerX) + ',' +
-                              str(self.fly.centerY) + ',' +
-                              str(self.fly.angle) + '\n')
-                    self.logFile.write(logStr)
-                if self.saveFrame is not None and self.saveFrame.shape != 0:
-                    self.logFull.write(self.saveFrame)
-
-        # # Process frame if desired
-        # if frameData is not None:
-        #     if self.show_threshold:
-        #         outFrame = cv2.cvtColor(frameData.threshFrame, cv2.COLOR_GRAY2BGR)
-        #     else:
-        #         outFrame = frameData.inFrame
-        #
-        #     # draw the fly contour if status available
-        #     if frameData.flyContour is not None:
-        #         if self.draw_contours:
-        #             cv2.drawContours(outFrame, [frameData.flyContour], 0, (0, 255, 0), 2)
-        #
-        #     # locking assign
-        #     self.outFrame = outFrame
+        # # write logs
+        # with self.logLock:
+        #     if self.logState:
+        #         if self.fly is not None:
+        #             logStr = (str(time()) + ',' +
+        #                       str(self.fly.centerX) + ',' +
+        #                       str(self.fly.centerY) + ',' +
+        #                       str(self.fly.angle) + '\n')
+        #             self.logFile.write(logStr)
+        #         if self.saveFrame is not None and self.saveFrame.shape != 0:
+        #             self.logFull.write(self.saveFrame)
 
     @property
     def flyData(self):
@@ -187,6 +166,7 @@ class Camera:
         # Instaniate fly finder and predictor from vrcam package
         self.angle_predictor = AnglePredictor()
         self.fly_finder = FlyFinder()
+        self.leap_model = LeapModel()
 
         # Store the number of pixels per meter
         self.px_per_m = px_per_m
@@ -231,31 +211,45 @@ class Camera:
         # Convert frame to grayscale
         grayFrame = cv2.cvtColor(inFrame, cv2.COLOR_BGR2GRAY)
 
-        # Find fly using vrcam
-        fly = self.fly_finder.locate(grayFrame)
+        # Save frame for video output
         saveFrame = cv2.cvtColor(grayFrame, cv2.COLOR_GRAY2BGR)
+
+        # Find fly using LEAP
+        fly = self.leap_model.find_points(grayFrame)
+
+        # Find fly using vrcam
+        #fly = self.fly_finder.locate(grayFrame)
 
         rows, cols = grayFrame.shape
 
         drawFrame = saveFrame.copy()
 
-        if fly is not None:
-
-            center = fly.center
-            angle = self.angle_predictor.predict(fly.patch)
-
-            cx = fly.center[0]
-            cy = fly.center[1]
+        if fly.fly_present:
+            cx = fly.body[0]
+            cy = fly.body[1]
             cx = -(cx - (cols / 2.0)) / self.px_per_m
             cy = -(cy - (rows / 2.0)) / self.px_per_m
             fly.centerX = cx
             fly.centerY = cy
-            disp_center = bound_point(center, drawFrame)
-            self.arrow_from_point(drawFrame, disp_center, angle)
-            fly.angle = angle
+            print('Fly Center: {}, {}'.format(cx,cy))
+            cv2.circle(drawFrame, fly.body, 100, color=(150, 150, 150), thickness=5, lineType=8, shift=0)
+            cv2.circle(drawFrame, fly.head, 100, color=(150, 150, 150), thickness=5, lineType=8, shift=0)
+
+            # center = fly.center
+            # angle = self.angle_predictor.predict(fly.patch)
+            #
+            # cx = fly.center[0]
+            # cy = fly.center[1]
+            # cx = -(cx - (cols / 2.0)) / self.px_per_m
+            # cy = -(cy - (rows / 2.0)) / self.px_per_m
+            # fly.centerX = cx
+            # fly.centerY = cy
+            # disp_center = bound_point(center, drawFrame)
+            # self.arrow_from_point(drawFrame, disp_center, angle)
+            # fly.angle = angle
 
             #draw contour on frame
-            cv2.drawContours(drawFrame, [fly.contour], 0, (0, 255, 0), 2)
+            #cv2.drawContours(drawFrame, [fly.contour], 0, (0, 255, 0), 2)
 
         return fly, saveFrame, drawFrame
 
