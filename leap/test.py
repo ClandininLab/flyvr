@@ -144,45 +144,30 @@ print(np.shape(image))
 # Cheap downsampling
 frames = image[:, ::int(1/scale), ::int(1/scale), 0]
 frames = np.asarray(np.expand_dims(frames, axis=-1))
+
 # Inference
 print('training frame: {}'.format(frames.shape))
 confmaps = model.predict(frames.astype("float32") / 255)
 
 # Peak finding
 peaks, confidences = find_global_peaks(confmaps)
+point = tuple([int(i) for i in peaks[0,0,:]])
 
 print("frames:", frames.shape)
 print("confidences:", confidences.shape)
 print("confidences:", confidences)
-#print("confmaps:", confmaps.shape)
-#print("confmaps:", confmaps)
-print("peaks:", peaks.shape)
-print(peaks)
-print(peaks[0,0,:])
+
 frame = frames[0,:,:,0]
-print("frame:", frame.shape)
 frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-print("frame:", frame.shape)
-#plot_blended_confmaps(frames[0], confmaps[0])
 
+plot_tracked_frame(frame, peaks)
+plt.show()
 
+#cv2.circle(frame, point, 2, color=(150,150,150),thickness=2, lineType=8, shift=0)
+#cv2.imshow('image',frame)
+#cv2.waitKey(0)
+#cv2.destroyAllWindows()
 
-point = tuple([int(i) for i in peaks[0,0,:]])
-cv2.circle(frame, point, 2, color=(150,150,150),thickness=2, lineType=8, shift=0)
-#cv2.line(frame,(0,0),(150,150),(255,255,255),15)
-#cv2.circle(frame,(100,63), 55, (0,255,0), -1)
-
-length=30
-thickness=3
-color=(0, 0, 255)
-point=(30,30)
-tip=(5,50)
-#cv2.arrowedLine(frame, point, tip, color, thickness, tipLength=0.3)
-
-
-cv2.imshow('image',frame)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
 #plt.imshow(frame)
 
 #plot_tracked_frame(frames[0], peaks[0])

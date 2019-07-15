@@ -123,7 +123,7 @@ class LeapModel:
         frame = frame[:120,:160]
         frame = np.expand_dims(frame, axis=0)
         frame = np.asarray(np.expand_dims(frame, axis=-1))
-        print('frame shape: {}'.format(frame.shape))
+        # print('frame shape: {}'.format(frame.shape))
 
         # Inference
         #with tf.Graph().as_default() as graph:
@@ -139,9 +139,12 @@ class LeapModel:
 
 class FlyPoints:
     def __init__(self, peaks, confidences, scale):
-        threshold = 0.5
+        threshold = 0.1
         self.body = tuple([int(i * 1/scale) for i in peaks[0,0,:]])
         self.head = tuple([int(i * 1/scale) for i in peaks[0,1,:]])
+        self.centerX = None
+        self.centerY = None
+        self.confidences = confidences
         if confidences[0,0] > threshold:
             self.fly_present = True
         else:

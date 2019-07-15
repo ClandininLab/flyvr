@@ -53,8 +53,13 @@ class CamThread(Service):
         self.flyPresent = False
         self.fly = None
 
+        self.leap_model = None # gets assigned at setup()
+
         # call constructor from parent        
         super().__init__(maxTime=maxTime)
+
+    def setup(self):
+        self.leap_model = LeapModel()
 
     @property
     def saveFrame(self):
@@ -70,9 +75,9 @@ class CamThread(Service):
     def loopBody(self):
         
         # read and process frame
-        self.fly, self.saveFrame, self.drawFrame = self.cam.processNext()
+        self.fly, self.saveFrame, self.drawFrame = self.cam.processNext(leap_model=self.leap_model)
 
-        if self.fly_present:
+        if self.fly.fly_present:
             self.flyPresent = True
         else:
             self.flyPresent = False
@@ -166,7 +171,7 @@ class Camera:
         # Instaniate fly finder and predictor from vrcam package
         self.angle_predictor = AnglePredictor()
         self.fly_finder = FlyFinder()
-        self.leap_model = LeapModel()
+        # self.leap_model = leap_model
 
         # Store the number of pixels per meter
         self.px_per_m = px_per_m
@@ -198,7 +203,7 @@ class Camera:
         tip = bound_point((ax, ay), img)
         cv2.arrowedLine(img, point, tip, color, thickness, tipLength=0.3)
 
-    def processNext(self):
+    def processNext(self, leap_model=None):
         if not self.camera.IsGrabbing():
             return None, None
 
@@ -212,28 +217,37 @@ class Camera:
         grayFrame = cv2.cvtColor(inFrame, cv2.COLOR_BGR2GRAY)
 
         # Save frame for video output
-        saveFrame = cv2.cvtColor(grayFrame, cv2.COLOR_GRAY2BGR)
+        saveFrame = inFrame #cv2.cvtColor(grayFrame, cv2.COLOR_GRAY2BGR)
 
         # Find fly using LEAP
-        fly = self.leap_model.find_points(grayFrame)
+        if leap_model:
+            # print("Using LEAP model")
+            fly = leap_model.find_points(grayFrame)
+            #print('body {}'.format(fly.body))
+            #print('centerX {}'.format(fly.centerX))
+            print('confidences {}'.format(fly.confidences))
 
-        # Find fly using vrcam
-        #fly = self.fly_finder.locate(grayFrame)
+        else:
+            # Find fly using vrcam
+            fly = self.fly_finder.locate(grayFrame)
 
         rows, cols = grayFrame.shape
 
         drawFrame = saveFrame.copy()
 
         if fly.fly_present:
+            print('fly body: {}'.format(fly.body[0]))
             cx = fly.body[0]
             cy = fly.body[1]
             cx = -(cx - (cols / 2.0)) / self.px_per_m
             cy = -(cy - (rows / 2.0)) / self.px_per_m
             fly.centerX = cx
             fly.centerY = cy
+            print('centerX: {}'.format(fly.centerX))
+            print('centerY: {}'.format(fly.centerY))
             print('Fly Center: {}, {}'.format(cx,cy))
-            cv2.circle(drawFrame, fly.body, 100, color=(150, 150, 150), thickness=5, lineType=8, shift=0)
-            cv2.circle(drawFrame, fly.head, 100, color=(150, 150, 150), thickness=5, lineType=8, shift=0)
+            cv2.circle(drawFrame, fly.body, 5, color=(0, 0, 150), thickness=2, lineType=8, shift=0)
+            cv2.circle(drawFrame, fly.head, 5, color=(150, 0, 0), thickness=2, lineType=8, shift=0)
 
             # center = fly.center
             # angle = self.angle_predictor.predict(fly.patch)
@@ -250,6 +264,8 @@ class Camera:
 
             #draw contour on frame
             #cv2.drawContours(drawFrame, [fly.contour], 0, (0, 255, 0), 2)
+        else:
+            print('no fly')
 
         return fly, saveFrame, drawFrame
 
