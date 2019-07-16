@@ -171,7 +171,6 @@ class Camera:
         # Instaniate fly finder and predictor from vrcam package
         self.angle_predictor = AnglePredictor()
         self.fly_finder = FlyFinder()
-        # self.leap_model = leap_model
 
         # Store the number of pixels per meter
         self.px_per_m = px_per_m
@@ -202,6 +201,7 @@ class Camera:
         ay = point[1] - length * np.sin(angle)
         tip = bound_point((ax, ay), img)
         cv2.arrowedLine(img, point, tip, color, thickness, tipLength=0.3)
+
 
     def processNext(self, leap_model=None):
         if not self.camera.IsGrabbing():

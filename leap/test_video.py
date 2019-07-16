@@ -203,4 +203,3 @@ print(f"Total: {frame_counter / elapsed_total:.2f} FPS")
 # print("peaks:", peaks.shape)
 #
 # plot_tracked_frame(frames[0], peaks[0])
-# plt.show()
