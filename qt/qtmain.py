@@ -195,6 +195,7 @@ class MainGui():
         self.ui.multi_stim_within_trial_button.clicked.connect(lambda x: self.multiStimWithinTrial())
         self.ui.minseung_stim_button.clicked.connect(lambda x: self.minseungStim())
         self.ui.avery_stim_button.clicked.connect(lambda x: self.averyStim())
+        self.ui.loom_stim_button.clicked.connect(lambda x: self.loomStim())
         self.ui.stim_per_trial_button.setEnabled(False)
         self.ui.stim_within_trial_button.setEnabled(False)
         self.ui.multi_stim_within_trial_button.setEnabled(False)
@@ -307,6 +308,9 @@ class MainGui():
 
     def averyStim(self):
         self.stim.mode = 'avery'
+
+    def loomStim(self):
+        self.stim.mode = 'loom'
 
     def stimStart(self):
         self.stim = StimThread()

@@ -188,6 +188,16 @@ class StimThread:
             kwargs = {'name': 'RandomBars', 'period': 90, 'vert_extent': 180, 'width': 10, 'rand_min': 0.0,\
                       'rand_max': 0.0, 'start_seed': 0, 'update_rate': 0.0, 'background': 0.5}
 
+        elif self.mode == 'loom':
+            trajectory = RectangleTrajectory(h=[(0,10),(.5,50),(1,10),(1.5,50),(2,10),(2.5,50),(3,10),(3.5,50)],
+                                     w=[(0,10),(.5,50),(1,10),(1.5,50),(2,10),(2.5,50),(3,10),(3.5,50)],
+                                     x=[(0,0),(.5,0),(1,90),(1.5,90),(2,180),(2.5,180),(3,270),(3.5,270)],
+                                     y=[(0,45),(.5,45),(1,45),(1.5,45),(2,45),(2.5,45),(3,45),(3.5,45)],
+                                     color=0
+                                    )
+            kwargs = {'name': 'MovingPatch', 'background': 0.5, 'trajectory': trajectory}
+
+
         else:
             raise Exception('Invalid Stim mode.')
 

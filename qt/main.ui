@@ -1076,6 +1076,19 @@
      <string>Avery</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="loom_stim_button">
+    <property name="geometry">
+     <rect>
+      <x>170</x>
+      <y>40</y>
+      <width>80</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Loom</string>
+    </property>
+   </widget>
    <zorder>cnc_heading_frame_6</zorder>
    <zorder>stim_stop_button</zorder>
    <zorder>stim_start_button</zorder>
@@ -1085,6 +1098,7 @@
    <zorder>gridLayoutWidget_5</zorder>
    <zorder>minseung_stim_button</zorder>
    <zorder>avery_stim_button</zorder>
+   <zorder>loom_stim_button</zorder>
   </widget>
   <widget class="QFrame" name="frame_5">
    <property name="geometry">
