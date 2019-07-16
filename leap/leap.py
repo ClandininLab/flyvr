@@ -110,7 +110,8 @@ def plot_blended_confmaps(frame, confmaps):
 class LeapModel:
     def __init__(self):
         # Initialize network
-        model_path = "/home/clandininlab/Documents/flyvr/leap/final_model.h5"
+        #model_path = "/home/clandininlab/Documents/models/final_model_talmo.h5"
+        model_path = "/home/clandininlab/Documents/models/training_videos/model_1/models/190715_180958.centroids.UNet.n=22/final_model.h5"
         self.model = keras.models.load_model(model_path)
 
         # Add peak finding
@@ -123,14 +124,13 @@ class LeapModel:
         frame = frame[:120,:160]
         frame = np.expand_dims(frame, axis=0)
         frame = np.asarray(np.expand_dims(frame, axis=-1))
-        print('frame shape: {}'.format(frame.shape))
+        #print('frame shape: {}'.format(frame.shape))
 
         # Inference
         #with tf.Graph().as_default() as graph:
 
         #with self.graph.as_default():
         confmaps = self.model.predict(frame.astype("float32") / 255)
-
 
         # Peak finding
         peaks, confidences = find_global_peaks(confmaps)
@@ -139,9 +139,11 @@ class LeapModel:
 
 class FlyPoints:
     def __init__(self, peaks, confidences, scale):
-        threshold = 0.5
+        threshold = 0.1
         self.body = tuple([int(i * 1/scale) for i in peaks[0,0,:]])
+        print(np.shape(peaks))
         self.head = tuple([int(i * 1/scale) for i in peaks[0,1,:]])
+        self.confidences = confidences
         if confidences[0,0] > threshold:
             self.fly_present = True
         else:

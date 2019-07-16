@@ -220,51 +220,21 @@ class Camera:
         saveFrame = inFrame #cv2.cvtColor(grayFrame, cv2.COLOR_GRAY2BGR)
 
         # Find fly using LEAP
-        if leap_model:
-            # print("Using LEAP model")
-            fly = leap_model.find_points(grayFrame)
-            #print('body {}'.format(fly.body))
-            #print('centerX {}'.format(fly.centerX))
-            print('confidences {}'.format(fly.confidences))
-
-        else:
-            # Find fly using vrcam
-            fly = self.fly_finder.locate(grayFrame)
+        fly = leap_model.find_points(grayFrame)
+        print('confidences {}'.format(fly.confidences))
 
         rows, cols = grayFrame.shape
 
         drawFrame = saveFrame.copy()
 
         if fly.fly_present:
-            print('fly body: {}'.format(fly.body[0]))
-            cx = fly.body[0]
-            cy = fly.body[1]
-            cx = -(cx - (cols / 2.0)) / self.px_per_m
-            cy = -(cy - (rows / 2.0)) / self.px_per_m
-            fly.centerX = cx
-            fly.centerY = cy
-            print('centerX: {}'.format(fly.centerX))
-            print('centerY: {}'.format(fly.centerY))
-            print('Fly Center: {}, {}'.format(cx,cy))
+            fly.centerX = -(fly.body[0] - (cols / 2.0)) / self.px_per_m
+            fly.centerY = -(fly.body[1] - (rows / 2.0)) / self.px_per_m
             cv2.circle(drawFrame, fly.body, 5, color=(0, 0, 150), thickness=2, lineType=8, shift=0)
             cv2.circle(drawFrame, fly.head, 5, color=(150, 0, 0), thickness=2, lineType=8, shift=0)
-
-            # center = fly.center
-            # angle = self.angle_predictor.predict(fly.patch)
-            #
-            # cx = fly.center[0]
-            # cy = fly.center[1]
-            # cx = -(cx - (cols / 2.0)) / self.px_per_m
-            # cy = -(cy - (rows / 2.0)) / self.px_per_m
-            # fly.centerX = cx
-            # fly.centerY = cy
-            # disp_center = bound_point(center, drawFrame)
-            # self.arrow_from_point(drawFrame, disp_center, angle)
-            # fly.angle = angle
-
-            #draw contour on frame
-            #cv2.drawContours(drawFrame, [fly.contour], 0, (0, 255, 0), 2)
         else:
+            fly.centerX = 0
+            fly.centerY = 0
             print('no fly')
 
         return fly, saveFrame, drawFrame
