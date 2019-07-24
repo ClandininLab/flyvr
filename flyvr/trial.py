@@ -34,6 +34,10 @@ class TrialThread(Service):
         self.fly_lost_timeout = fly_lost_timeout
         self.fly_detected_timeout = fly_detected_timeout
 
+        #the time to delay finding a new fly if there is a fly already on the surface that has not come from the tunnel
+        self.rogue_fly_timeout = 100
+        self.rogue_timer_start = None
+
         # set up access to the thread-ending signal
         self.manualLock = Lock()
         self._manualCmd = None
@@ -196,6 +200,7 @@ class TrialThread(Service):
             if self.cam.flyPresent:
                 print('Fly possibly found...')
                 self.timer_start = time()
+                self.rogue_timer_start = time()
                 self.state = 'fly detected'
                 self.tracker.startTracking()
         elif self.state == 'fly detected':
@@ -206,12 +211,25 @@ class TrialThread(Service):
                 self.prev_state = 'fly detected'
                 self.state = 'run'
                 ## if fly is found make sure the gate is closed and if not, close it
-                ##new part--verify works
                 if self.dispenser is not None and self.dispenser.gate_state == 'open' and self.dispenser.gate_clear:
+                  print('Dispenser: fly found, going to Idle state. --fly found on surface')
                   self.dispenser.trigger = 'auto'
                   self.dispenser.send_close_gate_command()
+
+                  #to not track fly for period of time and close gate
+                  self.state = 'fly lost'
+                  self._stop_trial()
+                  print('force stop of trial to prevent tracking rogue flies')
+                  #self.tracker.stopTracking()
                   self.dispenser.state = 'Idle'
-                  print('Dispenser: fly found, going to Idle state.')
+                  #to reopen gate after delay time and restart trial
+                  ##This is not working yet
+                  if (time() - self.rogue_timer_start) >= self.rogue_fly_timeout:
+                      self.tracker.start_moving_to_center()
+                      self.prev_state = 'fly lost'
+                      self.state = 'moving back to center'
+                      print('rogue timeout is over')
+
 
             elif not self.cam.flyPresent:
                 print('Fly lost.')
