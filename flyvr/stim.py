@@ -12,9 +12,13 @@ from math import pi
 from flystim.screen import Screen
 from flyrpc.multicall import MyMultiCall
 from flystim.trajectory import RectangleTrajectory, Trajectory
+from flyvr.trial import TrialThread
 import numpy as np
 
 import os, os.path
+
+
+
 
 def pretty_json(d):
     return json.dumps(d, indent=2, sort_keys=True)
@@ -72,6 +76,12 @@ class StimThread:
 
         self.angle_change_thresh = angle_change_thresh
         self.last_angle = 0
+
+        #get fly angle
+        #self.trial = trial
+        #self.fly_angle = self.trial.fly_angle
+
+
 
     def get_random_direction(self):
         return choice([-400, -200, -100, -20, 20, 100, 200, 400])
@@ -144,7 +154,7 @@ class StimThread:
             t = time()
             if (t - self.stim_state['last_update']) > self.stim_duration:
                 kwargs = self.get_random_stim()
-                #self.manager.update_stim(**kwargs)
+                self.manager.update_stim(**kwargs)
                 self.manager.load_stim(**kwargs)
                 self.manager.start_stim()
                 self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
@@ -155,7 +165,46 @@ class StimThread:
         elif self.mode == 'avery':
             pass
         elif self.mode == 'loom':
-            pass
+            t = time()
+            rv_ratio = 0.140  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
+            end_size = 60  # deg
+            start_size = 5
+            time_steps = np.arange(0, self.stim_duration - 0.001, 0.001)  # time steps of trajectory
+            # calculate angular size at each time step for this rv ratio
+            angular_size = 2 * np.rad2deg(np.arctan(rv_ratio * (1 / (self.stim_duration - time_steps))))
+            ## shift curve vertically so it starts at start_size
+            min_size = angular_size[0]
+            size_adjust = min_size - start_size
+            angular_size = angular_size - size_adjust
+            ## Cap the curve at end_size and have it just hang there
+            max_size_ind = np.where(angular_size > end_size)[0][0]
+            angular_size[max_size_ind:] = end_size
+
+            square_location = fly_angle - 90
+
+            if self.stim_state['paused']:
+                if (t - self.stim_state['last_update']) > self.pause_duration:
+                    trajectory = RectangleTrajectory(w=list(zip(time_steps, angular_size)),
+                                                     h=list(zip(time_steps, angular_size)),
+                                                     x=fly_angle - 90,
+                                                     y=60,
+                                                     color=0)
+                    kwargs = {'trajectory': trajectory.to_dict()}
+                    kwargs = {'name': 'MovingPatch', 'trajectory': trajectory.to_dict(), 'background': 0.5}
+                    #self.manager.update_stim(**kwargs)
+                    self.manager.load_stim(**kwargs)
+                    self.manager.start_stim()
+                    self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
+
+                    self.stim_state['last_update'] = t
+                    self.stim_state['paused'] = False
+                    print('fly_angle', fly_angle)
+                    print('square location', square_location)
+            elif (t - self.stim_state['last_update']) > self.stim_duration:
+                self.manager.stop_stim()
+                self.log_to_dir('PauseStim', trial_dir)
+                self.stim_state['last_update'] = t
+                self.stim_state['paused'] = True
         else:
             raise Exception('Invalid MrStim mode.')
 
@@ -192,37 +241,18 @@ class StimThread:
                       'rand_max': 0.0, 'start_seed': 0, 'update_rate': 0.0, 'background': 0.5}
 
         elif self.mode == 'loom':
-            print('LOOM STARTED')
-            # trajectory = RectangleTrajectory(h=[(0,10),(.5,50),(1,10),(1.5,50),(2,10),(2.5,50),(3,10),(3.5,50)],
-            #                          w=[(0,10),(.5,50),(1,10),(1.5,50),(2,10),(2.5,50),(3,10),(3.5,50)],
-            #                          x=[(0,0),(.5,0),(1,90),(1.5,90),(2,180),(2.5,180),(3,270),(3.5,270)],
-            #                          y=[(0,45),(.5,45),(1,45),(1.5,45),(2,45),(2.5,45),(3,45),(3.5,45)],
-            #                          color=0
-            #                         )
-            # kwargs = {'name': 'MovingPatch', 'background': 0.5, 'trajectory': trajectory}
+            self.stim_state = {'last_update': time(), 'paused': False}
+            self.stim_duration = 1  # seconds
+            self.pause_duration = 3
 
-            # w = 43 * 2.54e-2
-            # h = 24 * 2.54e-2
-            #
-            # # if use_server:
-            # #     manager = StimClient()
-            # # else:
-            # screens = [Screen(id=1, rotation=pi / 2, width=w, height=h, offset=(-w / 2, 0, h / 2)),
-            #     Screen(id=2, rotation=0, width=w, height=h, offset=(0, w / 2, h / 2)),
-            #     Screen(id=3, rotation=pi, width=w, height=h, offset=(0, -w / 2, h / 2)),
-            #     Screen(id=4, rotation=-pi / 2, width=w, height=h, offset=(w / 2, 0, h / 2))]
-            # # self.manager = StimManager(screens)
-            # self.manager = launch_stim_server(screens)
+            rv_ratio = 0.140  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
 
-            rv_ratio = 0.010  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
-            stim_time = 1  # seconds
+            end_size = 60  # deg
+            start_size = 5
 
-            end_size = 90  # deg
-            start_size = 1
-
-            time_steps = np.arange(0, stim_time - 0.001, 0.001)  # time steps of trajectory
+            time_steps = np.arange(0, self.stim_duration - 0.001, 0.001)  # time steps of trajectory
             # calculate angular size at each time step for this rv ratio
-            angular_size = 2 * np.rad2deg(np.arctan(rv_ratio * (1 / (stim_time - time_steps))))
+            angular_size = 2 * np.rad2deg(np.arctan(rv_ratio * (1 / (self.stim_duration - time_steps))))
 
             ## shift curve vertically so it starts at start_size
             min_size = angular_size[0]
@@ -233,34 +263,16 @@ class StimThread:
             max_size_ind = np.where(angular_size > end_size)[0][0]
             angular_size[max_size_ind:] = end_size
 
-            # def main():
-            #num_trials = 1
-            #self.manager = launch_stim_server(screens)
+            square_location = -10
+
             trajectory = RectangleTrajectory(w=list(zip(time_steps, angular_size)),
                                              h=list(zip(time_steps, angular_size)),
-                                             x=90,
-                                             y=90,
+                                             x=square_location,
+                                             y=60,
                                              color=0)
             kwargs = {'name': 'MovingPatch', 'trajectory': trajectory.to_dict(), 'background': 0.5}
-            self.manager.start_stim()
-            # loom_t = time()
-            # loom_trial_length = 10
-            # for _ in range(num_trials):
-            #     print('loom in for loop')
-            #     #self.manager.load_stim(name='MovingPatch', trajectory=trajectory.to_dict(), background=0.5)
-            #     #self.manager.load_stim(**kwargs)
-            #     #sleep(550e-3)
-            #
-            #     self.manager.start_stim()
-            #
-            #     #sleep(6)
-            #     if (time()-loom_t) >= loom_trial_length:  #if the time elapsed is longer than delay time end the trial
-            #         self.manager.stop_stim()
-            #         loom_t = time() #rest loom_t
-            #     #sleep(500e-3)
-            #
-            # # if __name__ == '__main__':
-            # #     main()
+            #self.manager.start_stim()
+
 
 
         else:

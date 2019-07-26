@@ -180,9 +180,10 @@ class TrialThread(Service):
     def get_fly_angle(self):
         fly_angle = None
         if self.cam is not None:
-            fly_data = self.cam.flyData
-            if fly_data is not None:
-                fly_angle = 180-fly_data.angle
+            fly = self.cam.fly
+            if fly is not None:
+                #fly_angle = 180-fly.angle
+                fly_angle = fly.angle*100
 
         return fly_angle
 
@@ -218,6 +219,7 @@ class TrialThread(Service):
                 self.timer_start = time()
                 self.prev_state = 'fly detected'
                 self.state = 'fly lost'
+
                 self.tracker.stopTracking()
         elif self.state == 'run':
             if not self.cam.flyPresent:
