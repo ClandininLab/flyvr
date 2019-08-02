@@ -183,7 +183,7 @@ class TrialThread(Service):
             fly = self.cam.fly
             if fly is not None:
                 #fly_angle = 180-fly.angle
-                fly_angle = fly.angle*100
+                fly_angle = fly.angle * 57.3  #fly angle is calculated in radians 57.3 is the conversion (roughly)
 
         return fly_angle
 

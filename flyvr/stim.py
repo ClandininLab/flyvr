@@ -4,7 +4,7 @@
 
 import json
 from flystim.stim_server import launch_stim_server
-from time import time
+from time import time, sleep
 
 from random import choice
 from math import pi
@@ -64,7 +64,7 @@ class StimThread:
         self.manager = launch_stim_server(screens)
         self.manager.hide_corner_square()
 
-        self.pause_duration = None
+        self.pause_duration = 2 ### JCW attempt to change the pause duration. Look like it worked, but the stimulus shows on the screen opposite of the fly position
         self.stim_duration = None
 
         self.mode = None
@@ -77,6 +77,7 @@ class StimThread:
         self.angle_change_thresh = angle_change_thresh
         self.last_angle = 0
 
+        self.stim_count = 0
         #get fly angle
         #self.trial = trial
         #self.fly_angle = self.trial.fly_angle
@@ -124,6 +125,10 @@ class StimThread:
             if fly_angle is not None:
                 if abs(fly_angle-self.last_angle) > self.angle_change_thresh:
                     multicall.set_global_theta_offset(fly_angle)
+                    # if self.closed_loop_angle:
+            if fly_angle is not None:
+                if abs(fly_angle-self.last_angle) > self.angle_change_thresh:
+                    multicall.set_global_theta_offset(fly_angle)
                     self.last_angle = fly_angle
         else:
             multicall.set_global_theta_offset(0)
@@ -166,7 +171,7 @@ class StimThread:
             pass
         elif self.mode == 'loom':
             t = time()
-            rv_ratio = 0.140  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
+            rv_ratio = 0.040  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
             end_size = 60  # deg
             start_size = 5
             time_steps = np.arange(0, self.stim_duration - 0.001, 0.001)  # time steps of trajectory
@@ -180,26 +185,35 @@ class StimThread:
             max_size_ind = np.where(angular_size > end_size)[0][0]
             angular_size[max_size_ind:] = end_size
 
-            square_location = fly_angle - 90
+
 
             if self.stim_state['paused']:
-                if (t - self.stim_state['last_update']) > self.pause_duration:
-                    trajectory = RectangleTrajectory(w=list(zip(time_steps, angular_size)),
-                                                     h=list(zip(time_steps, angular_size)),
-                                                     x=fly_angle - 90,
-                                                     y=60,
-                                                     color=0)
-                    kwargs = {'trajectory': trajectory.to_dict()}
-                    kwargs = {'name': 'MovingPatch', 'trajectory': trajectory.to_dict(), 'background': 0.5}
-                    #self.manager.update_stim(**kwargs)
-                    self.manager.load_stim(**kwargs)
-                    self.manager.start_stim()
-                    self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
+                if self.stim_count < 1:
+                    self.pause_duration = 10  # delay in beginning
+                elif self.stim_count >= 1:
+                    self.pause_duration = 3  # regular interval delay
 
-                    self.stim_state['last_update'] = t
-                    self.stim_state['paused'] = False
-                    print('fly_angle', fly_angle)
-                    print('square location', square_location)
+                if (t - self.stim_state['last_update']) > self.pause_duration:
+                    if fly_angle is not None:
+                        trajectory = RectangleTrajectory(w=list(zip(time_steps, angular_size)),
+                                                         h=list(zip(time_steps, angular_size)),
+                                                         x=fly_angle-90,
+                                                         y=60,
+                                                         color=0)
+                        #fly_angle - 90 is the offset between the fly tracking angle and the screen presentation angle
+                        kwargs = {'trajectory': trajectory.to_dict()}
+                        kwargs = {'name': 'MovingPatch', 'trajectory': trajectory.to_dict(), 'background': 0.5}
+                        #self.manager.update_stim(**kwargs)
+                        self.manager.load_stim(**kwargs)
+                        self.manager.start_stim()
+                        self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
+
+                        self.stim_state['last_update'] = t
+                        self.stim_state['paused'] = False
+                        print('fly_angle', fly_angle)
+                        self.stim_count = self.stim_count + 1
+
+                    #print('square location', square_location)
             elif (t - self.stim_state['last_update']) > self.stim_duration:
                 self.manager.stop_stim()
                 self.log_to_dir('PauseStim', trial_dir)
@@ -242,10 +256,14 @@ class StimThread:
 
         elif self.mode == 'loom':
             self.stim_state = {'last_update': time(), 'paused': False}
-            self.stim_duration = 1  # seconds
-            self.pause_duration = 3
+            self.stim_duration = 1  #seconds
+            if self.stim_count < 1:
+                self.pause_duration = 30 #delay in beginning
+            elif self.stim_count >=1:
+                self.pause_duration = 3 #regular interval delay
 
-            rv_ratio = 0.140  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
+            #sleep(10)
+            rv_ratio = 0.040  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
 
             end_size = 60  # deg
             start_size = 5
@@ -263,16 +281,17 @@ class StimThread:
             max_size_ind = np.where(angular_size > end_size)[0][0]
             angular_size[max_size_ind:] = end_size
 
-            square_location = -10
+
 
             trajectory = RectangleTrajectory(w=list(zip(time_steps, angular_size)),
                                              h=list(zip(time_steps, angular_size)),
-                                             x=square_location,
+                                             x=0,
                                              y=60,
-                                             color=0)
+                                             color=0.5)   #color is 0.5 to hide the first presentation before fly_angle calculated
             kwargs = {'name': 'MovingPatch', 'trajectory': trajectory.to_dict(), 'background': 0.5}
             #self.manager.start_stim()
 
+            print('-----FIRST LOOM OVER-----')
 
 
         else:
