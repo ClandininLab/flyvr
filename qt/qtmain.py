@@ -1175,7 +1175,7 @@ class ForagingDetails():
         self.ui.min_off_time_slider.valueChanged.connect(self.offTimeSlider)
 
         self.ui.max_on_time_slider.setValue(self.opto.max_on_time*1000)
-        self.ui.max_on_time_slider.setRange(0, 3000)
+        self.ui.max_on_time_slider.setRange(0, 30000)
         self.ui.max_on_time_slider.valueChanged.connect(self.onTimeSlider)
 
         self.ui.number_foodspots_slider.setValue(self.opto.max_foodspots) #set to default max foodspots

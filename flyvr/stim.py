@@ -189,9 +189,9 @@ class StimThread:
 
             if self.stim_state['paused']:
                 if self.stim_count < 1:
-                    self.pause_duration = 10  # delay in beginning
+                    self.pause_duration = 20  # delay in beginning
                 elif self.stim_count >= 1:
-                    self.pause_duration = 3  # regular interval delay
+                    self.pause_duration = 10  # regular interval delay
 
                 if (t - self.stim_state['last_update']) > self.pause_duration:
                     if fly_angle is not None:
@@ -258,12 +258,12 @@ class StimThread:
             self.stim_state = {'last_update': time(), 'paused': False}
             self.stim_duration = 1  #seconds
             if self.stim_count < 1:
-                self.pause_duration = 30 #delay in beginning
+                self.pause_duration = 120 #delay in beginning
             elif self.stim_count >=1:
                 self.pause_duration = 3 #regular interval delay
 
             #sleep(10)
-            rv_ratio = 0.040  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
+            rv_ratio = 0.010  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
 
             end_size = 60  # deg
             start_size = 5
