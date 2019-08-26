@@ -340,19 +340,15 @@ class MainGui():
             if self.opto.shouldCheckFlyIsMoving == True:
                 foragingdict.update({'fly moving required': 'yes'})
             if self.opto.shouldCheckFoodDistance == True:
-            #if self.ui.min_food_distance_checkbox.isChecked():
                 min_food_distance = self.opto.min_dist_from_food
                 foragingdict.update({'min food distance (cm)': min_food_distance})
             if self.opto.shouldCheckFlyDistanceFromCenter == True:
-            #if self.ui.min_fly_dist_from_center_checkbox.isChecked():
                 distance_from_center = self.opto.foraging_distance_min
                 foragingdict.update({'distance from center requirement (mm)': distance_from_center})
             if self.opto.shouldCheckTotalPathDistance == True:
-            #if self.ui.fly_path_distance_checkbox.isChecked():
                 fly_path_distance = self.opto.path_distance_min
                 foragingdict.update({'fly path distance min (cm)': fly_path_distance})
             if self.opto.set_off_time == True:
-            #if self.ui.min_off_time_checkbox.isChecked():
                 min_time = self.opto.min_off_time
                 foragingdict.update({'min off time (s)': min_time})
             if self.opto.set_on_time == True:
@@ -360,11 +356,9 @@ class MainGui():
                 max_time = self.opto.max_on_time
                 foragingdict.update({'max on time (ms)': max_time})
             if self.opto.shouldCheckNumberFoodspots == True:
-            #if self.ui.max_foodspots_checkbox.isChecked():
                 number_food = self.opto.max_foodspots
                 foragingdict.update({'maximum number foodspots': number_food})
             if self.opto.shouldAllowDancing == True:
-            #if self.ui.remove_prev_foodspots_checkbox.isChecked():
                 foragingdict.update({'remove previous foodspots on': 'yes'})
 
             foraging_data = self.pretty_json(foragingdict)
