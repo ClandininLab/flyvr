@@ -99,7 +99,7 @@ class OptoThread(Service):
         self.shouldCheckFlyDistanceFromCenter = True
         self.shouldCheckTimeSinceFood = True
         self.shouldCheckFlyIsMoving = True
-        self.shouldCheckTotalPathDistance = True
+        self.shouldCheckTotalPathDistance = False
         self.shouldCheckNumberFoodspots = False
         self.shouldAllowDancing = False
 
