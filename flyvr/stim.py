@@ -13,7 +13,13 @@ from flystim.screen import Screen
 from flyrpc.multicall import MyMultiCall
 from flystim.trajectory import RectangleTrajectory
 
+from time import sleep
+
+import numpy as np
+
 import os, os.path
+
+
 
 def pretty_json(d):
     return json.dumps(d, indent=2, sort_keys=True)
@@ -189,13 +195,52 @@ class StimThread:
                       'rand_max': 0.0, 'start_seed': 0, 'update_rate': 0.0, 'background': 0.5}
 
         elif self.mode == 'loom':
-            trajectory = RectangleTrajectory(h=[(0,10),(.5,50),(1,10),(1.5,50),(2,10),(2.5,50),(3,10),(3.5,50)],
-                                     w=[(0,10),(.5,50),(1,10),(1.5,50),(2,10),(2.5,50),(3,10),(3.5,50)],
-                                     x=[(0,0),(.5,0),(1,90),(1.5,90),(2,180),(2.5,180),(3,270),(3.5,270)],
-                                     y=[(0,45),(.5,45),(1,45),(1.5,45),(2,45),(2.5,45),(3,45),(3.5,45)],
-                                     color=0
-                                    )
-            kwargs = {'name': 'MovingPatch', 'background': 0.5, 'trajectory': trajectory}
+
+            rv_ratio = 0.040  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
+            stim_time = 1  # seconds
+
+            end_size = 60  # deg
+            start_size = 1
+
+            time_steps = np.arange(0, stim_time - 0.001, 0.001)  # time steps of trajectory
+            # calculate angular size at each time step for this rv ratio
+            angular_size = 2 * np.rad2deg(np.arctan(rv_ratio * (1 / (stim_time - time_steps))))
+
+            ## shift curve vertically so it starts at start_size
+            min_size = angular_size[0]
+            size_adjust = min_size - start_size
+            angular_size = angular_size - size_adjust
+            ## Cap the curve at end_size and have it just hang there
+
+            max_size_ind = np.where(angular_size > end_size)[0][0]
+            angular_size[max_size_ind:] = end_size
+
+            def main():
+
+                num_trials = 1
+
+                manager = launch_stim_server(Screen(fullscreen=False))
+
+                trajectory = RectangleTrajectory(w=list(zip(time_steps, angular_size)),
+
+                                                 h=list(zip(time_steps, angular_size)),
+
+                                                 x=90,
+
+                                                 y=90,
+
+                                                 color=0)
+
+                for _ in range(num_trials):
+                    manager.load_stim(name='MovingPatch', trajectory=trajectory.to_dict(), background=0.5)
+
+            # trajectory = RectangleTrajectory(h=[(0,10),(.5,50),(1,10),(1.5,50),(2,10),(2.5,50),(3,10),(3.5,50)],
+            #                          w=[(0,10),(.5,50),(1,10),(1.5,50),(2,10),(2.5,50),(3,10),(3.5,50)],
+            #                          x=[(0,0),(.5,0),(1,90),(1.5,90),(2,180),(2.5,180),(3,270),(3.5,270)],
+            #                          y=[(0,45),(.5,45),(1,45),(1.5,45),(2,45),(2.5,45),(3,45),(3.5,45)],
+            #                          color=0
+            #                         )
+            # kwargs = {'name': 'MovingPatch', 'background': 0.5, 'trajectory': trajectory}
 
 
         else:

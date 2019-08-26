@@ -71,7 +71,7 @@ class OptoThread(Service):
         self.distance_since_last_food = 0
         self.list_prev_y = [0]
         self.list_prev_x = [0]
-        self.min_distance_removes_food = .20 #20cm  #dancing radius allowed
+        self.min_distance_removes_food = .01 #20cm  #dancing radius allowed  #testing .01 (1cm)
 
         # Set food creation parameters false
         self.far_from_food = False
@@ -79,7 +79,7 @@ class OptoThread(Service):
         self.path_distance_correct = False  #total path
         self.long_time_since_food = False
         self.fly_moving = False
-        self.max_foodspots = 10
+        self.max_foodspots = 90
         self.more_food = False #if false then reached max foodspots
 
 
@@ -380,17 +380,35 @@ class OptoThread(Service):
 
         Thread(target=target).start()
 
+
+    ##added this to try to get to save opto AS
+    def getLogState(self):
+        with self.logLock:
+            return self.logState, self.logFile
+
+            # # log status
+            # ##added this to try to get to save opto AS
+            # logState, logFile = self.getLogState()
+            # if logState:
+            #     logStr = (str(time()) + ',' +
+            #               str(status.posX) + ',' +
+            #               str(status.posY) + '\n')
+            #     logFile.write(logStr)
+
     def logLED(self, led_status):
         with self.logLock:
             if self.logFile is not None:
+                print("log file not none in led status logging")
                 self.logFile.write('{}, {}, {}\n'.format('led', time(), led_status))
                 self.logFile.flush()
 
     def logFood(self, x, y):
+        print("log food called")
         with self.logLock:
             if self.logFile is not None:
                 self.logFile.write('{}, {}, {}, {}\n'.format('food', time(), x, y))
                 self.logFile.flush()
+                print("foodspot logged")
 
     def logFoodRemoval(self):
         with self.logLock:
@@ -398,7 +416,7 @@ class OptoThread(Service):
                 self.logFile.write('{}, {}\n'.format('food-removed', time()))
                 self.logFile.flush()
 
-    def logFoodRevisitNoFood(self):
+    def logFoodRevisitNoFood(self, x, y):
         with self.logLock:
             if self.logFile is not None:
                 self.logFile.write('{}, {}, {}, {}\n'.format('food-revisited but not given food', time(), x, y))
@@ -406,14 +424,16 @@ class OptoThread(Service):
 
     def startLogging(self, logFile):
         with self.logLock:
-
             self.logState = True
-
             if self.logFile is not None:
+                print("logFile is not none")
                 self.logFile.close()
+                print("log file closed")
 
             self.logFile = open(logFile, 'w')
-            #self.logFile.write('time, LED Status\n')
+            print("logFile opened")
+            #uncommented below to try to get opto to save AS
+            self.logFile.write('time, LED Status\n')
 
     def stopLogging(self):
         with self.logLock:
@@ -422,4 +442,5 @@ class OptoThread(Service):
 
             if self.logFile is not None:
                 self.logFile.close()
+                print("log file closed--stop logging called")
                 self.logFile = None
