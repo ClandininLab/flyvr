@@ -352,7 +352,6 @@ class MainGui():
                 min_time = self.opto.min_off_time
                 foragingdict.update({'min off time (s)': min_time})
             if self.opto.set_on_time == True:
-            #if self.ui.max_on_time_checkbox.ischecked():
                 max_time = self.opto.max_on_time
                 foragingdict.update({'max on time (ms)': max_time})
             if self.opto.shouldCheckNumberFoodspots == True:
