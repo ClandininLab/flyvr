@@ -87,7 +87,6 @@ class TrialThread(Service):
             # added resets tp start pf trial to try to fix foodspot issue and reset time when trial starts
             # reset opto
             self.opto.trial_start_t = self.trial_start_t
-            self.opto.stopLogging()
             self.opto.foodspots = []
             self.opto.closest_food = None
             self.opto.fly_in_food = False
