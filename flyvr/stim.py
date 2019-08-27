@@ -168,12 +168,12 @@ class StimThread:
         elif self.mode == 'loom':
             t = time()
             if fly_angle is not None:
-                self.present_angle = fly_angle + 90  # for offset
-            if self.count_stim < 1:
-                print('in pre-stim stim')
-                self.pause_duration = 10
-            elif self.count_stim >= 1:
-                self.pause_duration = 5
+                self.present_angle = fly_angle - 90  # for offset
+            if self.count_stim <= 1:
+                #print('in pre-stim stim')
+                self.pause_duration = 60  ##This is the initial delay
+            elif self.count_stim > 1:
+                self.pause_duration = 10  ##this is the interstim interval
 
             if self.stim_state['paused']:
                 if (t-self.stim_state['last_update'])>self.pause_duration:
@@ -196,7 +196,7 @@ class StimThread:
                     angular_size[max_size_ind:] = end_size
                     trajectory = RectangleTrajectory(w=list(zip(time_steps, angular_size)),
                                                      h=list(zip(time_steps, angular_size)),
-                                                     x=self.present_angle, y=50, color=0)
+                                                     x=self.present_angle, y=80, color=0)
                     #change x to self.present_angle later
 
                     kwargs = {'name': 'MovingPatch', 'background': 0.5, 'trajectory': trajectory.to_dict()}
@@ -271,7 +271,7 @@ class StimThread:
 
             trajectory = RectangleTrajectory(w=list(zip(time_steps, angular_size)),
                                              h=list(zip(time_steps, angular_size)),
-                                             x=90, y=90, color=0)  #this one is invisible
+                                             x=90, y=90, color=0.5)  #this one is invisible
 
             kwargs = {'name': 'MovingPatch', 'background': 0.5, 'trajectory': trajectory.to_dict()}
             self.stim_state = {'last_update': time(), 'paused': False}

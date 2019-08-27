@@ -178,10 +178,12 @@ class TrialThread(Service):
 
     def get_fly_angle(self):
         fly_angle = None
-        if self.cam is not None:
-            fly_data = self.cam.flyData
-            if fly_data is not None:
-                fly_angle = np.rad2deg(fly_data.angle)
+        if self.cam.fly is not None:
+            #if self.cam.fly is not None:
+            fly_angle = self.cam.fly.angle * 57.296 #to convert rad to degrees
+            # fly_data = self.cam.flyData
+            # if fly_data is not None:
+            #     fly_angle = np.rad2deg(fly_data.angle)
 
         return fly_angle
 
