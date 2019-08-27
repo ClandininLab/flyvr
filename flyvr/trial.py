@@ -181,7 +181,7 @@ class TrialThread(Service):
         if self.cam is not None:
             fly_data = self.cam.flyData
             if fly_data is not None:
-                fly_angle = 180-fly_data.angle
+                fly_angle = np.rad2deg(fly_data.angle)
 
         return fly_angle
 
