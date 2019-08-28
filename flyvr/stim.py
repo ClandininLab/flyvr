@@ -171,7 +171,7 @@ class StimThread:
                 self.present_angle = fly_angle - 90  # for offset
             if self.count_stim <= 1:
                 #print('in pre-stim stim')
-                self.pause_duration = 60  ##This is the initial delay
+                self.pause_duration = 30  ##This is the initial delay
             elif self.count_stim > 1:
                 self.pause_duration = 10  ##this is the interstim interval
 
@@ -180,9 +180,9 @@ class StimThread:
                     print('loom in loop')
                     print('fly angle', fly_angle)
                     print('show angle', self.present_angle)
-                    rv_ratio = 0.010  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
+                    rv_ratio = 0.040  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
                     self.stim_time = 1  # seconds
-                    end_size = 90  # deg
+                    end_size = 60  # deg
                     start_size = 1
                     time_steps = np.arange(0, self.stim_time - 0.001, 0.001)  # time steps of trajectory
                     # calculate angular size at each time step for this rv ratio
@@ -196,7 +196,7 @@ class StimThread:
                     angular_size[max_size_ind:] = end_size
                     trajectory = RectangleTrajectory(w=list(zip(time_steps, angular_size)),
                                                      h=list(zip(time_steps, angular_size)),
-                                                     x=self.present_angle, y=80, color=0)
+                                                     x=self.present_angle, y=81, color=0)
                     #change x to self.present_angle later
 
                     kwargs = {'name': 'MovingPatch', 'background': 0.5, 'trajectory': trajectory.to_dict()}
