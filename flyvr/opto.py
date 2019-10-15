@@ -107,7 +107,7 @@ class OptoThread(Service):
 
         self.time_in_out_change = None
         self.food_boundary_hysteresis = 0.1 #0.01 #time
-        self.food_distance_hysteresis = self.food_rad #distance (must be at least the food radius away)
+        self.food_distance_hysteresis = 0.005 #distance
 
         #parameters for food pulse times
         self.set_off_time = False
@@ -295,7 +295,7 @@ class OptoThread(Service):
 
         #adding criteria that foodspot not be at the same location or very close to another foodspot
         if self.closest_food is not None:
-            if self.closest_food <= self.food_distance_hysteresis: #if food is too close
+            if self.closest_food <= self.food_distance_hysteresis: #if food is too close (could also have it be "or < self.food_radius)"
                 self.shouldCreateFood = False  #added to prevent too many foodspots if don't have a distance requirement
                 return
 
