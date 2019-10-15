@@ -106,19 +106,21 @@ class OptoThread(Service):
 
 
         self.time_in_out_change = None
-        self.food_boundary_hysteresis = 0.1 #0.01
+        self.food_boundary_hysteresis = 0.1 #0.01 #time
+        self.food_distance_hysteresis = self.food_rad #distance (must be at least the food radius away)
 
         #parameters for food pulse times
         self.set_off_time = False
         self.set_on_time = False
         self.min_off_time = 9.0
-        self.max_on_time = 1.0 #100ms?
+        self.max_on_time = 1.0 #1s
         self.off_time_track = 0  #0
         self.on_time_track = 0
         self.on_time_correct = False
         self.off_time_correct = False
         self.current_off_time = 0
         self.current_on_time = 0
+        self.full_light_on = True  #to designate that the light will stay on for full on time even if fly leaves foodspot
 
 
 
@@ -202,9 +204,9 @@ class OptoThread(Service):
 
                 if self.time_in_out_change is None or time() - self.time_in_out_change >= self.food_boundary_hysteresis:
                     if self.fly_in_food:
-                        if self.led_status == 'off':
+                        if self.led_status == 'off': #fly has just entered food or led on time has elapsed
                             self.time_in_out_change = time()
-                            if self.set_off_time == False:
+                            if self.set_off_time == False: #if don't care about off time then turn on
                                 self.on()
                             if self.set_off_time == True: #turn the light on only if off time has passed
                                 if (time() - self.off_time_track) > self.min_off_time:
@@ -214,9 +216,23 @@ class OptoThread(Service):
                                 if (time() - self.on_time_track) > self.max_on_time:
                                     self.off()
                     else:
+                        # if self.led_status == 'on':
+                        #     self.time_in_out_change= time()
+                        #     self.off()
+
                         if self.led_status == 'on':
-                            self.time_in_out_change = time()
-                            self.off()
+                            if self.full_light_on == False: #turn it off regularly
+                                self.time_in_out_change = time()
+                                self.off()
+                            #if condition to keep light on for entire on time is selected
+                            # even if fly has left foodspot then wait until time is up to turn off
+                            if self.full_light_on == True:
+                                if self.set_on_time == True:  # turn the light off if it has been on too long
+                                    if (time() - self.on_time_track) > self.max_on_time:
+                                        #do I need to reset time_in_out_change here?
+                                        self.time_in_out_change = time()
+                                        self.off()
+
 
 
 
@@ -270,16 +286,18 @@ class OptoThread(Service):
             else:
                 self.fly_moving = False
 
-        ### see if number of foodspots is less than max ##
-        if len(self.foodspots) < self.max_foodspots:
-            self.more_food = True
-        else:
-            self.more_food = False
 
-        ##determine quadrant fly is in
-        self.determineQuadrant()
+
+        # ##determine quadrant fly is in
+        # self.determineQuadrant()
 
         ### ARE ALL CONDITIONS MET? ###
+
+        #adding criteria that foodspot not be at the same location or very close to another foodspot
+        if self.closest_food is not None:
+            if self.closest_food <= self.food_distance_hysteresis: #if food is too close
+                self.shouldCreateFood = False  #added to prevent too many foodspots if don't have a distance requirement
+                return
 
         if self.shouldCheckFoodDistance:
             if not self.far_from_food:
@@ -307,8 +325,26 @@ class OptoThread(Service):
                 return
 
         if self.shouldCheckNumberFoodspots:
+            ### see if number of foodspots is less than max ##
+            if len(self.foodspots) < self.max_foodspots:
+                self.more_food = True
+            else:
+                self.more_food = False
             if not self.more_food:
                 self.shouldCreateFood = False
+                return
+
+        if self.set_off_time:  #if should check off time to see if another spot should be made
+            if (time() - self.off_time_track) <= self.min_off_time: #if min time hasn't passed
+                self.shouldCreateFood = False
+                self.off_time_correct = False
+                return
+
+        if self.set_on_time: #if the on time has not elapsed then another foodspot should not be made either
+                # (this is important if there is nothing else except timing selected)
+            if (time() - self.on_time_track) <= self.max_on_time: #if time hasn't passed
+                self.shouldCreateFood = False
+                self.on_time_correct = False
                 return
 
         # ##this may be the wrong place for this, but it should work.
@@ -320,16 +356,11 @@ class OptoThread(Service):
         #         self.foodspots = []
         #         self.logFoodRemoval()
 
-        if self.set_off_time:  #if should check off time to see if another spot should be made
-            if (time() - self.off_time_track) <= self.min_off_time: #if min time hasn't passed
-                self.shouldCreateFood = False
-                self.off_time_correct = False
-                return
-
 
         self.shouldCreateFood = True
 
     def defineFoodSpot(self):
+        print("foodspot defined. closest food = ", self.closest_food)
         self.foodspots.append({'x': self.flyX, 'y': self.flyY})
         self.logFood(self.flyX, self.flyY)
 
@@ -403,7 +434,7 @@ class OptoThread(Service):
                 self.logFile.flush()
 
     def logFood(self, x, y):
-        print("log food called")
+        #print("log food called")
         with self.logLock:
             if self.logFile is not None:
                 self.logFile.write('{}, {}, {}, {}\n'.format('food', time(), x, y))
