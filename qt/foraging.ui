@@ -148,7 +148,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>250</y>
+     <y>270</y>
      <width>541</width>
      <height>217</height>
     </rect>
@@ -641,7 +641,7 @@
      <x>100</x>
      <y>180</y>
      <width>371</width>
-     <height>51</height>
+     <height>66</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_3">
@@ -676,6 +676,13 @@
      <widget class="QCheckBox" name="remove_prev_foodspots_checkbox">
       <property name="text">
        <string>turn on dancing</string>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="1">
+     <widget class="QCheckBox" name="keep_light_on_checkbox">
+      <property name="text">
+       <string>keep light on for on time</string>
       </property>
      </widget>
     </item>

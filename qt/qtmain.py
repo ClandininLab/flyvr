@@ -372,6 +372,8 @@ class MainGui():
                 foragingdict.update({'maximum number foodspots': number_food})
             if self.opto.shouldAllowDancing == True:
                 foragingdict.update({'remove previous foodspots on': 'yes'})
+            if self.opto.full_light_on == True:
+                foragingdict.update({'keep light on for full on time': 'yes'})
 
             foraging_data = self.pretty_json(foragingdict)
 
@@ -1204,6 +1206,7 @@ class ForagingDetails():
         self.ui.max_on_time_checkbox.stateChanged.connect(lambda x: self.maxOnTime())
         self.ui.max_foodspots_checkbox.stateChanged.connect(lambda x: self.countFoodspots())
         self.ui.remove_prev_foodspots_checkbox.stateChanged.connect(lambda x: self.removeFoodspotsforDance())
+        self.ui.keep_light_on_checkbox.stateChanged.connect(lambda x: self.keepLightOn())
 
 
         # Setup sliders
@@ -1330,6 +1333,12 @@ class ForagingDetails():
             self.opto.shouldAllowDancing = True
         else:
             self.opto.shouldAllowDancing = False
+
+    def keepLightOn(self):
+        if self.ui.keep_light_on_checkbox.isChecked():
+            self.opto.full_light_on = True
+        else:
+            self.opto.full_light_on = False
 
 
 
