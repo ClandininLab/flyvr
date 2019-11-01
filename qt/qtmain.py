@@ -345,37 +345,39 @@ class MainGui():
         d = {'user': user, 'age': age, 'timezone': timezone, 'genotype': genotype}
         #add more stuff to metadata
 
-        if self.opto.foraging == True:
-            #add things that always exist and start dictionary
-            food_radius = self.opto.food_rad
-            foragingdict = {'food radius (mm)': food_radius}
-            #check checkboxes
-            if self.opto.shouldCheckFlyIsMoving == True:
-                foragingdict.update({'fly moving required': 'yes'})
-            if self.opto.shouldCheckFoodDistance == True:
-                min_food_distance = self.opto.min_dist_from_food
-                foragingdict.update({'min food distance (m)': min_food_distance})
-            if self.opto.shouldCheckFlyDistanceFromCenter == True:
-                distance_from_center = self.opto.foraging_distance_min
-                foragingdict.update({'distance from center requirement (m)': distance_from_center})
-            if self.opto.shouldCheckTotalPathDistance == True:
-                fly_path_distance = self.opto.path_distance_min
-                foragingdict.update({'fly path distance min (m)': fly_path_distance})
-            if self.opto.set_off_time == True:
-                min_time = self.opto.min_off_time
-                foragingdict.update({'min off time (s)': min_time})
-            if self.opto.set_on_time == True:
-                max_time = self.opto.max_on_time
-                foragingdict.update({'max on time (s)': max_time})
-            if self.opto.shouldCheckNumberFoodspots == True:
-                number_food = self.opto.max_foodspots
-                foragingdict.update({'maximum number foodspots': number_food})
-            if self.opto.shouldAllowDancing == True:
-                foragingdict.update({'remove previous foodspots on': 'yes'})
-            if self.opto.full_light_on == True:
-                foragingdict.update({'keep light on for full on time': 'yes'})
+        if self.opto is not None:
+            if self.opto.foraging:
+                if self.opto.foraging == True:
+                    #add things that always exist and start dictionary
+                    food_radius = self.opto.food_rad
+                    foragingdict = {'food radius (mm)': food_radius}
+                    #check checkboxes
+                    if self.opto.shouldCheckFlyIsMoving == True:
+                        foragingdict.update({'fly moving required': 'yes'})
+                    if self.opto.shouldCheckFoodDistance == True:
+                        min_food_distance = self.opto.min_dist_from_food
+                        foragingdict.update({'min food distance (m)': min_food_distance})
+                    if self.opto.shouldCheckFlyDistanceFromCenter == True:
+                        distance_from_center = self.opto.foraging_distance_min
+                        foragingdict.update({'distance from center requirement (m)': distance_from_center})
+                    if self.opto.shouldCheckTotalPathDistance == True:
+                        fly_path_distance = self.opto.path_distance_min
+                        foragingdict.update({'fly path distance min (m)': fly_path_distance})
+                    if self.opto.set_off_time == True:
+                        min_time = self.opto.min_off_time
+                        foragingdict.update({'min off time (s)': min_time})
+                    if self.opto.set_on_time == True:
+                        max_time = self.opto.max_on_time
+                        foragingdict.update({'max on time (s)': max_time})
+                    if self.opto.shouldCheckNumberFoodspots == True:
+                        number_food = self.opto.max_foodspots
+                        foragingdict.update({'maximum number foodspots': number_food})
+                    if self.opto.shouldAllowDancing == True:
+                        foragingdict.update({'remove previous foodspots on': 'yes'})
+                    if self.opto.full_light_on == True:
+                        foragingdict.update({'keep light on for full on time': 'yes'})
 
-            foraging_data = self.pretty_json(foragingdict)
+                    foraging_data = self.pretty_json(foragingdict)
 
         data = self.pretty_json(d)
 
@@ -390,8 +392,9 @@ class MainGui():
             fname = os.path.join(exp_dir, 'metadata.txt')
             with open(fname, 'w') as f:
                 f.write(data)
-                if self.opto.foraging == True:
-                    f.write(foraging_data)
+                if self.opto is not None:
+                    if self.opto.foraging == True:
+                        f.write(foraging_data)
 
     def thresholdChange(self):
         value = self.ui.thresh_slider.value()
