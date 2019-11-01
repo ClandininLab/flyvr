@@ -226,22 +226,22 @@ class TrialThread(Service):
                 self.prev_state = 'fly detected'
                 self.state = 'fly lost'
                 self.tracker.stopTracking()
-        # # trial time out
-        # elif self.state == 'run':
-        #     if self.trial_timer == True and self.trial_start_t is not None:
-        #         #end trial if time elapsed is greater than set time
-        #         if (time()-self.trial_start_t) >= self.trial_timeout:
-        #             print('Trial is too long-->Starting new trial')
-        #             self._stop_trial()
-        #             self.tracker.start_moving_to_center()
-        #             self.prev_state = 'fly lost'
-        #             self.state = 'moving back to center'
+
         elif self.state == 'run':
             if not self.cam.flyPresent:
                 print('Fly possibly lost...')
                 self.timer_start = time()
                 self.prev_state = 'run'
                 self.state = 'fly lost'
+                #trial timer
+            if self.trial_timer == True and self.trial_start_t is not None:
+                #end trial if time elapsed is greater than set time
+                if (time()-self.trial_start_t) >= self.trial_timeout:
+                    print('Trial is too long-->Starting new trial')
+                    self._stop_trial()
+                    self.tracker.start_moving_to_center()
+                    #self.prev_state = 'fly lost'
+                    self.state = 'moving back to center'
         elif self.state == 'fly lost':
             if self.cam.flyPresent:
                 print('Fly located again.')
