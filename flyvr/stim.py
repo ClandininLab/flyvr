@@ -192,7 +192,7 @@ class StimThread:
 
         elif self.mode == 'avery':
             kwargs = {'name': 'RandomBars', 'period': 90, 'vert_extent': 180, 'width': 10, 'rand_min': 0.0,\
-                      'rand_max': 0.0, 'start_seed': 0, 'update_rate': 0.0, 'background': 0.5}
+                      'rand_max': 0.0, 'start_seed': 0, 'update_rate': 0.0, 'background': 0.5, 'rgb': (0.0, 1.0, 0.0)}
 
         elif self.mode == 'loom':
 

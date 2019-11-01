@@ -32,6 +32,10 @@ class TrialThread(Service):
         self.trial_start_t = None
         self.trial_end_t = None
 
+        #to set timeout for length of trial
+        self.trial_timer = True  #change to true if want it to stop trial after trial_timeout time
+        self.trial_timeout = 1800 #in seconds, 1800 is 30 minutes
+
         self.fly_lost_timeout = fly_lost_timeout
         self.fly_detected_timeout = fly_detected_timeout
 
@@ -208,8 +212,8 @@ class TrialThread(Service):
                 self._start_trial()
                 self.prev_state = 'fly detected'
                 self.state = 'run'
+
                 ## if fly is found make sure the gate is closed and if not, close it
-                ##new part--verify works
                 if self.dispenser is not None and self.dispenser.gate_state == 'open' and self.dispenser.gate_clear:
                   self.dispenser.trigger = 'auto'
                   self.dispenser.send_close_gate_command()
@@ -222,6 +226,16 @@ class TrialThread(Service):
                 self.prev_state = 'fly detected'
                 self.state = 'fly lost'
                 self.tracker.stopTracking()
+        # # trial time out
+        # elif self.state == 'run':
+        #     if self.trial_timer == True and self.trial_start_t is not None:
+        #         #end trial if time elapsed is greater than set time
+        #         if (time()-self.trial_start_t) >= self.trial_timeout:
+        #             print('Trial is too long-->Starting new trial')
+        #             self._stop_trial()
+        #             self.tracker.start_moving_to_center()
+        #             self.prev_state = 'fly lost'
+        #             self.state = 'moving back to center'
         elif self.state == 'run':
             if not self.cam.flyPresent:
                 print('Fly possibly lost...')
