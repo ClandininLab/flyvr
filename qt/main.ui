@@ -987,8 +987,8 @@
    <widget class="QWidget" name="gridLayoutWidget_5">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>100</y>
+      <x>30</x>
+      <y>110</y>
       <width>201</width>
       <height>61</height>
      </rect>
@@ -1050,20 +1050,7 @@
      </item>
     </layout>
    </widget>
-   <widget class="QPushButton" name="minseung_stim_button">
-    <property name="geometry">
-     <rect>
-      <x>90</x>
-      <y>70</y>
-      <width>80</width>
-      <height>21</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Minseung</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="avery_stim_button">
+   <widget class="QPushButton" name="corner_bars_stim_button">
     <property name="geometry">
      <rect>
       <x>170</x>
@@ -1073,7 +1060,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Avery</string>
+     <string>Corner Bars</string>
     </property>
    </widget>
    <widget class="QPushButton" name="loom_stim_button">
@@ -1089,6 +1076,19 @@
      <string>Loom</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="rotating_bars_stim_button">
+    <property name="geometry">
+     <rect>
+      <x>90</x>
+      <y>70</y>
+      <width>80</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Rotating Bars</string>
+    </property>
+   </widget>
    <zorder>cnc_heading_frame_6</zorder>
    <zorder>stim_stop_button</zorder>
    <zorder>stim_start_button</zorder>
@@ -1096,9 +1096,9 @@
    <zorder>stim_within_trial_button</zorder>
    <zorder>multi_stim_within_trial_button</zorder>
    <zorder>gridLayoutWidget_5</zorder>
-   <zorder>minseung_stim_button</zorder>
-   <zorder>avery_stim_button</zorder>
+   <zorder>corner_bars_stim_button</zorder>
    <zorder>loom_stim_button</zorder>
+   <zorder>rotating_bars_stim_button</zorder>
   </widget>
   <widget class="QFrame" name="frame_5">
    <property name="geometry">

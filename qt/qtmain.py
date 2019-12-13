@@ -195,8 +195,10 @@ class MainGui():
         self.ui.stim_per_trial_button.clicked.connect(lambda x: self.stimPerTrial())
         self.ui.stim_within_trial_button.clicked.connect(lambda x: self.stimWithinTrial())
         self.ui.multi_stim_within_trial_button.clicked.connect(lambda x: self.multiStimWithinTrial())
-        self.ui.minseung_stim_button.clicked.connect(lambda x: self.minseungStim())
-        self.ui.avery_stim_button.clicked.connect(lambda x: self.averyStim())
+        #self.ui.minseung_stim_button.clicked.connect(lambda x: self.minseungStim())
+        self.ui.corner_bars_stim_button.clicked.connect(lambda x: self.cornerBars())
+        self.ui.rotating_bars_stim_button.clicked.connect(lambda x: self.rotatingBars())
+        #self.ui.avery_stim_button.clicked.connect(lambda x: self.averyStim())
         self.ui.loom_stim_button.clicked.connect(lambda x: self.loomStim())
         self.ui.stim_per_trial_button.setEnabled(False)
         self.ui.stim_within_trial_button.setEnabled(False)
@@ -316,11 +318,14 @@ class MainGui():
         self.stim.mode = 'multi_stim'
         self.stim.stim_duration = 20.0
 
-    def minseungStim(self):
-        self.stim.mode = 'minseung'
+    #def minseungStim(self):
+    #   self.stim.mode = 'minseung'
 
-    def averyStim(self):
-        self.stim.mode = 'avery'
+    def rotatingBars(self):
+        self.stim.mode = 'rotating_bars'
+
+    def cornerBars(self):
+        self.stim.mode = 'corner_bars'
 
     def loomStim(self):
         self.stim.mode = 'loom'
@@ -372,10 +377,12 @@ class MainGui():
                     if self.opto.shouldCheckNumberFoodspots == True:
                         number_food = self.opto.max_foodspots
                         foragingdict.update({'maximum number foodspots': number_food})
-                    if self.opto.shouldAllowDancing == True:
-                        foragingdict.update({'remove previous foodspots on': 'yes'})
+                    # if self.opto.shouldAllowDancing == True:
+                    #     foragingdict.update({'remove previous foodspots on': 'yes'})
                     if self.opto.full_light_on == True:
                         foragingdict.update({'keep light on for full on time': 'yes'})
+                    if self.opto.time_override == True:
+                        foragingdict.update({'override time limit at 3cm': 'yes'})
 
                     foraging_data = self.pretty_json(foragingdict)
 
@@ -1208,8 +1215,9 @@ class ForagingDetails():
         self.ui.min_off_time_checkbox.stateChanged.connect(lambda x: self.minOffTime())
         self.ui.max_on_time_checkbox.stateChanged.connect(lambda x: self.maxOnTime())
         self.ui.max_foodspots_checkbox.stateChanged.connect(lambda x: self.countFoodspots())
-        self.ui.remove_prev_foodspots_checkbox.stateChanged.connect(lambda x: self.removeFoodspotsforDance())
+        # self.ui.remove_prev_foodspots_checkbox.stateChanged.connect(lambda x: self.removeFoodspotsforDance())
         self.ui.keep_light_on_checkbox.stateChanged.connect(lambda x: self.keepLightOn())
+        self.ui.override_off_time_checkbox.stateChanged.connect(lambda x: self.overrideOffTime())
 
 
         # Setup sliders
@@ -1331,17 +1339,23 @@ class ForagingDetails():
         else:
             self.opto.shouldCheckNumberFoodspots = False
 
-    def removeFoodspotsforDance(self):
-        if self.ui.remove_prev_foodspots_checkbox.isChecked():
-            self.opto.shouldAllowDancing = True
-        else:
-            self.opto.shouldAllowDancing = False
+    # def removeFoodspotsforDance(self):
+    #     if self.ui.remove_prev_foodspots_checkbox.isChecked():
+    #         self.opto.shouldAllowDancing = True
+    #     else:
+    #         self.opto.shouldAllowDancing = False
 
     def keepLightOn(self):
         if self.ui.keep_light_on_checkbox.isChecked():
             self.opto.full_light_on = True
         else:
             self.opto.full_light_on = False
+
+    def overrideOffTime(self):
+        if self.ui.override_off_time_checkbox.isChecked():
+            self.opto.time_override = True
+        else:
+            self.opto.time_override = False
 
 
 

@@ -57,7 +57,7 @@ class OptoThread(Service):
         #self.foragingNextFood_d_min =
 
         self.foodspots = []
-        self.food_rad = 0.005
+        self.food_rad = 0.005  #radius of foodspot
         self.fly_movement_threshold = 0.5e-3
         self.time_of_last_food = None
         self.time_since_last_food = None
@@ -81,6 +81,7 @@ class OptoThread(Service):
         self.fly_moving = False
         self.max_foodspots = 90
         self.more_food = False #if false then reached max foodspots
+        self.time_override = False  ##if true will override time off restriction if the fly is 3cm away from foodspot
 
 
         self.dist_from_center = None
@@ -174,8 +175,8 @@ class OptoThread(Service):
                 # define food spot if all requirements are met
                 self.checkFoodCreation()
 
-                if self.shouldAllowDancing == True:
-                    self.dance()
+                # if self.shouldAllowDancing == True:
+                #     self.dance()
 
                 if self.shouldCreateFood:
                     self.defineFoodSpot()  #this records the foodspot so the led will turn on
@@ -209,8 +210,15 @@ class OptoThread(Service):
                             if self.set_off_time == False: #if don't care about off time then turn on
                                 self.on()
                             if self.set_off_time == True: #turn the light on only if off time has passed
-                                if (time() - self.off_time_track) > self.min_off_time:
-                                    self.on()
+                                if self.time_override == True: #if the override is on then ignore refractory period if fly is 3cm away from food and in foodspot
+                                    if self.distance_since_last_food >=.003 or (time() - self.off_time_track) > self.min_off_time:
+                                        print('time override-fly walked 3cm away and is in food')
+                                        self.on()
+
+                                #this is the regular case
+                                if self.time_override == False:
+                                    if (time() - self.off_time_track) > self.min_off_time:
+                                        self.on()
                         if self.led_status == 'on':
                             if self.set_on_time == True: #turn the light off if it has been on too long
                                 if (time() - self.on_time_track) > self.max_on_time:
@@ -364,13 +372,13 @@ class OptoThread(Service):
         self.foodspots.append({'x': self.flyX, 'y': self.flyY})
         self.logFood(self.flyX, self.flyY)
 
-    def dance(self):
-        if self.closest_food is not None and self.closest_food > self.min_distance_removes_food:
-            self.foodspots = []  #removes all previous foodspots if it gets far away from one
-            self.logFoodRemoval()
-        if self.closest_food is not None and self.closest_food <= self.min_distance_removes_food:
-            #prevent more food from being created
-            self.shouldCreateFood = False
+    # def dance(self):
+    #     if self.closest_food is not None and self.closest_food > self.min_distance_removes_food:
+    #         self.foodspots = []  #removes all previous foodspots if it gets far away from one
+    #         self.logFoodRemoval()
+    #     if self.closest_food is not None and self.closest_food <= self.min_distance_removes_food:
+    #         #prevent more food from being created
+    #         self.shouldCreateFood = False
 
     def determineQuadrant(self):
         if self.flyX > self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:

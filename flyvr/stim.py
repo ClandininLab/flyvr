@@ -11,7 +11,6 @@ from math import pi
 
 from flystim.screen import Screen
 from flyrpc.multicall import MyMultiCall
-from flystim.trajectory import RectangleTrajectory
 
 from time import sleep
 
@@ -63,10 +62,14 @@ class StimThread:
     def __init__(self, angle_change_thresh=3):
         screens = [get_bigrig_screen(dir) for dir in ['n', 'e', 's', 'w', 'gui']]
         self.manager = launch_stim_server(screens)
+
         self.manager.hide_corner_square()
 
         self.pause_duration = None
         self.stim_duration = None
+
+        # set idle background between trials
+        self.manager.set_idle_background(0.0)
 
         self.mode = None
         self.stim_loaded = False
@@ -155,9 +158,11 @@ class StimThread:
                 self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
 
                 self.stim_state['last_update'] = t
-        elif self.mode == 'minseung':
+        #elif self.mode == 'minseung':
             pass
-        elif self.mode == 'avery':
+        elif self.mode == 'rotating_bars':
+            pass
+        elif self.mode == 'corner_bars':
             pass
         else:
             raise Exception('Invalid MrStim mode.')
@@ -176,9 +181,10 @@ class StimThread:
             return
 
         if self.mode == 'single_stim':
-            #kwargs = self.get_random_stim()
-            trajectory = RectangleTrajectory(x=0, y=90, angle=0, w=3, h=180)
-            kwargs = {'name': 'MovingPatch', 'trajectory': trajectory.to_dict()}
+            kwargs = self.get_random_stim()
+            #TODO: fix this
+            # trajectory = RectangleTrajectory(x=0, y=90, angle=0, w=3, h=180)
+            # kwargs = {'name': 'MovingPatch', 'trajectory': trajectory.to_dict()}
             self.stim_state = {}
 
         elif self.mode == 'multi_stim':
@@ -190,49 +196,63 @@ class StimThread:
             kwargs = {'name': 'SineGrating', 'angle': 0, 'period': 20, 'rate': rate, 'color': 1.0, 'background': 0.0}
             self.stim_state = {'last_update': time(), 'paused': False}
 
-        elif self.mode == 'avery':
-            kwargs = {'name': 'RandomBars', 'period': 90, 'vert_extent': 180, 'width': 10, 'rand_min': 0.0,\
-                      'rand_max': 0.0, 'start_seed': 0, 'update_rate': 0.0, 'background': 0.5, 'rgb': (0.0, 1.0, 0.0)}
+        elif self.mode == 'rotating_bars':
+            kwargs = {'name': 'RotatingGrating', 'rate': 30, 'period': 20, 'mean': 0.5, 'contrast': 1.0, \
+                      'profile': 'square', 'color': [0, 0, 1, 1]}
+
+            # rate = 10, period = 20, mean = 0.5, contrast = 1.0, offset = 0.0, profile = 'square',
+            # color = [1, 1, 1, 1], cylinder_radius = 1, cylinder_height = 10, theta = 0, phi = 0, angle = 0
+
+        elif self.mode == 'corner_bars':
+
+             distribution_data = {'name': 'Binary',
+                                  'args':[],
+                                  'kwargs':{'rand_min':0.0, 'rand_max':0.0}}
+
+             kwargs = {'name': 'RandomBars', 'period': 90, 'vert_extent': 170, 'width': 10, \
+                       'distribution_data':distribution_data, 'start_seed': 0, 'update_rate': 0.0, \
+                       'background': 1.0, 'color': [0.0, 0.0, 1.0, 1.0], 'theta_offset': 46}
 
         elif self.mode == 'loom':
+            pass #TODO: fix this
 
-            rv_ratio = 0.040  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
-            stim_time = 1  # seconds
-
-            end_size = 60  # deg
-            start_size = 1
-
-            time_steps = np.arange(0, stim_time - 0.001, 0.001)  # time steps of trajectory
-            # calculate angular size at each time step for this rv ratio
-            angular_size = 2 * np.rad2deg(np.arctan(rv_ratio * (1 / (stim_time - time_steps))))
-
-            ## shift curve vertically so it starts at start_size
-            min_size = angular_size[0]
-            size_adjust = min_size - start_size
-            angular_size = angular_size - size_adjust
-            ## Cap the curve at end_size and have it just hang there
-
-            max_size_ind = np.where(angular_size > end_size)[0][0]
-            angular_size[max_size_ind:] = end_size
-
-            def main():
-
-                num_trials = 1
-
-                manager = launch_stim_server(Screen(fullscreen=False))
-
-                trajectory = RectangleTrajectory(w=list(zip(time_steps, angular_size)),
-
-                                                 h=list(zip(time_steps, angular_size)),
-
-                                                 x=90,
-
-                                                 y=90,
-
-                                                 color=0)
-
-                for _ in range(num_trials):
-                    manager.load_stim(name='MovingPatch', trajectory=trajectory.to_dict(), background=0.5)
+            # rv_ratio = 0.040  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
+            # stim_time = 1  # seconds
+            #
+            # end_size = 60  # deg
+            # start_size = 1
+            #
+            # time_steps = np.arange(0, stim_time - 0.001, 0.001)  # time steps of trajectory
+            # # calculate angular size at each time step for this rv ratio
+            # angular_size = 2 * np.rad2deg(np.arctan(rv_ratio * (1 / (stim_time - time_steps))))
+            #
+            # ## shift curve vertically so it starts at start_size
+            # min_size = angular_size[0]
+            # size_adjust = min_size - start_size
+            # angular_size = angular_size - size_adjust
+            # ## Cap the curve at end_size and have it just hang there
+            #
+            # max_size_ind = np.where(angular_size > end_size)[0][0]
+            # angular_size[max_size_ind:] = end_size
+            #
+            # def main():
+            #
+            #     num_trials = 1
+            #
+            #     manager = launch_stim_server(Screen(fullscreen=False))
+            #
+            #     trajectory = RectangleTrajectory(w=list(zip(time_steps, angular_size)),
+            #
+            #                                      h=list(zip(time_steps, angular_size)),
+            #
+            #                                      x=90,
+            #
+            #                                      y=90,
+            #
+            #                                      color=0)
+            #
+            #     for _ in range(num_trials):
+            #         manager.load_stim(name='MovingPatch', trajectory=trajectory.to_dict(), background=0.5)
 
             # trajectory = RectangleTrajectory(h=[(0,10),(.5,50),(1,10),(1.5,50),(2,10),(2.5,50),(3,10),(3.5,50)],
             #                          w=[(0,10),(.5,50),(1,10),(1.5,50),(2,10),(2.5,50),(3,10),(3.5,50)],
