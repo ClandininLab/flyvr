@@ -210,15 +210,8 @@ class OptoThread(Service):
                             if self.set_off_time == False: #if don't care about off time then turn on
                                 self.on()
                             if self.set_off_time == True: #turn the light on only if off time has passed
-                                if self.time_override == True: #if the override is on then ignore refractory period if fly is 3cm away from food and in foodspot
-                                    if self.distance_since_last_food >=.003 or (time() - self.off_time_track) > self.min_off_time:
-                                        print('time override-fly walked 3cm away and is in food')
-                                        self.on()
-
-                                #this is the regular case
-                                if self.time_override == False:
-                                    if (time() - self.off_time_track) > self.min_off_time:
-                                        self.on()
+                                if (time() - self.off_time_track) > self.min_off_time:
+                                    self.on()
                         if self.led_status == 'on':
                             if self.set_on_time == True: #turn the light off if it has been on too long
                                 if (time() - self.on_time_track) > self.max_on_time:
@@ -295,10 +288,6 @@ class OptoThread(Service):
                 self.fly_moving = False
 
 
-
-        # ##determine quadrant fly is in
-        # self.determineQuadrant()
-
         ### ARE ALL CONDITIONS MET? ###
 
         #adding criteria that foodspot not be at the same location or very close to another foodspot
@@ -342,10 +331,16 @@ class OptoThread(Service):
                 self.shouldCreateFood = False
                 return
 
-        if self.set_off_time:  #if should check off time to see if another spot should be made
+        if self.set_off_time and not self.time_override:  #if should check off time to see if another spot should be made
             if (time() - self.off_time_track) <= self.min_off_time: #if min time hasn't passed
                 self.shouldCreateFood = False
                 self.off_time_correct = False
+                return
+
+        if self.set_off_time and self.time_override: #if both set off time and time override are selected
+            if self.distance_since_last_food <= .003: #if it is close to food then don't turn on food, otherwise do
+                print("too close to food-> no override", self.closest_food)
+                self.shouldCreateFood = False
                 return
 
         if self.set_on_time: #if the on time has not elapsed then another foodspot should not be made either
@@ -355,14 +350,7 @@ class OptoThread(Service):
                 self.on_time_correct = False
                 return
 
-        # ##this may be the wrong place for this, but it should work.
-        #       ##each time check foodspots happens then there shouldn't be any and if all reqs are met
-        #       ##for new food then it will create new food
-        #       ##does break a lot of other things if clean out foodspots. maybe check if the new spot is already in foodspots?
-        # if self.shouldPreventFoodRevisit:
-        #     if len(self.foodspots) > 0:
-        #         self.foodspots = []
-        #         self.logFoodRemoval()
+
 
 
         self.shouldCreateFood = True
