@@ -189,18 +189,11 @@ class OptoThread(Service):
                         self.time_of_last_food = time()
                         self.distance_since_last_food = 0 #reset distance when get to food
                         self.fly_in_food = True
+                        #print("fly in foodspot food")
                         continue
                     else:
                         self.fly_in_food = False
 
-                # if self.fly_in_food:
-                #     if self.led_status == 'off':
-                #         self.time_in_out_change = time()
-                #         self.on()
-                # else:
-                #     if self.led_status == 'on':
-                #         self.time_in_out_change = time()
-                #         self.off()
 
 
                 if self.time_in_out_change is None or time() - self.time_in_out_change >= self.food_boundary_hysteresis:
@@ -233,7 +226,11 @@ class OptoThread(Service):
                                         #do I need to reset time_in_out_change here?
                                         self.time_in_out_change = time()
                                         self.off()
-
+# def determineQuadrant(self):
+#         if self.flyX > self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
+#             self.flyInQuadrant1 = True
+#         if self.flyX > self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
+#             sel
 
 
 
@@ -330,7 +327,11 @@ class OptoThread(Service):
             if not self.more_food:
                 self.shouldCreateFood = False
                 return
-
+    def determineQuadrant(self):
+        if self.flyX > self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
+            self.flyInQuadrant1 = True
+        if self.flyX > self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
+            sel
         if self.set_off_time and not self.time_override:  #if should check off time to see if another spot should be made
             if (time() - self.off_time_track) <= self.min_off_time: #if min time hasn't passed
                 self.shouldCreateFood = False
