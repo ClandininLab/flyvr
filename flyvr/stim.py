@@ -74,6 +74,7 @@ class StimThread:
         self.mode = None
         self.stim_loaded = False
         self.stim_state = {}
+        self.count_stim = 0
 
         self.closed_loop_pos = False
         self.closed_loop_angle = False
@@ -83,24 +84,6 @@ class StimThread:
 
     def get_random_direction(self):
         return choice([-400, -200, -100, -20, 20, 100, 200, 400])
-
-    def get_random_stim(self):
-        stim_type = choice(['SineGrating', 'SineGrating', 'Dark', 'Bright', 'Grey', 'RandomCheckerboard'])
-        if stim_type is 'SineGrating':
-            angle = choice([0, 90])
-            kwargs = {'name': 'SineGrating', 'angle': angle, 'period': 20, 'rate': 0, 'color': 1.0,
-                      'background': 0.0}
-        elif stim_type is 'Grey':
-            kwargs = {'name': 'ConstantBackground', 'background': 0.5}
-        elif stim_type is 'Dark':
-            kwargs = {'name': 'ConstantBackground', 'background': 0.0}
-        elif stim_type is 'Bright':
-            kwargs = {'name': 'ConstantBackground', 'background': 1.0}
-        elif stim_type is 'RandomCheckerboard':
-            kwargs = {'name': 'RandomGrid', 'update_rate': 0}
-        else:
-            raise Exception('Invalid stimulus type.')
-        return kwargs
 
     def updateStim(self, trial_dir, fly_pos_x, fly_pos_y, fly_angle):
         if self.manager is None:
@@ -134,10 +117,10 @@ class StimThread:
             if self.stim_state['paused']:
                 if (t-self.stim_state['last_update']) > self.pause_duration:
                     rate = self.get_random_direction()
-                    kwargs = {'rate': rate}
-                    self.manager.update_stim(**kwargs)
+                    self.kwargs = {'rate': rate}
+                    self.manager.update_stim(**self.kwargs)
                     self.manager.start_stim()
-                    self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
+                    self.log_to_dir('UpdateStim: {}'.format(pretty_json(self.kwargs)), trial_dir)
 
                     self.stim_state['last_update'] = t
                     self.stim_state['paused'] = False
@@ -146,26 +129,40 @@ class StimThread:
                 self.log_to_dir('PauseStim', trial_dir)
                 self.stim_state['last_update'] = t
                 self.stim_state['paused'] = True
-        elif self.mode == 'single_stim':
-            pass
-        elif self.mode == 'multi_stim':
-            t = time()
-            if (t - self.stim_state['last_update']) > self.stim_duration:
-                kwargs = self.get_random_stim()
-                #self.manager.update_stim(**kwargs)
-                self.manager.load_stim(**kwargs)
-                self.manager.start_stim()
-                self.log_to_dir('UpdateStim: {}'.format(pretty_json(kwargs)), trial_dir)
 
+        elif self.mode == 'loom':
+            t = time()
+            if fly_angle is not None:
+                self.present_angle = fly_angle - 90  # for offset
+            if self.count_stim <= 1:
+                #print('in pre-stim stim')
+                self.pause_duration = 30  ##This is the initial delay
+            elif self.count_stim > 1:
+                self.pause_duration = 10  ##this is the interstim interval
+
+            if self.stim_state['paused']:
+                if (t-self.stim_state['last_update'])>self.pause_duration:
+                    print('loom in loop')
+                    print('fly angle', fly_angle)
+                    print('show angle', self.present_angle)
+
+                    self.kwargs['phi'] = 80
+                    self.kwargs['theta'] = self.present_angle
+
+                    self.manager.load_stim(**self.kwargs)
+                    self.manager.start_stim()
+                    self.count_stim = self.count_stim + 1
+                    self.log_to_dir('UpdateStim: {}'.format(pretty_json(self.kwargs)), trial_dir)
+                    self.stim_state['last_update'] = t
+                    self.stim_state['paused'] = False
+            elif (t - self.stim_state['last_update']) > self.stim_time:
+                self.manager.stop_stim()
+                self.log_to_dir('PauseStim', trial_dir)
                 self.stim_state['last_update'] = t
-        #elif self.mode == 'minseung':
-            pass
-        elif self.mode == 'rotating_bars':
-            pass
-        elif self.mode == 'corner_bars':
-            pass
+                self.stim_state['paused'] = True
+
         else:
-            raise Exception('Invalid MrStim mode.')
+            raise Exception('Invalid Stim mode.')
 
     def stopStim(self, trial_dir):
         if self.manager is None:
@@ -180,28 +177,14 @@ class StimThread:
         if self.manager is None:
             return
 
-        if self.mode == 'single_stim':
-            kwargs = self.get_random_stim()
-            #TODO: fix this
-            # trajectory = RectangleTrajectory(x=0, y=90, angle=0, w=3, h=180)
-            # kwargs = {'name': 'MovingPatch', 'trajectory': trajectory.to_dict()}
-            self.stim_state = {}
-
-        elif self.mode == 'multi_stim':
-            kwargs = self.get_random_stim()
-            self.stim_state = {'last_update': time()}
-
-        elif self.mode == 'multi_rotation':
+        if self.mode == 'multi_rotation':
             rate = self.get_random_direction()
-            kwargs = {'name': 'SineGrating', 'angle': 0, 'period': 20, 'rate': rate, 'color': 1.0, 'background': 0.0}
+            self.kwargs = {'name': 'SineGrating', 'angle': 0, 'period': 20, 'rate': rate, 'color': 1.0, 'background': 0.0}
             self.stim_state = {'last_update': time(), 'paused': False}
 
         elif self.mode == 'rotating_bars':
-            kwargs = {'name': 'RotatingGrating', 'rate': 30, 'period': 20, 'mean': 0.5, 'contrast': 1.0, \
+            self.kwargs = {'name': 'RotatingGrating', 'rate': 30, 'period': 20, 'mean': 0.5, 'contrast': 1.0, \
                       'profile': 'square', 'color': [0, 0, 1, 1]}
-
-            # rate = 10, period = 20, mean = 0.5, contrast = 1.0, offset = 0.0, profile = 'square',
-            # color = [1, 1, 1, 1], cylinder_radius = 1, cylinder_height = 10, theta = 0, phi = 0, angle = 0
 
         elif self.mode == 'corner_bars':
 
@@ -209,12 +192,13 @@ class StimThread:
                                   'args':[],
                                   'kwargs':{'rand_min':0.0, 'rand_max':0.0}}
 
-             kwargs = {'name': 'RandomBars', 'period': 90, 'vert_extent': 170, 'width': 10, \
+             self.kwargs = {'name': 'RandomBars', 'period': 90, 'vert_extent': 170, 'width': 10, \
                        'distribution_data':distribution_data, 'start_seed': 0, 'update_rate': 0.0, \
                        'background': 1.0, 'color': [0.0, 0.0, 1.0, 1.0], 'theta_offset': 46}
 
         elif self.mode == 'loom':
-            stim_time = 4
+            stim_time = 5
+            interval_time = 5
             start_size = 1
             end_size = 60
             rv_ratio = 5 / 1e3  # msec -> sec
@@ -222,18 +206,20 @@ class StimThread:
 
             r_traj = Trajectory(list(zip(time_steps, angular_size)), kind='previous').to_dict()
 
-            kwargs = {'name': 'MovingSpot', 'radius':r_traj, 'phi':0, 'theta':0, 'color':1, 'sphere_radius':1.0}
+            self.kwargs = {'name': 'MovingSpot', 'radius':r_traj, 'phi':0, 'theta':0, 'color':1, 'sphere_radius':1.0}
 
         else:
             raise Exception('Invalid Stim mode.')
 
         print('Moving to next trial stimuli.')
 
-        self.manager.load_stim(**kwargs)
-        self.manager.start_stim()
-        self.stim_loaded = True
 
-        self.log_to_dir('NewStim: {}'.format(pretty_json(kwargs)), trial_dir)
+        self.manager.load_stim(**self.kwargs)
+        self.stim_loaded = True
+        self.manager.start_stim()
+        self.log_to_dir('NewStim: {}'.format(pretty_json(self.kwargs)), trial_dir)
+
+
 
     def log_to_dir(self, text, dir):
         if dir is None:
