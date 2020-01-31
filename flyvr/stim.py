@@ -214,54 +214,15 @@ class StimThread:
                        'background': 1.0, 'color': [0.0, 0.0, 1.0, 1.0], 'theta_offset': 46}
 
         elif self.mode == 'loom':
-            pass #TODO: fix this
+            stim_time = 4
+            start_size = 1
+            end_size = 60
+            rv_ratio = 5 / 1e3  # msec -> sec
+            time_steps, angular_size = getLoomTrajectory(rv_ratio, stim_time, start_size, end_size)
 
-            # rv_ratio = 0.040  # seconds (try these values r/v values of 10, 40, 70, 100 and 140 ms)
-            # stim_time = 1  # seconds
-            #
-            # end_size = 60  # deg
-            # start_size = 1
-            #
-            # time_steps = np.arange(0, stim_time - 0.001, 0.001)  # time steps of trajectory
-            # # calculate angular size at each time step for this rv ratio
-            # angular_size = 2 * np.rad2deg(np.arctan(rv_ratio * (1 / (stim_time - time_steps))))
-            #
-            # ## shift curve vertically so it starts at start_size
-            # min_size = angular_size[0]
-            # size_adjust = min_size - start_size
-            # angular_size = angular_size - size_adjust
-            # ## Cap the curve at end_size and have it just hang there
-            #
-            # max_size_ind = np.where(angular_size > end_size)[0][0]
-            # angular_size[max_size_ind:] = end_size
-            #
-            # def main():
-            #
-            #     num_trials = 1
-            #
-            #     manager = launch_stim_server(Screen(fullscreen=False))
-            #
-            #     trajectory = RectangleTrajectory(w=list(zip(time_steps, angular_size)),
-            #
-            #                                      h=list(zip(time_steps, angular_size)),
-            #
-            #                                      x=90,
-            #
-            #                                      y=90,
-            #
-            #                                      color=0)
-            #
-            #     for _ in range(num_trials):
-            #         manager.load_stim(name='MovingPatch', trajectory=trajectory.to_dict(), background=0.5)
+            r_traj = Trajectory(list(zip(time_steps, angular_size)), kind='previous').to_dict()
 
-            # trajectory = RectangleTrajectory(h=[(0,10),(.5,50),(1,10),(1.5,50),(2,10),(2.5,50),(3,10),(3.5,50)],
-            #                          w=[(0,10),(.5,50),(1,10),(1.5,50),(2,10),(2.5,50),(3,10),(3.5,50)],
-            #                          x=[(0,0),(.5,0),(1,90),(1.5,90),(2,180),(2.5,180),(3,270),(3.5,270)],
-            #                          y=[(0,45),(.5,45),(1,45),(1.5,45),(2,45),(2.5,45),(3,45),(3.5,45)],
-            #                          color=0
-            #                         )
-            # kwargs = {'name': 'MovingPatch', 'background': 0.5, 'trajectory': trajectory}
-
+            kwargs = {'name': 'MovingSpot', 'radius':r_traj, 'phi':0, 'theta':0, 'color':1, 'sphere_radius':1.0}
 
         else:
             raise Exception('Invalid Stim mode.')
@@ -289,3 +250,21 @@ class StimThread:
         self.stimuli_file.close()
 
         print('stimuli logged.')
+
+    def getLoomTrajectory(rv_ratio, stim_time, start_size, end_size):
+        # rv_ratio in sec
+        time_steps = np.arange(0, stim_time-0.001, 0.001)  # time steps of trajectory
+        # calculate angular size at each time step for this rv ratio
+        angular_size = 2 * np.rad2deg(np.arctan(rv_ratio * (1 / (stim_time - time_steps))))
+
+        # shift curve vertically so it starts at start_size
+        min_size = angular_size[0]
+        size_adjust = min_size - start_size
+        angular_size = angular_size - size_adjust
+        # Cap the curve at end_size and have it just hang there
+        max_size_ind = np.where(angular_size > end_size)[0][0]
+        angular_size[max_size_ind:] = end_size
+        # divide by  2 to get spot radius
+        angular_size = angular_size / 2
+
+        return time_steps, angular_size
