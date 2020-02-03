@@ -11,6 +11,7 @@ from math import pi
 
 from flystim.screen import Screen
 from flyrpc.multicall import MyMultiCall
+from flystim.trajectory import Trajectory
 
 from time import sleep
 
@@ -74,6 +75,9 @@ class StimThread:
         self.mode = None
         self.stim_loaded = False
         self.stim_state = {}
+        self.stim_state['paused'] = True
+        t = time()
+        self.stim_state['last_update'] = t
         self.count_stim = 0
 
         self.closed_loop_pos = False
@@ -81,6 +85,7 @@ class StimThread:
 
         self.angle_change_thresh = angle_change_thresh
         self.last_angle = 0
+        self.present_angle = 0
 
     def get_random_direction(self):
         return choice([-400, -200, -100, -20, 20, 100, 200, 400])
@@ -129,16 +134,18 @@ class StimThread:
                 self.log_to_dir('PauseStim', trial_dir)
                 self.stim_state['last_update'] = t
                 self.stim_state['paused'] = True
+        elif self.mode == 'corner_bars':
+            pass
 
         elif self.mode == 'loom':
             t = time()
             if fly_angle is not None:
-                self.present_angle = fly_angle - 90  # for offset
+                self.present_angle = fly_angle - 90.0  # for offset
             if self.count_stim <= 1:
                 #print('in pre-stim stim')
-                self.pause_duration = 30  ##This is the initial delay
+                self.pause_duration = 1  # This is the initial delay
             elif self.count_stim > 1:
-                self.pause_duration = 10  ##this is the interstim interval
+                self.pause_duration = 4  # this is the interstim interval
 
             if self.stim_state['paused']:
                 if (t-self.stim_state['last_update'])>self.pause_duration:
@@ -146,9 +153,9 @@ class StimThread:
                     print('fly angle', fly_angle)
                     print('show angle', self.present_angle)
 
-                    self.kwargs['phi'] = 80
                     self.kwargs['theta'] = self.present_angle
 
+                    self.manager.load_stim(**self.background_kwargs)
                     self.manager.load_stim(**self.kwargs)
                     self.manager.start_stim()
                     self.count_stim = self.count_stim + 1
@@ -174,6 +181,7 @@ class StimThread:
         self.log_to_dir('StopStim', trial_dir)
 
     def nextTrial(self, trial_dir): #was nextStim
+        print('Mode = {}'.format(self.mode))
         if self.manager is None:
             return
 
@@ -197,16 +205,19 @@ class StimThread:
                        'background': 1.0, 'color': [0.0, 0.0, 1.0, 1.0], 'theta_offset': 46}
 
         elif self.mode == 'loom':
-            stim_time = 5
-            interval_time = 5
-            start_size = 1
-            end_size = 60
-            rv_ratio = 5 / 1e3  # msec -> sec
-            time_steps, angular_size = getLoomTrajectory(rv_ratio, stim_time, start_size, end_size)
+            self.manager.set_idle_background(0.5)
+            self.stim_time = 3
+            start_size = 2 # radius, degrees
+            end_size = 30
+            rv_ratio = 20 / 1e3  # msec -> sec
+            time_steps, angular_size = getLoomTrajectory(rv_ratio, self.stim_time, start_size, end_size)
 
             r_traj = Trajectory(list(zip(time_steps, angular_size)), kind='previous').to_dict()
 
-            self.kwargs = {'name': 'MovingSpot', 'radius':r_traj, 'phi':0, 'theta':0, 'color':1, 'sphere_radius':1.0}
+            self.background_kwargs = {'name':'ConstantBackground', 'color':[0.5, 0.5, 0.5, 1.0], 'side_length':100}
+            self.manager.load_stim(**self.background_kwargs)
+
+            self.kwargs = {'name':'MovingSpot', 'radius':r_traj, 'phi':-30.0, 'theta':0.0, 'color':0.0, 'hold':True}
 
         else:
             raise Exception('Invalid Stim mode.')
@@ -237,20 +248,22 @@ class StimThread:
 
         print('stimuli logged.')
 
-    def getLoomTrajectory(rv_ratio, stim_time, start_size, end_size):
-        # rv_ratio in sec
-        time_steps = np.arange(0, stim_time-0.001, 0.001)  # time steps of trajectory
-        # calculate angular size at each time step for this rv ratio
-        angular_size = 2 * np.rad2deg(np.arctan(rv_ratio * (1 / (stim_time - time_steps))))
+def getLoomTrajectory(rv_ratio, stim_time, start_size, end_size):
+    # rv_ratio in sec
+    time_steps = np.arange(0, stim_time-0.001, 0.001)  # time steps of trajectory
+    # calculate angular size at each time step for this rv ratio
+    angular_size = 2 * np.rad2deg(np.arctan(rv_ratio * (1 / (stim_time - time_steps))))
 
-        # shift curve vertically so it starts at start_size
-        min_size = angular_size[0]
-        size_adjust = min_size - start_size
-        angular_size = angular_size - size_adjust
-        # Cap the curve at end_size and have it just hang there
-        max_size_ind = np.where(angular_size > end_size)[0][0]
+    # shift curve vertically so it starts at start_size
+    min_size = angular_size[0]
+    size_adjust = min_size - start_size
+    angular_size = angular_size - size_adjust
+    # Cap the curve at end_size and have it just hang there
+    temp_inds = np.where(angular_size > end_size)
+    if len(temp_inds[0]) > 0:
+        max_size_ind = temp_inds[0][0]
         angular_size[max_size_ind:] = end_size
-        # divide by  2 to get spot radius
-        angular_size = angular_size / 2
+    # divide by  2 to get spot radius
+    angular_size = angular_size / 2
 
-        return time_steps, angular_size
+    return time_steps, angular_size
