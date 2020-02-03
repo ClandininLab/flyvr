@@ -414,14 +414,7 @@ class OptoThread(Service):
         with self.logLock:
             return self.logState, self.logFile
 
-            # # log status
-            # ##added this to try to get to save opto AS
-            # logState, logFile = self.getLogState()
-            # if logState:
-            #     logStr = (str(time()) + ',' +
-            #               str(status.posX) + ',' +
-            #               str(status.posY) + '\n')
-            #     logFile.write(logStr)
+
 
     def logLED(self, led_status):
         with self.logLock:

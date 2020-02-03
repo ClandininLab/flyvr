@@ -323,6 +323,7 @@ class MainGui():
 
     def rotatingBars(self):
         self.stim.mode = 'rotating_bars'
+        self.stim.mode = 'rotating_bars'
 
     def cornerBars(self):
         self.stim.mode = 'corner_bars'
