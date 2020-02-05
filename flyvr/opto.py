@@ -226,11 +226,11 @@ class OptoThread(Service):
                                         #do I need to reset time_in_out_change here?
                                         self.time_in_out_change = time()
                                         self.off()
-# def determineQuadrant(self):
-#         if self.flyX > self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
-#             self.flyInQuadrant1 = True
-#         if self.flyX > self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
-#             sel
+    # def determineQuadrant(self):
+    #         if self.flyX > self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
+    #             self.flyInQuadrant1 = True
+    #         if self.flyX > self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
+    #             sel
 
 
 
@@ -369,15 +369,15 @@ class OptoThread(Service):
     #         #prevent more food from being created
     #         self.shouldCreateFood = False
 
-    def determineQuadrant(self):
-        if self.flyX > self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
-            self.flyInQuadrant1 = True
-        if self.flyX > self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
-            self.flyInQuadrant2 = True
-        if self.flyX < self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
-            self.flyInQuadrant3 = True
-        if self.flyX < self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
-            self.flyInQuadrant4 = True
+    # def determineQuadrant(self):
+    #     if self.flyX > self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
+    #         self.flyInQuadrant1 = True
+    #     if self.flyX > self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
+    #         self.flyInQuadrant2 = True
+    #     if self.flyX < self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
+    #         self.flyInQuadrant3 = True
+    #     if self.flyX < self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
+    #         self.flyInQuadrant4 = True
 
 
 
