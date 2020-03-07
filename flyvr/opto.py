@@ -202,17 +202,9 @@ class OptoThread(Service):
                             self.time_in_out_change = time()
                             if self.set_off_time == False: #if don't care about off time then turn on
                                 self.on()
-                            #3.6.20 potential, but unlikely fix
-                            # the regular case
-                            #if self.time_override == False: # and indent next section.
                             if self.set_off_time == True: #turn the light on only if off time has passed
                                 if (time() - self.off_time_track) > self.min_off_time:
                                     self.on()
-                            #3.6.20 more potential, but unlikely fix
-                            #if self.time_override == True: #if override is on ignore refractory period if fly is 3cm away from food
-                            #   if self.distance_since_last_food >= .003 or (time() - self.off_time_track) > self.min_off_time:
-                            #       print('time override-fly walked 3cm away and is in food')_
-                            #       self.on()
                         if self.led_status == 'on':
                             if self.set_on_time == True: #turn the light off if it has been on too long
                                 if (time() - self.on_time_track) > self.max_on_time:
@@ -234,11 +226,7 @@ class OptoThread(Service):
                                         #do I need to reset time_in_out_change here?
                                         self.time_in_out_change = time()
                                         self.off()
-    # def determineQuadrant(self):
-    #         if self.flyX > self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
-    #             self.flyInQuadrant1 = True
-    #         if self.flyX > self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
-    #             sel
+
 
 
 
