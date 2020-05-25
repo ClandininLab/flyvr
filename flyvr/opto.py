@@ -67,7 +67,7 @@ class OptoThread(Service):
         self.led_status = 'off'
         self.fly_in_food = False
         self.far_from_food = False
-        self.min_dist_from_food = 0.2 #in m
+        self.min_dist_from_food = 0.05 #in m
         self.distance_since_last_food = 0
         self.list_prev_y = [0]
         self.list_prev_x = [0]
@@ -103,6 +103,7 @@ class OptoThread(Service):
         self.shouldCheckTotalPathDistance = False
         self.shouldCheckNumberFoodspots = False
         self.shouldAllowDancing = False
+        self.override_allowed = False #changes true when fly is 3cm from foodspot
 
 
 
@@ -202,18 +203,23 @@ class OptoThread(Service):
                             self.time_in_out_change = time()
                             if self.set_off_time == False: #if don't care about off time then turn on
                                 self.on()
-                            if self.set_off_time == True: #turn the light on only if off time has passed
+                            # if self.set_off_time == True: #turn the light on only if off time has passed
+                            #     if (time() - self.off_time_track) > self.min_off_time:
+                            #         self.on()
+                            if self.set_off_time == True and self.override_allowed == False: #turn the light on only if off time has passed
+                                #note: override_allowed should stay false if override checkbox is unchecked
                                 if (time() - self.off_time_track) > self.min_off_time:
                                     self.on()
+                            #if time override is true then allow foodspot to turn on even if time has not elapsed (check to make sure this doesn't always overrride distance)
+                            if self.set_off_time == True and self.override_allowed == True: #turn the light on
+                                self.on()
+                                print('on because override allowed')
                         if self.led_status == 'on':
                             if self.set_on_time == True: #turn the light off if it has been on too long
                                 if (time() - self.on_time_track) > self.max_on_time:
                                     self.off()
-                    else:
-                        # if self.led_status == 'on':
-                        #     self.time_in_out_change= time()
-                        #     self.off()
 
+                    else:
                         if self.led_status == 'on':
                             if self.full_light_on == False: #turn it off regularly
                                 self.time_in_out_change = time()
@@ -324,6 +330,14 @@ class OptoThread(Service):
                 self.shouldCreateFood = False
                 return
 
+        if self.set_on_time: #if the on time has not elapsed then another foodspot should not be made either
+                # (this is important if there is nothing else except timing selected)
+            if (time() - self.on_time_track) <= self.max_on_time: #if time hasn't passed
+                self.shouldCreateFood = False
+                self.on_time_correct = False
+                return
+
+
         if self.set_off_time and not self.time_override:  #if should check off time to see if another spot should be made
             if (time() - self.off_time_track) <= self.min_off_time: #if min time hasn't passed
                 self.shouldCreateFood = False
@@ -334,19 +348,18 @@ class OptoThread(Service):
             if self.distance_since_last_food <= .003: #if it is close to food then don't turn on food, otherwise do
                 print("too close to food-> no override", self.closest_food)
                 self.shouldCreateFood = False
+                self.override_allowed = False
                 return
-
-        if self.set_on_time: #if the on time has not elapsed then another foodspot should not be made either
-                # (this is important if there is nothing else except timing selected)
-            if (time() - self.on_time_track) <= self.max_on_time: #if time hasn't passed
-                self.shouldCreateFood = False
-                self.on_time_correct = False
-                return
-
+            else:
+                self.override_allowed = True
+                self.shouldCreateFood = True
+                print('override_allowed')
+                #return
 
 
 
         self.shouldCreateFood = True
+        print('foodspot creation = True')
 
     def defineFoodSpot(self):
         print("foodspot defined. closest food = ", self.closest_food)
