@@ -104,7 +104,8 @@ class OptoThread(Service):
         self.shouldCheckNumberFoodspots = False
         self.shouldAllowDancing = False
         self.override_allowed = False #changes true when fly is 3cm from foodspot
-
+        self.distance_away_reached = False  #use this to make sure the fly moves 3cm from the last foodspot before giving food again
+        #make sure this condition is only checked if the off time is short
 
 
         self.time_in_out_change = None
@@ -123,7 +124,7 @@ class OptoThread(Service):
         self.current_off_time = 0
         self.current_on_time = 0
         self.full_light_on = True  #to designate that the light will stay on for full on time even if fly leaves foodspot
-
+        self.distance_away_required = .03  #this is the distance away from a foodspot a fly needs to walk for the override of the off time
 
 
         # call constructor from parent        
@@ -211,7 +212,7 @@ class OptoThread(Service):
                                 if (time() - self.off_time_track) > self.min_off_time:
                                     self.on()
                             #if time override is true then allow foodspot to turn on even if time has not elapsed (check to make sure this doesn't always overrride distance)
-                            if self.set_off_time == True and self.override_allowed == True: #turn the light on
+                            if self.set_off_time == True and self.override_allowed == True and self.distance_away_reached == True: #turn the light on
                                 self.on()
                                 print('on because override allowed')
                         if self.led_status == 'on':
@@ -286,6 +287,16 @@ class OptoThread(Service):
             else:
                 self.fly_moving = False
 
+        #place: 202005292PM (see notes--did not contain time_override restriction then and section B was uncommented)
+        ### Check - walked away from foodspot ###
+        # this may break returns to foodspot, need this to trigger just once and not be reset by current distance
+        # looks like it should be a running sum so it should work
+        if self.distance_since_last_food is not None and self.time_override == True:
+            if self.distance_since_last_food > self.distance_away_required:  # distance away required set to 3cm (to allow a fly to move away and gt a new foodspot within off-time)
+                self.distance_away_reached = True
+            else:
+                self.distance_away_reached = False
+        #
 
         ### ARE ALL CONDITIONS MET? ###
 
@@ -344,16 +355,18 @@ class OptoThread(Service):
                 self.off_time_correct = False
                 return
 
-        if self.set_off_time and self.time_override: #if both set off time and time override are selected
-            if self.distance_since_last_food <= .003: #if it is close to food then don't turn on food, otherwise do
-                print("too close to food-> no override", self.closest_food)
-                self.shouldCreateFood = False
-                self.override_allowed = False
-                return
-            else:
-                self.override_allowed = True
-                self.shouldCreateFood = True
-                print('override_allowed')
+        ##NEXT TIME UNCOMMENT THIS AND TEST--I suspect it breaks the condition when the override checkbox is unchecked
+        #section B
+        # if self.set_off_time and self.time_override: #if both set off time and time override are selected
+            # if self.distance_since_last_food <= .003: #if it is close to food then don't turn on food, otherwise do
+            #     print("too close to food-> no override", self.closest_food)
+            #     self.shouldCreateFood = False
+            #     self.override_allowed = False
+            #     return
+            # else:
+            #     self.override_allowed = True
+            #     self.shouldCreateFood = True
+            #     print('override_allowed')
                 #return
 
 
