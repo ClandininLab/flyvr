@@ -57,6 +57,7 @@ class OptoThread(Service):
         #self.foragingNextFood_d_min =
 
         self.foodspots = []
+        self.food_distances = []
         self.food_rad = 0.005  #radius of foodspot
         self.fly_movement_threshold = 0.5e-3
         self.time_of_last_food = None
@@ -106,7 +107,7 @@ class OptoThread(Service):
         self.override_allowed = False #changes true when fly is 3cm from foodspot
         self.distance_away_reached = False  #use this to make sure the fly moves 3cm from the last foodspot before giving food again
         #make sure this condition is only checked if the off time is short
-
+        self.allowfoodspotreturns = True ##change to false once get a button. This should allow flies to get new light if they are in a foodspot and time has not elapsed
 
         self.time_in_out_change = None
         self.food_boundary_hysteresis = 0.1 #0.01 #time
@@ -185,6 +186,7 @@ class OptoThread(Service):
                     self.shouldCreateFood = False
 
                 # turn on LED if fly is in food spot
+                #I don't understand why this is for only the most recent foodspot and not all foodspots
                 for foodspot in self.foodspots:
                     if foodspot['x'] - self.food_rad <= self.flyX <= foodspot['x'] + self.food_rad and \
                        foodspot['y'] - self.food_rad <= self.flyY <= foodspot['y'] + self.food_rad:
@@ -193,20 +195,20 @@ class OptoThread(Service):
                         self.fly_in_food = True
                         #print("fly in foodspot food")
                         continue
+                    # elif self.allowfoodspotreturns == True: #for foodspot return condition
+                    #     if self.closest_food + self.food_rad
+
                     else:
                         self.fly_in_food = False
 
 
-
+                #this controls if the light will TURN ON and TURN OFF
                 if self.time_in_out_change is None or time() - self.time_in_out_change >= self.food_boundary_hysteresis:
                     if self.fly_in_food:
                         if self.led_status == 'off': #fly has just entered food or led on time has elapsed
                             self.time_in_out_change = time()
                             if self.set_off_time == False: #if don't care about off time then turn on
                                 self.on()
-                            # if self.set_off_time == True: #turn the light on only if off time has passed
-                            #     if (time() - self.off_time_track) > self.min_off_time:
-                            #         self.on()
                             if self.set_off_time == True and self.override_allowed == False: #turn the light on only if off time has passed
                                 #note: override_allowed should stay false if override checkbox is unchecked
                                 if (time() - self.off_time_track) > self.min_off_time:
@@ -240,7 +242,7 @@ class OptoThread(Service):
     def checkFoodCreation(self):
         ### Check - make sure food isn't too close to other food ###
         if len(self.foodspots) > 0:
-            self.food_distances = []
+            #self.food_distances = []  #why does this reset here?
             for food in self.foodspots:
                 x_dist = self.flyX - food['x']
                 y_dist = self.flyY - food['y']
@@ -379,13 +381,7 @@ class OptoThread(Service):
         self.foodspots.append({'x': self.flyX, 'y': self.flyY})
         self.logFood(self.flyX, self.flyY)
 
-    # def dance(self):
-    #     if self.closest_food is not None and self.closest_food > self.min_distance_removes_food:
-    #         self.foodspots = []  #removes all previous foodspots if it gets far away from one
-    #         self.logFoodRemoval()
-    #     if self.closest_food is not None and self.closest_food <= self.min_distance_removes_food:
-    #         #prevent more food from being created
-    #         self.shouldCreateFood = False
+
 
     # def determineQuadrant(self):
     #     if self.flyX > self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
