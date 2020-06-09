@@ -229,7 +229,7 @@ class OptoThread(Service):
     def checkFoodCreation(self):
 
         ### Check - make sure food isn't too close to other food ###
-        ##only need to do this if the close food checkbox is checked, right? nothing will break otherwise?
+        ##only need to do this if the close food checkbox is checked, right? check that nothing will break otherwise?
         if len(self.foodspots) > 0: #and shouldCheckFoodDistance = True?
             self.food_distances = []  #this needs to be reset each time because I am just using it to store for a calculation of closest distance compared to all curent foodspots
             for food in self.foodspots: #look at each foodspot and find the euc distance between current position and each spot and store in a list
@@ -244,7 +244,7 @@ class OptoThread(Service):
         else: #if there is no foodspot then the fly is automatically far_from_food
             self.far_from_food = True
 
-        # --- ASHLEY, YOU ARE HERE 6.5.20 ---- #
+
         ### Check - far from center ###
         if self.dist_from_center is not None:
             if self.dist_from_center >= self.foraging_distance_min:
@@ -252,9 +252,9 @@ class OptoThread(Service):
             else:
                 self.distance_correct = False
 
-        ### Check - walked far enough ###
-        if self.distance_since_last_food is not None:
-            if self.distance_since_last_food > self.path_distance_min:
+        ### Check - walked far enough as path length ###
+        if self.distance_since_last_food is not None: #distance since last food stores each xy change and resets when fly returns to foodspot or gets a new one
+            if self.distance_since_last_food > self.path_distance_min:  ##would be good to read out distance_since_last_food in the GUI to make sure it works well
                 self.path_distance_correct = True
             else:
                 self.path_distance_correct = False
@@ -267,7 +267,7 @@ class OptoThread(Service):
             else:
                 self.long_time_since_food = False
         else:
-            self.long_time_since_food = True
+            self.long_time_since_food = True  #since the fly wouldnt have had food yet
 
         ### Check - make sure fly is moving ###
         if self.camX is not None:
@@ -279,14 +279,13 @@ class OptoThread(Service):
 
         #place: 202005292PM (see notes--did not contain time_override restriction then and section B was uncommented)
         ### Check - walked away from foodspot ###
-        # this may break returns to foodspot, need this to trigger just once and not be reset by current distance
-        # looks like it should be a running sum so it should work
+        # make sure distance_since_last_food works by adding it to the GUI --it is the value in the distance label
         if self.distance_since_last_food is not None and self.time_override == True:
             if self.distance_since_last_food > self.distance_away_required:  # distance away required set to 3cm (to allow a fly to move away and gt a new foodspot within off-time)
                 self.distance_away_reached = True
             else:
                 self.distance_away_reached = False
-        #
+
 
         ### ARE ALL CONDITIONS MET? ###
 
@@ -327,7 +326,7 @@ class OptoThread(Service):
                 self.more_food = True
             else:
                 self.more_food = False
-            if not self.more_food:
+            #if not self.more_food: ##commented out (seems unnecessary)
                 self.shouldCreateFood = False
                 return
 
@@ -339,11 +338,17 @@ class OptoThread(Service):
                 return
 
 
-        if self.set_off_time and not self.time_override:  #if should check off time to see if another spot should be made
-            if (time() - self.off_time_track) <= self.min_off_time: #if min time hasn't passed
-                self.shouldCreateFood = False
-                self.off_time_correct = False
-                return
+        #this should change if the fly is far enough away to get new food
+        if not self.distance_away_reached:
+            self.shouldCreateFood = False
+            return
+
+        # ##this is doing nothing. commented out 6-9
+        # if self.set_off_time and not self.time_override:  #if should check off time to see if another spot should be made
+        #     if (time() - self.off_time_track) <= self.min_off_time: #if min time hasn't passed
+        #         self.shouldCreateFood = False
+        #         self.off_time_correct = False
+        #         return
 
         ##NEXT TIME UNCOMMENT THIS AND TEST--I suspect it breaks the condition when the override checkbox is unchecked
         #section B
@@ -364,23 +369,16 @@ class OptoThread(Service):
         self.shouldCreateFood = True
         print('foodspot creation = True')
 
+
+
     def defineFoodSpot(self):
         self.foodspots.append({'x': self.flyX, 'y': self.flyY})
         self.logFood(self.flyX, self.flyY)
         if self.closest_food is not None:
-            print("foodspot defined. closest food = ", self.closest_food)
+            print("foodspot defined. closest food = ", self.closest_food)  #this should be 0 or close to it when foodspot defined
         else:
             print("foodspot defined")
 
-    # def determineQuadrant(self):
-    #     if self.flyX > self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
-    #         self.flyInQuadrant1 = True
-    #     if self.flyX > self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
-    #         self.flyInQuadrant2 = True
-    #     if self.flyX < self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
-    #         self.flyInQuadrant3 = True
-    #     if self.flyX < self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
-    #         self.flyInQuadrant4 = True
 
 
 
@@ -440,11 +438,11 @@ class OptoThread(Service):
                 self.logFile.write('{}, {}\n'.format('food-removed', time()))
                 self.logFile.flush()
 
-    def logFoodRevisitNoFood(self, x, y):
-        with self.logLock:
-            if self.logFile is not None:
-                self.logFile.write('{}, {}, {}, {}\n'.format('food-revisited but not given food', time(), x, y))
-                self.logFile.flush()
+    # def logFoodRevisitNoFood(self, x, y):
+    #     with self.logLock:
+    #         if self.logFile is not None:
+    #             self.logFile.write('{}, {}, {}, {}\n'.format('food-revisited but not given food', time(), x, y))
+    #             self.logFile.flush()
 
     def startLogging(self, logFile):
         with self.logLock:
