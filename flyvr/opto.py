@@ -339,6 +339,7 @@ class OptoThread(Service):
 
 
         #this should change if the fly is far enough away to get new food
+        #could comment this out if other change doesnt work 6-16-20
         if not self.distance_away_reached:
             self.shouldCreateFood = False
             return
