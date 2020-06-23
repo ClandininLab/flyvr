@@ -194,13 +194,15 @@ class OptoThread(Service):
                             #self.time_in_out_change = time() #maybe don't reset this here 6.5.20 commented this line out
                             if self.set_off_time == False: #if don't care about off time elapsing then turn on
                                 self.on()
-                            elif self.set_off_time == True:  #turn the light on only if off time has passed and it doesn't meet override criteria
+                            elif self.set_off_time == True and self.time_override == False:  #turn the light on only if off time has passed and it doesn't meet override criteria
                                 if (time() - self.off_time_track) > self.min_off_time: #if off time passage is greater than min off time then turn on
                                     self.on()
                             #if time override is true then allow foodspot to turn on even if time has not elapsed (check to make sure this doesn't always overrride distance)
                             elif self.set_off_time == True and self.time_override == True and self.distance_away_reached == True: #turn the light on
                                 self.on()
                                 print('on because override allowed')
+                            else:
+                                print('no state reached--distance away reached = ', self.distance_away_reached)
 
                         elif self.led_status == 'on':
                             if self.set_on_time == True: #turn the light off if it has been on too long
@@ -336,6 +338,12 @@ class OptoThread(Service):
                 self.shouldCreateFood = False
                 self.on_time_correct = False
                 return
+
+
+        ##ADD HERE
+        #condition that if fly is in previous food (and foodspots_return allowed turned on)
+        #have it be should create food.
+
 
 
         #this should change if the fly is far enough away to get new food
