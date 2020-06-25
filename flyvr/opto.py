@@ -178,19 +178,31 @@ class OptoThread(Service):
                         self.time_of_last_food = time()
                         self.distance_since_last_food = 0 #reset distance when get to food
                         self.fly_in_food = True
-                        #I believe this should be true even for previous foodspots
-                        #print("fly in foodspot food")  #if uncomment this it will print the entire time the fly remains in the foodspot
-                        #maybe I should have a condition that if it is not the most recent foodspot no other things matter except override and off time
-                        if self.allowfoodspotreturns == True and foodspot != self.foodspots[-1]:
-                            if  self.fly_in_food == True: #if it isn't the last foodspot and the fly is in it
-                                self.fly_in_previous_foodspot = True
-                            else:
-                                self.fly_in_previous_foodspot = False
+
+                        # #maybe I should have a condition that if it is not the most recent foodspot no other things matter except override and off time
+                        # if self.allowfoodspotreturns == True and foodspot != self.foodspots[-1]:
+                        #     if  self.fly_in_food == True: #if it isn't the last foodspot and the fly is in it
+                        #         self.fly_in_previous_foodspot = True
+                        #     else:
+                        #         self.fly_in_previous_foodspot = False
                         continue
 
                     else:
                         self.fly_in_food = False
-                        self.fly_in_previous_foodspot = False
+                        # self.fly_in_previous_foodspot = False  ##can't put this here because it will check the last foodspot last
+
+                #set up checking for previous foodspots
+                if self.allowfoodspotreturns:
+                    for foodspot in self.foodspots[:-1]:  #since this is looking for previous foodspots, ignore the most recent one
+                        if foodspot['x'] - self.food_rad <= self.flyX <= foodspot['x'] + self.food_rad and \
+                           foodspot['y'] - self.food_rad <= self.flyY <= foodspot['y'] + self.food_rad:
+                            self.time_of_last_food = time()
+                            self.distance_since_last_food = 0 #reset distance when get to food
+                            self.fly_in_food = True
+                            self.fly_in_previous_foodspot = True
+                            continue
+                        else:
+                            self.fly_in_previous_foodspot = False
 
                 ## This controls if the light will TURN ON and TURN OFF and is dependent on if the fly is in the food
                     #the first line checks to make sure the light doesn't flicker on and off due to tracking issues by having a time hysteresis if the light had recently turned opn
