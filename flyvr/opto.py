@@ -364,19 +364,28 @@ class OptoThread(Service):
                 self.shouldCreateFood = False
                 return
 
-        if self.set_on_time: #if the on time has not elapsed then another foodspot should not be made either
-                # (this is important if there is nothing else except timing selected)
-            if (time() - self.on_time_track) <= self.max_on_time: #if time hasn't passed
-                self.shouldCreateFood = False
-                self.on_time_correct = False
-                return
+        # if self.set_on_time: #if the on time has not elapsed then another foodspot should not be made either
+        #         # (this is important if there is nothing else except timing selected)
+        #     if (time() - self.on_time_track) <= self.max_on_time: #if time hasn't passed
+        #         self.shouldCreateFood = False
+        #         self.on_time_correct = False
+        #         return
+
+        if self.set_on_time and (time() - self.on_time_track) <= self.max_on_time: #if the on time has not elapsed then another foodspot should not be made either
+            self.shouldCreateFood = False
+            self.on_time_correct = False
+            return
 
         # this should change if the fly is far enough away to get new food
         #restrict this criteria to just override = True
-        if self.override_allowed:  #this is repetitive because override_allowed needs to be on to set distance_away_reached
-            if not self.distance_away_reached:
-                self.shouldCreateFood = False
-                return
+        # if self.override_allowed:
+        #     if not self.distance_away_reached:
+        #         self.shouldCreateFood = False
+        #         return
+
+        # if self.override_allowed and not self.distance_away_reached:
+        #     self.shouldCreateFood = False
+        #     return
 
 
         self.shouldCreateFood = True
