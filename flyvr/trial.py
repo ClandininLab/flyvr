@@ -206,7 +206,10 @@ class TrialThread(Service):
                 self.state = 'fly detected'
                 self.tracker.startTracking()
                 ## add here to update a dispenser state based on a false close or fly stuck in tunnel state
-                self.dispenser.no_fly_reopen_gate = False
+                #self.dispenser.no_fly_reopen_gate = False
+                self.dispenser.prev_state = 'Idle' #this prevents it from retriggering the gate open state
+                self.dispenser.state = 'Idle'
+                print('REOPEN GATE SET TO FALSE--state set to idle')
         elif self.state == 'fly detected':
             if (time() - self.timer_start) >= self.fly_detected_timeout:
                 print('Fly found!')

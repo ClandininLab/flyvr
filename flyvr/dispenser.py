@@ -183,16 +183,17 @@ class FlyDispenser(Service):
             # this is to fix when the dispenser closes without their being a fly in the tunnel
             #   or flies stuck in the tunnel
             if self.prev_state == 'LookForFly' and (time() - self.closed_gate_timer) >= self.closed_gate_wait_time:
-                self.no_fly_reopen_gate = True #this resets to false when trial detects a fly
+                #self.no_fly_reopen_gate = True #this resets to false when trial detects a fly
+                self.state = 'ReOpenGate'
                 print("Dispenser: time's up!")
-            if self.prev_state == 'LookForFly' and self.no_fly_reopen_gate:   #if previous state was look for fly
-                #have it go into restart
-                self.trigger = 'auto'
-                self.send_open_gate_command()
-                self.start_timer()
-                self.prev_state = 'Idle'
-                self.state = 'PreReleaseDelay'
-                print('Dispenser: going to PreReleaseDelay state after not finding fly.')
+            # if self.prev_state == 'LookForFly' and self.no_fly_reopen_gate:   #if previous state was look for fly
+            #     #have it go into restart
+            #     self.trigger = 'auto'
+            #     self.send_open_gate_command()
+            #     self.start_timer()
+            #     self.prev_state = 'Idle'
+            #     self.state = 'PreReleaseDelay'
+            #     print('Dispenser: going to PreReleaseDelay state after not finding fly.')
         elif self.state == 'PreReleaseDelay':
             if self.timer_done(0.5):
                 self.prev_state = 'PreReleaseDelay'
@@ -205,6 +206,15 @@ class FlyDispenser(Service):
                 self.prev_state = 'LookForFly'
                 self.state = 'Idle'
                 print('Dispenser: going to Idle state.')
+        elif self.state == 'ReOpenGate':
+            if self.prev_state == 'LookForFly':   #if previous state was look for fly--prevents it from continuously reopening after timer set
+                #have it go into restart
+                self.trigger = 'auto'
+                self.send_open_gate_command()
+                self.start_timer()
+                self.prev_state = 'Idle'
+                self.state = 'PreReleaseDelay'
+                print('Dispenser: going to PreReleaseDelay state after not finding fly.')
 
         else:
             raise Exception('Invalid state.')
