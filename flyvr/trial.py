@@ -205,6 +205,8 @@ class TrialThread(Service):
                 self.timer_start = time()
                 self.state = 'fly detected'
                 self.tracker.startTracking()
+                ## add here to update a dispenser state based on a false close or fly stuck in tunnel state
+                self.dispenser.no_fly_reopen_gate = False
         elif self.state == 'fly detected':
             if (time() - self.timer_start) >= self.fly_detected_timeout:
                 print('Fly found!')
