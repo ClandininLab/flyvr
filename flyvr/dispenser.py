@@ -92,6 +92,12 @@ class FlyDispenser(Service):
         self.should_calibrate_gate = Event()
         self.gate_state = None
 
+        #for opening dispenser if it is closed too long in error
+        self.prev_state = None
+        self.closed_gate_timer = None
+        self.no_fly_reopen_gate = False  #this should reset when the trial thread finds a fly
+        self.closed_gate_wait_time = 180 #time in sec to wait to reopen gate after not finding fly
+
         # frame locking
         self.display_frame_lock = Lock()
         self._display_frame = None
@@ -163,6 +169,7 @@ class FlyDispenser(Service):
         # update state machine
         if self.state == 'Reset':
             self.send_close_gate_command()
+            self.prev_state = 'Reset'
             self.state = 'Idle'
             print('Dispenser: going to Idle state.')
         elif self.state == 'Idle':
@@ -170,18 +177,45 @@ class FlyDispenser(Service):
                 self.trigger = 'auto'
                 self.send_open_gate_command()
                 self.start_timer()
+                self.prev_state = 'Idle'
                 self.state = 'PreReleaseDelay'
                 print('Dispenser: going to PreReleaseDelay state.')
+            # this is to fix when the dispenser closes without their being a fly in the tunnel
+            #   or flies stuck in the tunnel
+            if self.prev_state == 'LookForFly' and (time() - self.closed_gate_timer) >= self.closed_gate_wait_time:
+                #self.no_fly_reopen_gate = True #this resets to false when trial detects a fly
+                self.state = 'ReOpenGate'
+                print("Dispenser: time's up!")
+            # if self.prev_state == 'LookForFly' and self.no_fly_reopen_gate:   #if previous state was look for fly
+            #     #have it go into restart
+            #     self.trigger = 'auto'
+            #     self.send_open_gate_command()
+            #     self.start_timer()
+            #     self.prev_state = 'Idle'
+            #     self.state = 'PreReleaseDelay'
+            #     print('Dispenser: going to PreReleaseDelay state after not finding fly.')
         elif self.state == 'PreReleaseDelay':
             if self.timer_done(0.5):
+                self.prev_state = 'PreReleaseDelay'
                 self.state = 'LookForFly'
                 print('Dispenser: going to LookForFly state.')
         elif self.state == 'LookForFly':
             if self.gate_clear and self.fly_passed:
                 self.trigger = 'auto'
                 self.send_close_gate_command()
+                self.prev_state = 'LookForFly'
                 self.state = 'Idle'
                 print('Dispenser: going to Idle state.')
+        elif self.state == 'ReOpenGate':
+            if self.prev_state == 'LookForFly':   #if previous state was look for fly--prevents it from continuously reopening after timer set
+                #have it go into restart
+                self.trigger = 'auto'
+                self.send_open_gate_command()
+                self.start_timer()
+                self.prev_state = 'Idle'
+                self.state = 'PreReleaseDelay'
+                print('Dispenser: going to PreReleaseDelay state after not finding fly.')
+
         else:
             raise Exception('Invalid state.')
 
@@ -272,6 +306,7 @@ class FlyDispenser(Service):
         self.conn.write(bytes([0]))
         self.gate_state = 'closed'
         self.log_gate(time(), self.gate_state)
+        self.closed_gate_timer = time()  #to use for counting how long the gate has been closed
 
     def open_gate(self):
         self.should_open.set()
