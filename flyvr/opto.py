@@ -90,7 +90,7 @@ class OptoThread(Service):
         self.shouldCheckTotalPathDistance = False
         self.shouldCheckNumberFoodspots = False
 
-        self.override_allowed = False #changes true when fly is 3cm from foodspot
+        # self.override_allowed = False #changes true when fly is 3cm from foodspot ---no longer used
         self.distance_away_reached = False  #use this to make sure the fly moves 3cm from the last foodspot before giving food again
         #make sure this condition is only checked if the off time is short
         self.allowfoodspotreturns = False ## if True this should allow flies to get new light if they are in a foodspot and time has not elapsed
@@ -371,7 +371,14 @@ class OptoThread(Service):
         #         self.on_time_correct = False
         #         return
 
+
+        ##THIS SEEMS TO NOT RESTRICT FOODSPOT CREATION APPROPRIATELY
         if self.set_on_time and (time() - self.on_time_track) <= self.max_on_time: #if the on time has not elapsed then another foodspot should not be made either
+            self.shouldCreateFood = False
+            self.on_time_correct = False
+            return
+
+        if self.time_override == False and self.set_off_time and (time() - self.off_time_track) <= self.min_off_time: #if the on time has not elapsed then another foodspot should not be made either
             self.shouldCreateFood = False
             self.on_time_correct = False
             return
