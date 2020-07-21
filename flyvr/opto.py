@@ -43,74 +43,61 @@ class OptoThread(Service):
         self.cncThread = cncThread
         self.trackThread = trackThread
 
-        # Set foraging parameters
-        self.foraging = False
-        self.foraging_time_min = 2
-        self.foraging_time_override = 3*(60)
-        self.foraging_distance_min = 0.03 #from center
-        self.foraging_distance_max = 0.2
-        self.path_distance_min = 0.01 #min walk distance
-
-        #self.foragingNextFood_t_min =
-        #self.foragingNextFood_t_max =
-        #self.foragingNextFood_d_min =
-        #self.foragingNextFood_d_min =
-
-        self.foodspots = []
-        self.food_rad = 0.005  #radius of foodspot
-        self.fly_movement_threshold = 0.5e-3
-        self.time_of_last_food = None
-        self.time_since_last_food = None
-        self.time_since_last_food_min = 30 #in sec
-        self.long_time_since_food = True
-        self.shouldCreateFood = False
-        self.led_status = 'off'
-        self.fly_in_food = False
-        self.far_from_food = False
-        self.min_dist_from_food = 0.2 #in m
-        self.distance_since_last_food = 0
-        self.list_prev_y = [0]
-        self.list_prev_x = [0]
-        self.min_distance_removes_food = .01 #20cm  #dancing radius allowed  #testing .01 (1cm)
-
-        # Set food creation parameters false
-        self.far_from_food = False
-        self.distance_correct = False  #for center
-        self.path_distance_correct = False  #total path
-        self.long_time_since_food = False
-        self.fly_moving = False
-        self.max_foodspots = 90
-        self.more_food = False #if false then reached max foodspots
-        self.time_override = False  ##if true will override time off restriction if the fly is 3cm away from foodspot
-
-
-        self.dist_from_center = None
-        self.total_distance = 0
-        self.trial_start_t = None
-        self.closest_food = None
+        # general variables to set
         self.camX = None
         self.camY = None
+        self.led_status = 'off'
+        self.trial_start_t = None
 
-        self.flyInQuadrant1 = False
-        self.flyInQuadrant2 = False
-        self.flyInQuadrant3 = False
-        self.flyInQuadrant4 = False
+        # set foodspot parameters and variables
+        self.foodspots = []  # stores the x,y location of foodspots
+        self.food_rad = 0.005  # radius of foodspot
+        self.fly_movement_threshold = 0.5e-3  # amount the camx or camy must be greater than to say the fly is moving
+        self.food_boundary_hysteresis = 0.1  # 0.01 #time
+        self.food_distance_hysteresis = 0.005  # distance
 
+        # Set foraging parameters
+        self.foraging = False  #if foraging button selected in GUI this will change to true
+        self.foraging_distance_min = 0.03 #distane from center requirement in meters
+        self.path_distance_min = 0.01 #min walk distance from a foodspot to make more food
+        self.min_dist_from_food = 0.05  # in meters. min distance the fly must walk to get a new foodspot
+        self.distance_since_last_food = 0  #distance from most recent foodspot (resets each time a foodspot is created or the fly returns to the recent foodspot)
+        self.list_prev_y = [0]  #involved in tracking the total distance the fly walks
+        self.list_prev_x = [0]  #involved in tracking the total distance the fly walks
+        self.max_foodspots = 90  # to control the number of foodspots (set high, but this won't turn on unless selected)
+        self.time_since_last_food_min = 30  # in sec minimum amount of time required to elapse before food made
+        self.total_distance = 0  #collects running total of distance walked
+        self.distance_away_required = .03  # this is the distance away from a foodspot a fly needs to walk for the override of the off time
+
+        #set foodspot creation parameters
+        self.shouldCreateFood = False #if true then makes a foodspot
+        self.fly_in_food = False  #to determine if the light should come on
+        self.time_of_last_food = None #stores absolute time (time()) of when previous foodspot was given
+        self.time_since_last_food = None  #subtract current time from time_of_last_food (relative rather than absolute)
+        self.long_time_since_food = False  #if elapsed time has been greater than the minimum
+        self.far_from_food = False #state to store if fly is far enough away from previous foodspot
+        self.distance_correct = False  #true if fly is far enough away from the center
+        self.path_distance_correct = False  #true if fly has walked far enough since the previous food (path style)
+        self.fly_moving = False #true if fly is moving
+        self.more_food = False #if false then reached max foodspots
+        self.time_override = False  ##if true will override time off restriction if the fly is 3cm away from foodspot
+        self.dist_from_center = None #straight line distance from center
+        self.closest_food = None #should store the distance to the closest foodspot (of all foodspots)
         self.shouldCheckFoodDistance = True
         self.shouldCheckFlyDistanceFromCenter = True
         self.shouldCheckTimeSinceFood = True
         self.shouldCheckFlyIsMoving = True
         self.shouldCheckTotalPathDistance = False
         self.shouldCheckNumberFoodspots = False
-        self.shouldAllowDancing = False
+
+        # self.override_allowed = False #changes true when fly is 3cm from foodspot ---no longer used
+        self.distance_away_reached = False  #use this to make sure the fly moves 3cm from the last foodspot before giving food again
+        #make sure this condition is only checked if the off time is short
+        self.allowfoodspotreturns = False ## if True this should allow flies to get new light if they are in a foodspot and time has not elapsed
+        self.time_in_out_change = None #rests to current time every time the light turns off to keep track of off time
 
 
-
-        self.time_in_out_change = None
-        self.food_boundary_hysteresis = 0.1 #0.01 #time
-        self.food_distance_hysteresis = 0.005 #distance
-
-        #parameters for food pulse times
+        #parameters for light pulse times
         self.set_off_time = False
         self.set_on_time = False
         self.min_off_time = 9.0
@@ -122,7 +109,7 @@ class OptoThread(Service):
         self.current_off_time = 0
         self.current_on_time = 0
         self.full_light_on = True  #to designate that the light will stay on for full on time even if fly leaves foodspot
-
+        self.fly_in_previous_foodspot = False
 
 
         # call constructor from parent        
@@ -157,8 +144,8 @@ class OptoThread(Service):
             self.flyY = None
 
         ### Calculate parameters based on fly position ###
-
         if self.flyX is not None and self.flyY is not None and self.trial_start_t is not None:
+
             # calculate distance from center
             x_dist = np.abs(self.flyX) - np.abs(self.trackThread.center_pos_x)
             y_dist = np.abs(self.flyY) - np.abs(self.trackThread.center_pos_y)
@@ -171,59 +158,99 @@ class OptoThread(Service):
             self.total_distance += immediate_distance  # running total
             self.distance_since_last_food += immediate_distance  # this resets with every foodspot
 
+
+
             if self.foraging:
                 # define food spot if all requirements are met
                 self.checkFoodCreation()
 
-                # if self.shouldAllowDancing == True:
-                #     self.dance()
-
+                #if find that food should be created, record a foodspot and change shouldcreatefood state back to false
                 if self.shouldCreateFood:
-                    self.defineFoodSpot()  #this records the foodspot so the led will turn on
+                    self.defineFoodSpot()  #this records the foodspot x,y coordinates in foodspots and logs it in txt file
                     self.shouldCreateFood = False
 
-                # turn on LED if fly is in food spot
+                # changes fly_in_food state to true if fly is in foodspot by checking x,y positions with the food_radius as a buffer
+                #also resets the time_of_last_food and the distance_since_last_food
+                ##### I don't understand why this is for only the most recent foodspot and not all foodspots
                 for foodspot in self.foodspots:
                     if foodspot['x'] - self.food_rad <= self.flyX <= foodspot['x'] + self.food_rad and \
                        foodspot['y'] - self.food_rad <= self.flyY <= foodspot['y'] + self.food_rad:
                         self.time_of_last_food = time()
                         self.distance_since_last_food = 0 #reset distance when get to food
                         self.fly_in_food = True
-                        #print("fly in foodspot food")
+
+                        # #maybe I should have a condition that if it is not the most recent foodspot no other things matter except override and off time
+                        # if self.allowfoodspotreturns == True and foodspot != self.foodspots[-1]:
+                        #     if  self.fly_in_food == True: #if it isn't the last foodspot and the fly is in it
+                        #         self.fly_in_previous_foodspot = True
+                        #     else:
+                        #         self.fly_in_previous_foodspot = False
                         continue
+
                     else:
                         self.fly_in_food = False
+                        # self.fly_in_previous_foodspot = False  ##can't put this here because it will check the last foodspot last
 
+                #set up checking for previous foodspots
+                if self.allowfoodspotreturns:
+                    for foodspot in self.foodspots[:-1]:  #since this is looking for previous foodspots, ignore the most recent one
+                        if foodspot['x'] - self.food_rad <= self.flyX <= foodspot['x'] + self.food_rad and \
+                           foodspot['y'] - self.food_rad <= self.flyY <= foodspot['y'] + self.food_rad:
+                            self.time_of_last_food = time()
+                            self.distance_since_last_food = 0 #reset distance when get to food
+                            self.fly_in_food = True
+                            self.fly_in_previous_foodspot = True
+                            continue
+                        else:
+                            self.fly_in_previous_foodspot = False
 
-
+                ## This controls if the light will TURN ON and TURN OFF and is dependent on if the fly is in the food
+                    #the first line checks to make sure the light doesn't flicker on and off due to tracking issues by having a time hysteresis if the light had recently turned opn
                 if self.time_in_out_change is None or time() - self.time_in_out_change >= self.food_boundary_hysteresis:
+
                     if self.fly_in_food:
-                        if self.led_status == 'off': #fly has just entered food or led on time has elapsed
-                            self.time_in_out_change = time()
-                            if self.set_off_time == False: #if don't care about off time then turn on
+                        if self.led_status == 'off': #the light is off when the fly is in food if the fly has just entered food or led on time has elapsed
+                            #self.time_in_out_change = time() #maybe don't reset this here 6.5.20 commented this line out
+                            if self.set_off_time == False: #if don't care about off time elapsing then turn on
                                 self.on()
-                            if self.set_off_time == True: #turn the light on only if off time has passed
-                                if (time() - self.off_time_track) > self.min_off_time:
+                            elif self.set_off_time == True and self.time_override == False:  #turn the light on only if off time has passed and it doesn't meet override criteria
+                                if (time() - self.off_time_track) > self.min_off_time: #if off time passage is greater than min off time then turn on
                                     self.on()
-                        if self.led_status == 'on':
+                            #if time override is true then allow foodspot to turn on even if time has not elapsed (check to make sure this doesn't always overrride distance)
+                            elif self.set_off_time == True and self.time_override == True and self.distance_away_reached == True: #turn the light on
+                                self.on()
+                                print('on because override allowed')
+                            else:
+                                print('no light on, state not specified--distance away reached = ', self.distance_away_reached)
+
+                        elif self.led_status == 'on':
                             if self.set_on_time == True: #turn the light off if it has been on too long
                                 if (time() - self.on_time_track) > self.max_on_time:
+                                    self.time_in_out_change = time()  #6.5.20 adding this here because it doesn't make sense to only have it sometimes when the light turns off?
                                     self.off()
-                    else:
-                        # if self.led_status == 'on':
-                        #     self.time_in_out_change= time()
-                        #     self.off()
+                    #this will only be true if allow previous foodspot returns is selected
+                    elif self.fly_in_previous_foodspot:  #always turn the food on when the fly is in the previous foodspot (may need to add condition to turn back off
+                        print('fly in previous foodspot')
+                        self.on()
+                    #    if self.led_status == 'off':
+                    #         if self.set_off_time == False: #if don't care about off time elapsing then turn on
+                    #             self.on()
+                    #         elif self.set_off_time == True:  #turn the light on only if off time has passed and it doesn't meet override criteria
+                    #             if (time() - self.off_time_track) > self.min_off_time: #if off time passage is greater than min off time then turn on
+                    #                 self.on()
 
+                    #if fly_in_food is False
+                    else:
+                        #turn of the light if it was on (unless full_light_on selected then keep it on until light on time is up)
                         if self.led_status == 'on':
                             if self.full_light_on == False: #turn it off regularly
                                 self.time_in_out_change = time()
                                 self.off()
                             #if condition to keep light on for entire on time is selected
                             # even if fly has left foodspot then wait until time is up to turn off
-                            if self.full_light_on == True:
+                            elif self.full_light_on == True:
                                 if self.set_on_time == True:  # turn the light off if it has been on too long
                                     if (time() - self.on_time_track) > self.max_on_time:
-                                        #do I need to reset time_in_out_change here?
                                         self.time_in_out_change = time()
                                         self.off()
 
@@ -231,22 +258,24 @@ class OptoThread(Service):
 
 
     def checkFoodCreation(self):
+
         ### Check - make sure food isn't too close to other food ###
-        if len(self.foodspots) > 0:
-            self.food_distances = []
-            for food in self.foodspots:
-                x_dist = self.flyX - food['x']
-                y_dist = self.flyY - food['y']
-                self.food_distances.append(np.sqrt(x_dist * x_dist + y_dist * y_dist))
-
-            self.closest_food = np.min(self.food_distances)
-
-            if self.closest_food >= self.min_dist_from_food:
+        ##only need to do this if the close food checkbox is checked, right? check that nothing will break otherwise?
+        if self.shouldCheckFoodDistance:
+            if len(self.foodspots) > 0: #and shouldCheckFoodDistance = True?
+                self.food_distances = []  #this needs to be reset each time because I am just using it to store for a calculation of closest distance compared to all curent foodspots
+                for food in self.foodspots: #look at each foodspot and find the euc distance between current position and each spot and store in a list
+                    x_dist = self.flyX - food['x']
+                    y_dist = self.flyY - food['y']
+                    self.food_distances.append(np.sqrt(x_dist * x_dist + y_dist * y_dist))
+                self.closest_food = np.min(self.food_distances) #find the distance to the closest foodspot
+                if self.closest_food >= self.min_dist_from_food:
+                    self.far_from_food = True
+                else:
+                    self.far_from_food = False
+            else: #if there is no foodspot then the fly is automatically far_from_food
                 self.far_from_food = True
-            else:
-                self.far_from_food = False
-        else:
-            self.far_from_food = True
+
 
         ### Check - far from center ###
         if self.dist_from_center is not None:
@@ -255,12 +284,21 @@ class OptoThread(Service):
             else:
                 self.distance_correct = False
 
-        ### Check - walked far enough ###
-        if self.distance_since_last_food is not None:
-            if self.distance_since_last_food > self.path_distance_min:
+        ### Check - walked far enough as path length ###
+        if self.distance_since_last_food is not None: #distance since last food stores each xy change and resets when fly returns to foodspot or gets a new one
+            if self.distance_since_last_food > self.path_distance_min:  ##would be good to read out distance_since_last_food in the GUI to make sure it works well
                 self.path_distance_correct = True
             else:
                 self.path_distance_correct = False
+
+        # place: 202005292PM (see notes--did not contain time_override restriction then and section B was uncommented)
+        ### Check - walked away from foodspot ###
+        # make sure distance_since_last_food works by adding it to the GUI --it is the value in the distance label
+        if self.distance_since_last_food is not None and self.time_override == True:
+            if self.distance_since_last_food > self.distance_away_required:  # distance away required set to 3cm (to allow a fly to move away and gt a new foodspot within off-time)
+                self.distance_away_reached = True
+            else:
+                self.distance_away_reached = False
 
         ### Check - make sure the fly hasn't recently passed through a spot ###
         if self.time_of_last_food is not None:
@@ -270,7 +308,7 @@ class OptoThread(Service):
             else:
                 self.long_time_since_food = False
         else:
-            self.long_time_since_food = True
+            self.long_time_since_food = True  #since the fly wouldnt have had food yet
 
         ### Check - make sure fly is moving ###
         if self.camX is not None:
@@ -279,6 +317,8 @@ class OptoThread(Service):
                self.fly_moving = True
             else:
                 self.fly_moving = False
+
+
 
 
         ### ARE ALL CONDITIONS MET? ###
@@ -320,56 +360,54 @@ class OptoThread(Service):
                 self.more_food = True
             else:
                 self.more_food = False
-            if not self.more_food:
+            #if not self.more_food: ##commented out (seems unnecessary)
                 self.shouldCreateFood = False
                 return
 
-        if self.set_off_time and not self.time_override:  #if should check off time to see if another spot should be made
-            if (time() - self.off_time_track) <= self.min_off_time: #if min time hasn't passed
-                self.shouldCreateFood = False
-                self.off_time_correct = False
-                return
-
-        if self.set_off_time and self.time_override: #if both set off time and time override are selected
-            if self.distance_since_last_food <= .003: #if it is close to food then don't turn on food, otherwise do
-                print("too close to food-> no override", self.closest_food)
-                self.shouldCreateFood = False
-                return
-
-        if self.set_on_time: #if the on time has not elapsed then another foodspot should not be made either
-                # (this is important if there is nothing else except timing selected)
-            if (time() - self.on_time_track) <= self.max_on_time: #if time hasn't passed
-                self.shouldCreateFood = False
-                self.on_time_correct = False
-                return
+        # if self.set_on_time: #if the on time has not elapsed then another foodspot should not be made either
+        #         # (this is important if there is nothing else except timing selected)
+        #     if (time() - self.on_time_track) <= self.max_on_time: #if time hasn't passed
+        #         self.shouldCreateFood = False
+        #         self.on_time_correct = False
+        #         return
 
 
+        ##THIS SEEMS TO NOT RESTRICT FOODSPOT CREATION APPROPRIATELY
+        if self.set_on_time and (time() - self.on_time_track) <= self.max_on_time: #if the on time has not elapsed then another foodspot should not be made either
+            self.shouldCreateFood = False
+            self.on_time_correct = False
+            return
+
+        if self.time_override == False and self.set_off_time and (time() - self.off_time_track) <= self.min_off_time: #if the on time has not elapsed then another foodspot should not be made either
+            self.shouldCreateFood = False
+            self.on_time_correct = False
+            return
+
+        # this should change if the fly is far enough away to get new food
+        #restrict this criteria to just override = True
+        # if self.override_allowed:
+        #     if not self.distance_away_reached:
+        #         self.shouldCreateFood = False
+        #         return
+
+        # if self.override_allowed and not self.distance_away_reached:
+        #     self.shouldCreateFood = False
+        #     return
 
 
         self.shouldCreateFood = True
+        print('foodspot creation = True')
+
+
 
     def defineFoodSpot(self):
-        print("foodspot defined. closest food = ", self.closest_food)
         self.foodspots.append({'x': self.flyX, 'y': self.flyY})
         self.logFood(self.flyX, self.flyY)
+        if self.closest_food is not None:
+            print("foodspot defined. closest food = ", self.closest_food)  #this should be 0 or close to it when foodspot defined
+        else:
+            print("foodspot defined")
 
-    # def dance(self):
-    #     if self.closest_food is not None and self.closest_food > self.min_distance_removes_food:
-    #         self.foodspots = []  #removes all previous foodspots if it gets far away from one
-    #         self.logFoodRemoval()
-    #     if self.closest_food is not None and self.closest_food <= self.min_distance_removes_food:
-    #         #prevent more food from being created
-    #         self.shouldCreateFood = False
-
-    # def determineQuadrant(self):
-    #     if self.flyX > self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
-    #         self.flyInQuadrant1 = True
-    #     if self.flyX > self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
-    #         self.flyInQuadrant2 = True
-    #     if self.flyX < self.trackThread.center_pos_x and self.flyY < self.trackThread.center_pos_y:
-    #         self.flyInQuadrant3 = True
-    #     if self.flyX < self.trackThread.center_pos_x and self.flyY > self.trackThread.center_pos_y:
-    #         self.flyInQuadrant4 = True
 
 
 
@@ -429,11 +467,11 @@ class OptoThread(Service):
                 self.logFile.write('{}, {}\n'.format('food-removed', time()))
                 self.logFile.flush()
 
-    def logFoodRevisitNoFood(self, x, y):
-        with self.logLock:
-            if self.logFile is not None:
-                self.logFile.write('{}, {}, {}, {}\n'.format('food-revisited but not given food', time(), x, y))
-                self.logFile.flush()
+    # def logFoodRevisitNoFood(self, x, y):
+    #     with self.logLock:
+    #         if self.logFile is not None:
+    #             self.logFile.write('{}, {}, {}, {}\n'.format('food-revisited but not given food', time(), x, y))
+    #             self.logFile.flush()
 
     def startLogging(self, logFile):
         with self.logLock:
