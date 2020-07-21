@@ -383,7 +383,8 @@ class MainGui():
                         foragingdict.update({'keep light on for full on time': 'yes'})
                     if self.opto.time_override == True:
                         foragingdict.update({'override time limit at 3cm': 'yes'})
-
+                    if self.opto.allowfoodspotreturns == True:
+                        foragingdict.update({'foodspot returns' : 'allowed'})
                     foraging_data = self.pretty_json(foragingdict)
 
         data = self.pretty_json(d)
@@ -1218,6 +1219,7 @@ class ForagingDetails():
         # self.ui.remove_prev_foodspots_checkbox.stateChanged.connect(lambda x: self.removeFoodspotsforDance())
         self.ui.keep_light_on_checkbox.stateChanged.connect(lambda x: self.keepLightOn())
         self.ui.override_off_time_checkbox.stateChanged.connect(lambda x: self.overrideOffTime())
+        self.ui.allow_foodspot_returns_checkbox.stateChanged.connect(lambda x: self.allowFoodspotReturns())
 
 
         # Setup sliders
@@ -1357,6 +1359,11 @@ class ForagingDetails():
         else:
             self.opto.time_override = False
 
+    def allowFoodspotReturns(self):
+        if self.ui.allow_foodspot_returns_checkbox.isChecked():
+            self.opto.allowfoodspotreturns = True
+        else:
+            self.opto.allowfoodspotreturns = False
 
 
     def update_text(self):
