@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>576</width>
-    <height>500</height>
+    <height>536</height>
    </rect>
   </property>
   <property name="font">
@@ -148,7 +148,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>270</y>
+     <y>300</y>
      <width>541</width>
      <height>217</height>
     </rect>
@@ -263,6 +263,9 @@
     </item>
     <item row="3" column="0">
      <widget class="QCheckBox" name="min_food_distance_checkbox">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
       <property name="text">
        <string/>
       </property>
@@ -641,7 +644,7 @@
      <x>100</x>
      <y>180</y>
      <width>390</width>
-     <height>66</height>
+     <height>91</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_3">
@@ -683,6 +686,13 @@
      <widget class="QCheckBox" name="keep_light_on_checkbox">
       <property name="text">
        <string>keep light on for on time</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QCheckBox" name="allow_foodspot_returns_checkbox">
+      <property name="text">
+       <string>allow foodspot returns</string>
       </property>
      </widget>
     </item>
