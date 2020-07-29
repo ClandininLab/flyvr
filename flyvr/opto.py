@@ -220,8 +220,12 @@ class OptoThread(Service):
                             elif self.set_off_time == True and self.time_override == True and self.distance_away_reached == True: #turn the light on
                                 self.on()
                                 print('on because override allowed')
-                            else:
-                                print('no light on, state not specified--distance away reached = ', self.distance_away_reached)
+                            #also need a condition so it will turn on if the time has elapsed even if teh override is true (could probably combo this into previous one, but I'll keep it separate)
+                            elif self.set_off_time == True and self.time_override == True and self.distance_away_reached == False:
+                                if (time() - self.off_time_track) > self.min_off_time: #if off time passage is greater than min off time then turn on
+                                    self.on()
+                            # else:
+                            #     print('no light on, state not specified--distance away reached = ', self.distance_away_reached)
 
                         elif self.led_status == 'on':
                             if self.set_on_time == True: #turn the light off if it has been on too long
