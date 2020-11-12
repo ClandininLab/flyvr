@@ -30,9 +30,13 @@ class FlyDispenser(Service):
             serial_port = '/dev/tty.usbmodem1411'
         elif platform.system() == 'Linux':
             try:
-                serial_port = serial_number_to_comport('557393232373516180D1')
+                serial_number = '5573731323135121E0C2' #Arduino specific
+                serial_port = serial_number_to_comport(serial_number)
             except:
                 print('Could not connect to fly dispenser Arduino.')
+                print("  **NOTE** if this is a new Arduino, you must:")
+                print("\t (1) open: <path_to_flyvr_code>/flyvr/dispensor.py")
+                print("\t (2) edit: serial_number to match the new Arduino.")
         else:
             serial_port = 'COM4'
 
@@ -89,7 +93,7 @@ class FlyDispenser(Service):
         self.display_type = 'raw'
         self.display_threshold = -11
         self.gate_clear_threshold = -20
-        self.fly_passed_threshold = -2  ##this may need to be more negative if it is too sensitive
+        self.fly_passed_threshold = -6  ##this may need to be more negative if it is too sensitive
         self.num_needed_pixels = 2 # how many pixels in the gate exceeded the fly_passed_threshold, make smaller if not sensitive enough
 
         # manual command locking
