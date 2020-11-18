@@ -93,7 +93,7 @@ class FlyDispenser(Service):
         self.display_type = 'raw'
         self.display_threshold = -11
         self.gate_clear_threshold = -20
-        self.fly_passed_threshold = -6  ##this may need to be more negative if it is too sensitive
+        self.fly_passed_threshold = -3  ##this may need to be more negative if it is too sensitive
         self.num_needed_pixels = 2 # how many pixels in the gate exceeded the fly_passed_threshold, make smaller if not sensitive enough
 
         # manual command locking
