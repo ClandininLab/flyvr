@@ -416,7 +416,7 @@ class OptoThread(Service):
 
 
     def on(self):
-        print('TURNED ON')
+        print('TURNED ON (in opto)')
         self.led_status = 'on'
         self.logLED(self.led_status)
         self.write(self.ON_COMMAND)
@@ -432,7 +432,7 @@ class OptoThread(Service):
     def write(self, cmd):
         self.ser.write(bytearray([cmd]))
 
-    def pulse(self, on_duration=0.1, off_duration=9.9):
+    def pulse(self, on_duration=5, off_duration=5):
         def target():
             while True:
                 self.on()
