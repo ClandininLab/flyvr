@@ -93,8 +93,10 @@ class FlyDispenser(Service):
         self.display_type = 'raw'
         self.display_threshold = -11
         self.gate_clear_threshold = -20
-        self.fly_passed_threshold = -3  ##this may need to be more negative if it is too sensitive
-        self.num_needed_pixels = 2 # how many pixels in the gate exceeded the fly_passed_threshold, make smaller if not sensitive enough
+        # Below is what value we say a gate pixel must change by to be a fly. Think of it in abs(threshold) terms
+        self.fly_passed_threshold = -11  # larger value = larger threshold/decreased sensitivity of gate
+        # Below is how many pixels in the gate exceed the fly_passed_threshold. decrease value to increase sensitivity
+        self.num_needed_pixels = 2
 
         # manual command locking
         self.should_release = Event()
@@ -298,6 +300,8 @@ class FlyDispenser(Service):
 
         diff = -np.abs(self.raw_data[self.gate_end:] - self.prev_frame[self.gate_end:])
         #print('fly-passed-diff', diff)
+        # Below is confusing b/c of (-) values used in code. Think of it like:
+        # diff > threshold (if numbers were (+).
         return np.sum(diff < self.fly_passed_threshold) > self.num_needed_pixels
 
     def start_timer(self):
