@@ -89,8 +89,6 @@ class FlyDispenser(Service):
         # self.fly_passed_threshold = -11
         # self.num_needed_pixels = 2
 
-        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
-
         # IMPORTANT Hardcoded thresholds!
         # initialize display settings--new settings with new camera 20201027
         self.display_type = 'raw'
