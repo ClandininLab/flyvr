@@ -89,14 +89,21 @@ class FlyDispenser(Service):
         # self.fly_passed_threshold = -11
         # self.num_needed_pixels = 2
 
+        # IMPORTANT Hardcoded thresholds!
         # initialize display settings--new settings with new camera 20201027
         self.display_type = 'raw'
         self.display_threshold = -11
-        self.gate_clear_threshold = -20
+        # Below: When flies are in the gate, the values range from -30<x<-5, noise is around -2
+        self.gate_clear_threshold = -5
+        # 7/11/22 - Changed from (-10) to (-5)) b/c gate wasn't being recognized as clear
+
         # Below is what value we say a gate pixel must change by to be a fly. Think of it in abs(threshold) terms
-        self.fly_passed_threshold = -11  # larger value = larger threshold/decreased sensitivity of gate
+        self.fly_passed_threshold = -4 # larger value = smaller threshold/increased sensitivity
+        # 7/11/22 - Changed this value from (-1) to (-5) to attempt to solve the gate noise problem
+        # CHANGE THIS VALUE first when trying to adjust gate sensitivity
+
         # Below is how many pixels in the gate exceed the fly_passed_threshold. decrease value to increase sensitivity
-        self.num_needed_pixels = 2
+        self.num_needed_pixels = 2 # a combo of fly_passed = -1 and num_needed = 2 seems to work
 
         # manual command locking
         self.should_release = Event()
@@ -108,6 +115,7 @@ class FlyDispenser(Service):
         #for opening dispenser if it is closed too long in error
         self.prev_state = None
         self.closed_gate_timer = None
+
         self.no_fly_reopen_gate = False  #this should reset when the trial thread finds a fly
         self.closed_gate_wait_time = 180 #time in sec to wait to reopen gate after not finding fly
 
@@ -213,11 +221,19 @@ class FlyDispenser(Service):
                 self.state = 'LookForFly'
                 print('Dispenser: going to LookForFly state.')
         elif self.state == 'LookForFly':
-            if self.gate_clear and self.fly_passed:
+            # debug block start
+            print('---DEBUGGING: In LookForFly State')
+            if self.gate_clear and not self.fly_passed:
+                    print('------DEBUGGING: YES gate_clear & NO fly_passed')
+            # end debug block
+
+            elif self.gate_clear and self.fly_passed:
                 self.trigger = 'auto'
                 self.send_close_gate_command()
                 self.prev_state = 'LookForFly'
                 self.state = 'Idle'
+                # debug
+                print('---!!!---DEBUGGING: gate_clear AND fly_passed---!!!')
                 print('Dispenser: going to Idle state.')
         elif self.state == 'ReOpenGate':
             if self.prev_state == 'LookForFly':   #if previous state was look for fly--prevents it from continuously reopening after timer set
@@ -287,7 +303,8 @@ class FlyDispenser(Service):
 
         diff = (self.raw_data[self.gate_start:self.gate_end] -
                 self.background_region[self.gate_start:self.gate_end])
-        #print('gate_clear-diff', diff)
+        # debug
+        print('~~~~~~~~~~~~~~~gate_clear-diff', diff, '\n\n\n')
         return np.all(diff > self.gate_clear_threshold)
 
     @property
@@ -298,10 +315,16 @@ class FlyDispenser(Service):
         #diff = (self.raw_data[self.gate_end:self.max_usable_pixel] -
         #        self.background_region[self.gate_end:self.max_usable_pixel])
 
-        diff = -np.abs(self.raw_data[self.gate_end:] - self.prev_frame[self.gate_end:])
+        diff = -np.abs(self.raw_data[self.gate_end: ] - self.prev_frame[self.gate_end:])
         #print('fly-passed-diff', diff)
         # Below is confusing b/c of (-) values used in code. Think of it like:
         # diff > threshold (if numbers were (+).
+        # debug block start
+        print('---------fly passed diff: ',diff, '\n')
+        # print('diff < fly_passed_threshold: ', diff < self.fly_passed_threshold, '\n')
+        print('------------sum of diff < passed threshold: ', np.sum(diff < self.fly_passed_threshold), '\n')
+        # debug block end
+
         return np.sum(diff < self.fly_passed_threshold) > self.num_needed_pixels
 
     def start_timer(self):
