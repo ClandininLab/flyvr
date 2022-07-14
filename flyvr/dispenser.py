@@ -222,7 +222,7 @@ class FlyDispenser(Service):
                 print('Dispenser: going to LookForFly state.')
         elif self.state == 'LookForFly':
             # debug block start
-            print('---DEBUGGING: In LookForFly State')
+            #print('---DEBUGGING: In LookForFly State')
             if self.gate_clear and not self.fly_passed:
                     print('------DEBUGGING: YES gate_clear & NO fly_passed')
             # end debug block
