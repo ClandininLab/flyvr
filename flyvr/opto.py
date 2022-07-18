@@ -224,6 +224,7 @@ class OptoThread(Service):
                             elif self.set_off_time == True and self.time_override == True and self.distance_away_reached == False:
                                 if (time() - self.off_time_track) > self.min_off_time: #if off time passage is greater than min off time then turn on
                                     self.on()
+                                    print('on because of THIS condition')
                             # else:
                             #     print('no light on, state not specified--distance away reached = ', self.distance_away_reached)
 
