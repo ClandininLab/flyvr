@@ -227,6 +227,10 @@ class OptoThread(Service):
                                     print('on because of THIS condition')
                             # else:
                             #     print('no light on, state not specified--distance away reached = ', self.distance_away_reached)
+                                    print("on because of extra condition at line 224")
+                            else:
+                                print('no light on, state not specified--distance away reached = ', self.distance_away_reached)
+
 
                         elif self.led_status == 'on':
                             if self.set_on_time == True: #turn the light off if it has been on too long
