@@ -94,7 +94,7 @@ class FlyDispenser(Service):
         self.display_type = 'raw'
         self.display_threshold = -11
         # Below: When flies are in the gate, the values range from -30<x<-5, noise is around -2
-        self.gate_clear_threshold = -5
+        self.gate_clear_threshold = -4
         # 7/11/22 - Changed from (-10) to (-5)) b/c gate wasn't being recognized as clear
 
         # Below is what value we say a gate pixel must change by to be a fly. Think of it in abs(threshold) terms
@@ -223,17 +223,17 @@ class FlyDispenser(Service):
         elif self.state == 'LookForFly':
             # debug block start
             #print('---DEBUGGING: In LookForFly State')
-            if self.gate_clear and not self.fly_passed:
-                    print('------DEBUGGING: YES gate_clear & NO fly_passed')
+            # if self.gate_clear and not self.fly_passed:
+            #     print('------DEBUGGING: YES gate_clear & NO fly_passed')
             # end debug block
 
-            elif self.gate_clear and self.fly_passed:
+            if self.gate_clear and self.fly_passed:
                 self.trigger = 'auto'
                 self.send_close_gate_command()
                 self.prev_state = 'LookForFly'
                 self.state = 'Idle'
                 # debug
-                print('---!!!---DEBUGGING: gate_clear AND fly_passed---!!!')
+                # print('---!!!---DEBUGGING: gate_clear AND fly_passed---!!!')
                 print('Dispenser: going to Idle state.')
         elif self.state == 'ReOpenGate':
             if self.prev_state == 'LookForFly':   #if previous state was look for fly--prevents it from continuously reopening after timer set
@@ -304,7 +304,7 @@ class FlyDispenser(Service):
         diff = (self.raw_data[self.gate_start:self.gate_end] -
                 self.background_region[self.gate_start:self.gate_end])
         # debug
-        print('~~~~~~~~~~~~~~~gate_clear-diff', diff, '\n\n\n')
+        # print('~~~~~~~~~~~~~~~gate_clear-diff', diff, '\n\n\n')
         return np.all(diff > self.gate_clear_threshold)
 
     @property
@@ -316,14 +316,14 @@ class FlyDispenser(Service):
         #        self.background_region[self.gate_end:self.max_usable_pixel])
 
         diff = -np.abs(self.raw_data[self.gate_end: ] - self.prev_frame[self.gate_end:])
-        #print('fly-passed-diff', diff)
-        # Below is confusing b/c of (-) values used in code. Think of it like:
-        # diff > threshold (if numbers were (+).
-        # debug block start
-        print('---------fly passed diff: ',diff, '\n')
-        # print('diff < fly_passed_threshold: ', diff < self.fly_passed_threshold, '\n')
-        print('------------sum of diff < passed threshold: ', np.sum(diff < self.fly_passed_threshold), '\n')
-        # debug block end
+        ##print('fly-passed-diff', diff)
+        ## Below is confusing b/c of (-) values used in code. Think of it like:
+        ## diff > threshold (if numbers were (+).
+        ## debug block start
+        # print('---------fly passed diff: ',diff, '\n')
+        ## print('diff < fly_passed_threshold: ', diff < self.fly_passed_threshold, '\n')
+        #print('------------sum of diff < passed threshold: ', np.sum(diff < self.fly_passed_threshold), '\n')
+        ## debug block end
 
         return np.sum(diff < self.fly_passed_threshold) > self.num_needed_pixels
 
