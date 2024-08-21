@@ -14,6 +14,7 @@ from flyvr.cnc import CncThread
 from flyvr.camera import CamThread
 
 from flyvr.util import serial_number_to_comport
+from random import choice
 
 class OptoThread(Service):
     ON_COMMAND = 0xbe
@@ -89,6 +90,8 @@ class OptoThread(Service):
         self.shouldCheckFlyIsMoving = True
         self.shouldCheckTotalPathDistance = False
         self.shouldCheckNumberFoodspots = False
+        self.shouldCheckMaxFoodTime = False # change to True manually until GUI is changed
+        self.shouldRandomizeOffTime = False #manually change to true until GUI is changed
 
         # self.override_allowed = False #changes true when fly is 3cm from foodspot ---no longer used
         self.distance_away_reached = False  #use this to make sure the fly moves 3cm from the last foodspot before giving food again
@@ -100,7 +103,7 @@ class OptoThread(Service):
         #parameters for light pulse times
         self.set_off_time = False
         self.set_on_time = False
-        self.min_off_time = 9.0
+        self.min_off_time = 10.0
         self.max_on_time = 1.0 #1s
         self.off_time_track = 0  #0
         self.on_time_track = 0
@@ -108,8 +111,13 @@ class OptoThread(Service):
         self.off_time_correct = False
         self.current_off_time = 0
         self.current_on_time = 0
-        self.full_light_on = False  #to designate that the light will stay on for full on time even if fly leaves foodspot
+        self.full_light_on = True  #to designate that the light will stay on for full on time even if fly leaves foodspot #I changed this to true verify right in gui 20240821
         self.fly_in_previous_foodspot = False
+        self.max_food_time = 120 # seconds of elapsed experiment time 
+
+        #to override max_off time with a random selection, specified below (20240824 - also need to add this to gui)
+        if self.shouldRandomizeOffTime == True:
+            self.min_off_time = choice([10, 20, 40, 60]) #not currently set in GUI to specify these
 
 
         # call constructor from parent        
@@ -374,7 +382,14 @@ class OptoThread(Service):
             #if not self.more_food: ##commented out (seems unnecessary)
                 self.shouldCreateFood = False
                 return
-
+            
+        ## add max time for foodspots here (i.e. 2 minutes of foodspots allowed (at other parameters and then no more))
+        #this is new! test! 20240821
+        if self.shouldCheckMaxFoodTime:
+            if self.trial_start_t and time() - self.trial_start_t  >= self.max_food_time: ##I think time() - self.trial_start_t will give me elapsed trial time 
+                self.shouldCreateFood = False   
+                self.more_food = False
+                print(f"no more food because allowed duration for food has elapsed. Set duration = {self.max_food_time} s ")
         
         #if the on time has not elapsed then another foodspot should not be made either
         if self.set_on_time and (time() - self.on_time_track) <= self.max_on_time: 
