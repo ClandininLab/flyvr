@@ -377,6 +377,11 @@ class MainGui():
                     if self.opto.shouldCheckNumberFoodspots == True:
                         number_food = self.opto.max_foodspots
                         foragingdict.update({'maximum number foodspots': number_food})
+                    if self.opto.shouldCheckMaxFoodTime == True:
+                        max_food_time = self.opto.max_food_time
+                        foragingdict.update({'maximum time to get food': max_food_time})
+                    if self.opto.shouldRandomizeOffTime == True:
+                        foragingdict.update({'randomized off time': 'yes'})
                     # if self.opto.shouldAllowDancing == True:
                     #     foragingdict.update({'remove previous foodspots on': 'yes'})
                     if self.opto.full_light_on == True:
@@ -1220,6 +1225,8 @@ class ForagingDetails():
         self.ui.keep_light_on_checkbox.stateChanged.connect(lambda x: self.keepLightOn())
         self.ui.override_off_time_checkbox.stateChanged.connect(lambda x: self.overrideOffTime())
         self.ui.allow_foodspot_returns_checkbox.stateChanged.connect(lambda x: self.allowFoodspotReturns())
+        self.ui.max_total_food_time_checkbox.stateChanged.connect(lambda x: self.limitFoodDuration())
+        self.ui.randomize_off_time_checkbox.stateChanged.connect(lambda x: self.randomizeOffTime())
 
 
         # Setup sliders
@@ -1340,6 +1347,18 @@ class ForagingDetails():
             self.opto.shouldCheckNumberFoodspots = True
         else:
             self.opto.shouldCheckNumberFoodspots = False
+    
+    def limitFoodDuration(self):
+        if self.ui.max_total_food_time_checkbox.isChecked():
+            self.opto.shouldCheckMaxFoodTime = True
+        else:
+            self.opto.shouldCheckMaxFoodTime = False
+
+    def randomizeOffTime(self):
+        if self.ui.randomize_off_time_checkbox.isChecked():
+            self.opto.shouldRandomizeOffTime = True
+        else:
+            self.opto.shouldRandomizeOffTime = False
 
     # def removeFoodspotsforDance(self):
     #     if self.ui.remove_prev_foodspots_checkbox.isChecked():
