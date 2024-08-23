@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>576</width>
-    <height>536</height>
+    <width>592</width>
+    <height>589</height>
    </rect>
   </property>
   <property name="font">
@@ -148,7 +148,7 @@
    <property name="geometry">
     <rect>
      <x>20</x>
-     <y>300</y>
+     <y>360</y>
      <width>541</width>
      <height>217</height>
     </rect>
@@ -644,7 +644,7 @@
      <x>100</x>
      <y>180</y>
      <width>390</width>
-     <height>91</height>
+     <height>81</height>
     </rect>
    </property>
    <layout class="QGridLayout" name="gridLayout_3">
@@ -697,6 +697,32 @@
      </widget>
     </item>
    </layout>
+  </widget>
+  <widget class="QCheckBox" name="max_total_food_time_checkbox">
+   <property name="geometry">
+    <rect>
+     <x>220</x>
+     <y>270</y>
+     <width>247</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>limit total foodtime (2min default)</string>
+   </property>
+  </widget>
+  <widget class="QCheckBox" name="randomize_off_time_checkbox">
+   <property name="geometry">
+    <rect>
+     <x>220</x>
+     <y>290</y>
+     <width>247</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>randomize off time (10,20,40,60s)</string>
+   </property>
   </widget>
  </widget>
  <resources/>

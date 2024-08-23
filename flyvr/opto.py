@@ -91,7 +91,7 @@ class OptoThread(Service):
         self.shouldCheckTotalPathDistance = False
         self.shouldCheckNumberFoodspots = False
         self.shouldCheckMaxFoodTime = False # change to True manually until GUI is changed
-        self.shouldRandomizeOffTime = False #manually change to true until GUI is changed
+        self.shouldRandomizeOffTime = True #manually change to true until GUI is changed
 
         # self.override_allowed = False #changes true when fly is 3cm from foodspot ---no longer used
         self.distance_away_reached = False  #use this to make sure the fly moves 3cm from the last foodspot before giving food again
@@ -118,7 +118,7 @@ class OptoThread(Service):
         #to override max_off time with a random selection, specified below (20240824 - also need to add this to gui)
         if self.shouldRandomizeOffTime == True:
             self.min_off_time = choice([10, 20, 40, 60]) #not currently set in GUI to specify these
-
+            print(f'min off time by randomize chosen = {self.min_off_time}')
 
         # call constructor from parent        
         super().__init__(maxTime=maxTime, minTime=minTime)
