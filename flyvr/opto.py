@@ -377,6 +377,7 @@ class OptoThread(Service):
 
         
         #if the on time has not elapsed then another foodspot should not be made either
+        #not sure why there are still a couple foodspots if the fly moves while light remains on...7.22.22
         if self.set_on_time and (time() - self.on_time_track) <= self.max_on_time: 
             self.shouldCreateFood = False
             self.on_time_correct = False
