@@ -80,7 +80,7 @@ class OptoThread(Service):
         self.distance_correct = False  #true if fly is far enough away from the center
         self.path_distance_correct = False  #true if fly has walked far enough since the previous food (path style)
         self.fly_moving = False #true if fly is moving
-        self.more_food = False #if false then reached max foodspots
+        self.more_food = True #if false then reached max foodspots or max duration
         self.time_override = False  ##if true will override time off restriction if the fly is self.distance_away_required away from foodspot
         self.dist_from_center = None #straight line distance from center
         self.closest_food = None #should store the distance to the closest foodspot (of all foodspots)
@@ -173,7 +173,7 @@ class OptoThread(Service):
                 self.checkFoodCreation()
 
                 #if find that food should be created, record a foodspot and change shouldcreatefood state back to false
-                if self.shouldCreateFood:
+                if self.shouldCreateFood and self.more_food == True: #more_food will be false if the duration of food allowed is reached or max foodspots reached
                     self.defineFoodSpot()  #this records the foodspot x,y coordinates in foodspots and logs it in txt file
                     self.shouldCreateFood = False
 
@@ -378,18 +378,17 @@ class OptoThread(Service):
             if len(self.foodspots) < self.max_foodspots:
                 self.more_food = True
             else:
-                self.more_food = False
-            #if not self.more_food: ##commented out (seems unnecessary)
+                self.more_food = False 
                 self.shouldCreateFood = False
                 return
             
         ## add max time for foodspots here (i.e. 2 minutes of foodspots allowed (at other parameters and then no more))
         #this is new! test! 20240821
         if self.shouldCheckMaxFoodTime:
-            if self.trial_start_t and time() - self.trial_start_t  >= self.max_food_time: ##I think time() - self.trial_start_t will give me elapsed trial time 
+            if self.trial_start_t and (time() - self.trial_start_t)  >= self.max_food_time: ##self.trial_start_t is set to time() at the start of the trial 
                 self.shouldCreateFood = False   
                 self.more_food = False
-                print(f"no more food because allowed duration for food has elapsed. Set duration = {self.max_food_time} s ")
+                print(f"no more food because allowed duration for food has elapsed. Duration = {self.max_food_time} s ")
         
         #if the on time has not elapsed then another foodspot should not be made either
         #not sure why there are still a couple foodspots if the fly moves while light remains on...7.22.22

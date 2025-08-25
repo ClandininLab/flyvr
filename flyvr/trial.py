@@ -9,6 +9,7 @@ from time import strftime, time, sleep
 from flyvr.service import Service
 from threading import Lock
 from flyvr.tracker import TrackThread, ManualVelocity
+from random import choice
 
 class TrialThread(Service):
     def __init__(self, cam, cnc, dispenser, stim, opto, tracker, ui, flyplot, temp,
@@ -109,10 +110,15 @@ class TrialThread(Service):
             self.opto.list_prev_y = [0]
             self.opto.list_prev_x = [0]
 
+
             self.opto.long_time_since_food = True
             self.opto.shouldCreateFood = False
             self.opto.time_of_last_food = None
             self.opto.time_since_last_food = None
+
+            if self.opto.shouldRandomizeOffTime == True:
+                self.min_off_time = choice([10, 20, 40, 60])
+                print(f'min off time by randomize chosen = {self.min_off_time}')
 
         if self.stim is not None:
             self.stim.nextTrial(self._trial_dir)
