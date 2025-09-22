@@ -274,6 +274,11 @@ class TrialThread(Service):
             if self.tracker.is_close_to_center():
                 if self.dispenser is not None:
                     self.dispenser.release_fly()
+
+                    #autocalibrate gate
+                    if self.dispenser.gate_state == 'open' and self.dispenser.gate_clear:
+                        self.dispenser.calibrate_gate()
+                        print('auto calibrating gate')
                 else:
                     print('Dispenser not connected, please manually release fly')
                 self.prev_state = 'moving back to center'
