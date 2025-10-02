@@ -1,0 +1,1 @@
+Note: if an arduino board fails the appropriate code needs to be uploaded onto it using the arduino ide (or other way). Advise doing it on a laptop with just the one board plugged in rather than big rig computer because it is easier to identify which board needs which code. 
