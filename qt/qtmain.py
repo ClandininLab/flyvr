@@ -382,6 +382,10 @@ class MainGui():
                         foragingdict.update({'maximum time to get food': max_food_time})
                     if self.opto.shouldRandomizeOffTime == True:
                         foragingdict.update({'randomized off time': 'yes'})
+                    if self.opto.shouldRandomizeFoodDistance == True:
+                        foragingdict.update({'randomized food distance': 'yes'})
+                    if self.opto.shouldRandomizePathDistance == True:
+                        foragingdict.update({'randomized path distance from food': 'yes'})
                     # if self.opto.shouldAllowDancing == True:
                     #     foragingdict.update({'remove previous foodspots on': 'yes'})
                     if self.opto.full_light_on == True:
@@ -1227,6 +1231,8 @@ class ForagingDetails():
         self.ui.allow_foodspot_returns_checkbox.stateChanged.connect(lambda x: self.allowFoodspotReturns())
         self.ui.max_total_food_time_checkbox.stateChanged.connect(lambda x: self.limitFoodDuration())
         self.ui.randomize_off_time_checkbox.stateChanged.connect(lambda x: self.randomizeOffTime())
+        self.ui.randomize_path_distance_checkbox.stateChanged.connect(lambda x: self.randomizePathDistance())
+        self.ui.randomize_food_distance_checkbox.stateChanged.connect(lambda x: self.randomizeFoodDistance())
 
 
         # Setup sliders
@@ -1359,6 +1365,19 @@ class ForagingDetails():
             self.opto.shouldRandomizeOffTime = True
         else:
             self.opto.shouldRandomizeOffTime = False
+
+    #2025.12.11
+    def randomizePathDistance(self):
+        if self.ui.randomize_path_distance_checkbox.isChecked():
+            self.opto.shouldRandomizePathDistance = True
+        else:
+            self.opto.shouldRandomizePathDistance = False
+    
+    def randomizeFoodDistance(self):
+        if self.ui.randomize_food_distance_checkbox.isChecked():
+            self.opto.shouldRandomizeFoodDistance = True
+        else:
+            self.opto.shouldRandomizeFoodDistance = False
 
     # def removeFoodspotsforDance(self):
     #     if self.ui.remove_prev_foodspots_checkbox.isChecked():

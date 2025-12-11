@@ -61,8 +61,8 @@ class OptoThread(Service):
         self.foraging = False  #if foraging button selected in GUI this will change to true
         self.foraging_distance_min = 0.03 #distane from center requirement in meters
         self.path_distance_min = 0.01 #min walk distance from a foodspot to make more food
-        self.min_dist_from_food = 0.05  # in meters. min distance the fly must walk to get a new foodspot
-        self.distance_since_last_food = 0  #fly walking path distance from most recent foodspot (resets each time a foodspot is created or the fly returns to the recent foodspot)
+        self.min_dist_from_food = 0.05  # in meters. min geo distance the fly must walk to get a new foodspot
+        self.distance_since_last_food = 0  #needs to start at 0 resets each time gets food
         self.list_prev_y = [0]  #involved in tracking the total distance the fly walks
         self.list_prev_x = [0]  #involved in tracking the total distance the fly walks
         self.max_foodspots = 90  # to control the number of foodspots (set high, but this won't turn on unless selected)
@@ -91,7 +91,9 @@ class OptoThread(Service):
         self.shouldCheckTotalPathDistance = False
         self.shouldCheckNumberFoodspots = False
         self.shouldCheckMaxFoodTime = False # change to True manually until GUI is changed
-        self.shouldRandomizeOffTime = True #manually change to true until GUI is changed
+        self.shouldRandomizeOffTime = False #manually change to true until GUI is changed
+        self.shouldRandomizePathDistance = False
+        self.shouldRandomizeFoodDistance = False
 
         # self.override_allowed = False #changes true when fly is 3cm from foodspot ---no longer used
         self.distance_away_reached = False  #use this to make sure the fly moves 3cm from the last foodspot before giving food again
@@ -119,6 +121,12 @@ class OptoThread(Service):
         if self.shouldRandomizeOffTime == True:
             self.min_off_time = choice([10, 20, 40, 60]) #not currently set in GUI to specify these
             print(f'min off time by randomize chosen = {self.min_off_time}')
+        if self.shouldRandomizeFoodDistance == True:
+            self.min_dist_from_food = choice([5, 15]) #, 40, 60]) #not currently set in GUI to specify these
+            print(f'min distance from food by randomize chosen = {self.min_dist_from_food}')
+        if self.shouldRandomizePathDistance == True:
+            self.path_distance_min = choice([5, 15]) #, 40, 60]) #not currently set in GUI to specify these
+            print(f'min path distance from food by randomize chosen = {self.path_distance_min}')
 
         # call constructor from parent        
         super().__init__(maxTime=maxTime, minTime=minTime)

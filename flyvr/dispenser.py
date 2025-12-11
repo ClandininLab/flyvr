@@ -219,6 +219,14 @@ class FlyDispenser(Service):
             if self.timer_done(0.5):
                 self.prev_state = 'PreReleaseDelay'
                 self.state = 'LookForFly'
+                #add autocalibration here - potential for it to calibrate while a fly is in it...remove if that is a problem 2025.12.11
+                if self.gate_state == 'open':
+                    print('Auto-Calibrating gate...')
+                    self.background_region = self.raw_data
+                    print('background region:', self.background_region)
+                    np.save(self.background_region_file, self.background_region)
+                else:
+                    print('Cannot calibrate gate.  Please issue an open_gate() command.')
                 print('Dispenser: going to LookForFly state.')
         elif self.state == 'LookForFly':
             # debug block start
