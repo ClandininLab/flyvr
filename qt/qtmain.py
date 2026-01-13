@@ -384,8 +384,12 @@ class MainGui():
                         foragingdict.update({'randomized off time': 'yes'})
                     if self.opto.shouldRandomizeFoodDistance == True:
                         foragingdict.update({'randomized food distance': 'yes'})
+                        min_food_distance = self.opto.min_dist_from_food
+                        foragingdict.update({'min food distance (m)': min_food_distance})
                     if self.opto.shouldRandomizePathDistance == True:
                         foragingdict.update({'randomized path distance from food': 'yes'})
+                        fly_path_distance = self.opto.path_distance_min
+                        foragingdict.update({'fly path distance min (m)': fly_path_distance})
                     # if self.opto.shouldAllowDancing == True:
                     #     foragingdict.update({'remove previous foodspots on': 'yes'})
                     if self.opto.full_light_on == True:
