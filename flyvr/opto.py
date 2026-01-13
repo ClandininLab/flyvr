@@ -122,7 +122,7 @@ class OptoThread(Service):
             self.min_off_time = choice([10, 20, 40, 60]) #not currently set in GUI to specify these
             print(f'min off time by randomize chosen = {self.min_off_time}')
         if self.shouldRandomizeFoodDistance == True:
-            self.self.shouldCheckFoodDistance = True
+            self.shouldCheckFoodDistance = True
             self.min_dist_from_food = choice([5, 15]) #, 40, 60]) #not currently set in GUI to specify these
             print(f'min distance from food by randomize chosen = {self.min_dist_from_food}')
         if self.shouldRandomizePathDistance == True:
