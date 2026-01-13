@@ -125,7 +125,8 @@ class OptoThread(Service):
             self.min_dist_from_food = choice([5, 15]) #, 40, 60]) #not currently set in GUI to specify these
             print(f'min distance from food by randomize chosen = {self.min_dist_from_food}')
         if self.shouldRandomizePathDistance == True:
-            self.path_distance_min = choice([5, 15]) #, 40, 60]) #not currently set in GUI to specify these
+            #self.path_distance_min = choice([5, 15]) #, 40, 60]) #not currently set in GUI to specify these
+            self.distance_away_required = choice([5, 15])
             print(f'min path distance from food by randomize chosen = {self.path_distance_min}')
 
         # call constructor from parent        
