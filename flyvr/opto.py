@@ -124,10 +124,10 @@ class OptoThread(Service):
         if self.shouldRandomizeFoodDistance == True:
             self.shouldCheckFoodDistance = True
             self.min_dist_from_food = choice([5, 15]) #, 40, 60]) #not currently set in GUI to specify these
-            print(f'min distance from food by randomize chosen = {self.min_dist_from_food}')
+            print(f'min euc distance from food by randomize chosen = {self.min_dist_from_food}')
         if self.shouldRandomizePathDistance == True:
             self.path_distance_min = choice([5, 15]) #, 40, 60]) #not currently set in GUI to specify these
-            #self.distance_away_required = choice([5, 15])
+            #self.distance_away_required = choice([5, 15]) #distance_away_required is for off_time override not for distance
             self.shouldCheckTotalPathDistance = True
             print(f'min path distance from food by randomize chosen = {self.path_distance_min}')
 
@@ -212,7 +212,7 @@ class OptoThread(Service):
                         # self.fly_in_previous_foodspot = False  ##can't put this here because it will check the last foodspot last
 
                 #set up checking for previous foodspots
-                if self.allowfoodspotreturns:
+                if self.allowfoodspotreturns == True:
                     for foodspot in self.foodspots[:-1]:  #since this is looking for previous foodspots, ignore the most recent one
                         if foodspot['x'] - self.food_rad <= self.flyX <= foodspot['x'] + self.food_rad and \
                            foodspot['y'] - self.food_rad <= self.flyY <= foodspot['y'] + self.food_rad:
@@ -220,12 +220,13 @@ class OptoThread(Service):
                             self.distance_since_last_food = 0 #reset distance when get to food
                             self.fly_in_food = True
                             self.fly_in_previous_foodspot = True
-                            #print(f"fly returned to foodspot! {foodspot}")
+                            print(f"fly returned to foodspot! {foodspot}")
                             continue
                         else:
                             self.fly_in_previous_foodspot = False
                 if self.allowfoodspotreturns is False:  #this shouldnt be necessary
                     self.fly_in_previous_foodspot = False
+                    #print('allow foodspot returns is false')
 
                 ## This controls if the light will TURN ON and TURN OFF and is dependent on if the fly is in the food
                     #the first line checks to make sure the light doesn't flicker on and off due to tracking issues by having a time hysteresis if the light had recently turned opn
@@ -330,7 +331,7 @@ class OptoThread(Service):
         if self.distance_since_last_food is not None and self.time_override == True:
             if self.distance_since_last_food > self.distance_away_required:  # distance away required set to 3cm (to allow a fly to move away and gt a new foodspot within off-time)
                 self.distance_away_reached = True
-                print("distance away reached achieved")
+                #print("distance away reached achieved")
             else:
                 self.distance_away_reached = False
 
