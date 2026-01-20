@@ -1093,10 +1093,14 @@ class DispenserView(QWidget):
                 self.end = self.end.astype(int)*255
 
                 # Process gate region
-                diff = (self.dispenser.raw_data[self.dispenser.gate_start:self.dispenser.gate_end] -
-                        self.dispenser.background_region[self.dispenser.gate_start:self.dispenser.gate_end])
-                self.gate = diff < self.dispenser.gate_clear_threshold
-                self.gate = self.gate.astype(int) * 255
+                if self.dispenser is not None and self.dispenser.background_region is not None:
+                    
+                    diff = (self.dispenser.raw_data[self.dispenser.gate_start:self.dispenser.gate_end] -
+                            self.dispenser.background_region[self.dispenser.gate_start:self.dispenser.gate_end])
+                    self.gate = diff < self.dispenser.gate_clear_threshold
+                    self.gate = self.gate.astype(int) * 255
+                else:
+                    print(f'background region is {self.dispenser.background_region}')
 
             processed_frame = np.concatenate((self.start,self.gate,self.end))
             self.processed_data = np.roll(self.processed_data, 1, 0)
