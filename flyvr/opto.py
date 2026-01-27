@@ -195,6 +195,7 @@ class OptoThread(Service):
                 #if find that food should be created, record a foodspot and change shouldcreatefood state back to false
                 if self.shouldCreateFood and self.more_food == True: #more_food will be false if the duration of food allowed is reached or max foodspots reached
                     self.defineFoodSpot()  #this records the foodspot x,y coordinates in foodspots and logs it in txt file
+                    self.on() #this may break things, but I think not. 
                     self.shouldCreateFood = False
 
                 # changes fly_in_food state to true if fly is in foodspot by checking x,y positions with the food_radius as a buffer
