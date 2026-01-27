@@ -121,15 +121,15 @@ class OptoThread(Service):
         if self.shouldRandomizeOffTime == True:
             self.min_off_time = choice([10, 20, 40, 60]) #not currently set in GUI to specify these
             print(f'min off time by randomize chosen = {self.min_off_time}')
-        if self.shouldRandomizeFoodDistance == True:
-            self.shouldCheckFoodDistance = True
-            self.min_dist_from_food = choice([.05, .15]) #, 40, 60]) #not currently set in GUI to specify these
-            print(f'min euc distance from food by randomize chosen = {self.min_dist_from_food}')
-        if self.shouldRandomizePathDistance == True:
-            self.path_distance_min = choice([.05, .15]) #, 40, 60]) #not currently set in GUI to specify these
-            #self.distance_away_required = choice([5, 15]) #distance_away_required is for off_time override not for distance
-            self.shouldCheckTotalPathDistance = True
-            print(f'min path distance from food by randomize chosen = {self.path_distance_min}')
+        # if self.shouldRandomizeFoodDistance == True:
+        #     self.shouldCheckFoodDistance = True
+        #     self.min_dist_from_food = choice([.05, .15]) #, 40, 60]) #not currently set in GUI to specify these
+        #     print(f'min euc distance from food by randomize chosen = {self.min_dist_from_food}')
+        # if self.shouldRandomizePathDistance == True:
+        #     self.path_distance_min = choice([.05, .15]) #, 40, 60]) #not currently set in GUI to specify these
+        #     #self.distance_away_required = choice([5, 15]) #distance_away_required is for off_time override not for distance
+        #     self.shouldCheckTotalPathDistance = True
+        #     print(f'min path distance from food by randomize chosen = {self.path_distance_min}')
 
         # call constructor from parent        
         super().__init__(maxTime=maxTime, minTime=minTime)
