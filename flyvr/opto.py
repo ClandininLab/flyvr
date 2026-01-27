@@ -248,7 +248,7 @@ class OptoThread(Service):
 
                     if self.fly_in_food:
                         if self.led_status == 'off': #the light is off when the fly is in food if the fly has just entered food or led on time has elapsed
-                            if self.set_off_time == False and self.allowfoodspotreturns == False: #if don't care about off time elapsing then turn on
+                            if self.set_off_time == False and self.allowfoodspotreturns == True: #if don't care about off time elapsing then turn on
                                 self.on()
                             elif self.set_off_time == True and self.time_override == False:  #turn the light on only if off time has passed and it doesn't meet override criteria
                                 if (time() - self.off_time_track) > self.min_off_time: #if off time passage is greater than min off time then turn on
