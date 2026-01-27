@@ -224,9 +224,12 @@ class OptoThread(Service):
                             continue
                         else:
                             self.fly_in_previous_foodspot = False
-                if self.allowfoodspotreturns is False:  #this shouldnt be necessary
-                    self.fly_in_previous_foodspot = False
-                    #print('allow foodspot returns is false')
+                if self.allowfoodspotreturns is False and self.set_off_time == False: #if off_time is on it doesn't really matter if the fly walks over a foodspot again 
+                    if self.fly_in_previous_foodspot == True: #make sure this is triggered
+                        #don't make more food or turn on light!
+                        self.off #this should keep light off, I think
+                        self.shouldCreateFood = False #this should be unnecessary
+                        print('allow foodspot returns is false')
 
                 ## This controls if the light will TURN ON and TURN OFF and is dependent on if the fly is in the food
                     #the first line checks to make sure the light doesn't flicker on and off due to tracking issues by having a time hysteresis if the light had recently turned opn
@@ -236,7 +239,6 @@ class OptoThread(Service):
 
                     if self.fly_in_food:
                         if self.led_status == 'off': #the light is off when the fly is in food if the fly has just entered food or led on time has elapsed
-                            ##self.time_in_out_change = time() #maybe don't reset this here 6.5.20 commented this line out (7.19.22 why would I not want this reset here? because the light hasn't just turned off)
                             if self.set_off_time == False: #if don't care about off time elapsing then turn on
                                 self.on()
                             elif self.set_off_time == True and self.time_override == False:  #turn the light on only if off time has passed and it doesn't meet override criteria
@@ -309,7 +311,6 @@ class OptoThread(Service):
         else: #if there is no foodspot then the fly is automatically far_from_food
             if self.shouldCheckFoodDistance: #adding these for food distance since removed from top, may not be necessary
                 self.far_from_food = True
-
 
         ### Check - far from center ###
         if self.dist_from_center is not None:
