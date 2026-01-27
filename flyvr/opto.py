@@ -318,9 +318,9 @@ class OptoThread(Service):
                     print(f'fly is far from food {self.far_from_food}. min distance = {self.min_dist_from_food}')
                 else:
                     self.far_from_food = False
-        # else: #if there is no foodspot then the fly is automatically far_from_food
-        #     if self.shouldCheckFoodDistance: #adding these for food distance since removed from top, may not be necessary
-        #         self.far_from_food = True
+        else: #if there is no foodspot then the fly is automatically far_from_food
+            if self.shouldCheckFoodDistance: #adding these for food distance since removed from top, may not be necessary
+                self.far_from_food = True
 
         ### Check - far from center ###
         if self.dist_from_center is not None:
