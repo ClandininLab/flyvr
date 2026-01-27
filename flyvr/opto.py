@@ -234,7 +234,7 @@ class OptoThread(Service):
                         else:
                             self.fly_in_previous_foodspot = False
                 if self.allowfoodspotreturns is False and self.set_off_time == False: #if off_time is on it doesn't really matter if the fly walks over a foodspot again 
-                    if self.fly_in_previous_foodspot == True: #make sure this is triggered
+                    if self.fly_in_previous_foodspot == True: 
                         #don't make more food or turn on light!
                         self.off #this should keep light off, I think
                         self.shouldCreateFood = False #this should be unnecessary
@@ -250,6 +250,10 @@ class OptoThread(Service):
                         if self.led_status == 'off': #the light is off when the fly is in food if the fly has just entered food or led on time has elapsed
                             if self.set_off_time == False and self.allowfoodspotreturns == True: #if don't care about off time elapsing then turn on
                                 self.on()
+                            elif self.set_off_time == False and self.allowfoodspotreturns == False: #if don't care about off time elapsing then turn on
+                                #need to make sure it's the first time
+                                if self.shouldCreateFood == True:
+                                    self.on()
                             elif self.set_off_time == True and self.time_override == False:  #turn the light on only if off time has passed and it doesn't meet override criteria
                                 if (time() - self.off_time_track) > self.min_off_time: #if off time passage is greater than min off time then turn on
                                     self.on()
@@ -272,7 +276,7 @@ class OptoThread(Service):
                                     #self.time_in_out_change = time()  #6.5.20 adding this here because it doesn't make sense to only have it sometimes when the light turns off?
                                     self.off()
                     #this will only be true if allow previous foodspot returns is selected
-                    elif self.fly_in_previous_foodspot:  #always turn the food on when the fly is in the previous foodspot (may need to add condition to turn back off
+                    elif self.fly_in_previous_foodspot:  
                         print('fly in previous foodspot')
                         self.on()
                     #    if self.led_status == 'off':
