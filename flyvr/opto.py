@@ -62,7 +62,7 @@ class OptoThread(Service):
         self.foraging_distance_min = 0.03 #distane from center requirement in meters
         self.path_distance_min = 0.01 #min walk distance from a foodspot to make more food
         self.min_dist_from_food = 0.05  # in meters. min geo distance the fly must walk to get a new foodspot
-        self.distance_since_last_food = 0  #needs to start at 0 resets each time gets food
+        self.distance_since_last_food = 0  #needs to start at 0 resets each time gets food, this is path distance
         self.list_prev_y = [0]  #involved in tracking the total distance the fly walks
         self.list_prev_x = [0]  #involved in tracking the total distance the fly walks
         self.max_foodspots = 90  # to control the number of foodspots (set high, but this won't turn on unless selected)
@@ -100,7 +100,7 @@ class OptoThread(Service):
         #make sure this condition is only checked if the off time is short
         self.allowfoodspotreturns = False ## if True this should allow flies to get new light if they are in a foodspot and time has not elapsed
         #self.time_in_out_change = None #rests to current time every time the light turns off to keep track of off time (7.19.22 replacing this with off_time_track)
-
+        print(f'foodspots allowed: {self.allowfoodspotreturns}')
 
         #parameters for light pulse times
         self.set_off_time = False
@@ -123,10 +123,10 @@ class OptoThread(Service):
             print(f'min off time by randomize chosen = {self.min_off_time}')
         if self.shouldRandomizeFoodDistance == True:
             self.shouldCheckFoodDistance = True
-            self.min_dist_from_food = choice([5, 15]) #, 40, 60]) #not currently set in GUI to specify these
+            self.min_dist_from_food = choice([.05, .15]) #, 40, 60]) #not currently set in GUI to specify these
             print(f'min euc distance from food by randomize chosen = {self.min_dist_from_food}')
         if self.shouldRandomizePathDistance == True:
-            self.path_distance_min = choice([5, 15]) #, 40, 60]) #not currently set in GUI to specify these
+            self.path_distance_min = choice([.05, .15]) #, 40, 60]) #not currently set in GUI to specify these
             #self.distance_away_required = choice([5, 15]) #distance_away_required is for off_time override not for distance
             self.shouldCheckTotalPathDistance = True
             print(f'min path distance from food by randomize chosen = {self.path_distance_min}')
@@ -225,6 +225,7 @@ class OptoThread(Service):
                         else:
                             self.fly_in_previous_foodspot = False
                 if self.allowfoodspotreturns is False and self.set_off_time == False: #if off_time is on it doesn't really matter if the fly walks over a foodspot again 
+                    print('no returns allowed - checking if in foodspot')
                     if self.fly_in_previous_foodspot == True: #make sure this is triggered
                         #don't make more food or turn on light!
                         self.off #this should keep light off, I think
@@ -435,7 +436,8 @@ class OptoThread(Service):
         self.logFood(self.flyX, self.flyY)
         print(f"new food location: {self.foodspots[-1]}")
         if self.closest_food is not None:
-            print("foodspot defined. closest food = ", self.closest_food)  #this should be 0 or close to it when foodspot defined
+            print("foodspot defined. closest food = ", self.closest_food)  
+            print(f'path distance to previous foodspot = {self.distance_since_last_food}')
         else:
             print("foodspot defined")
 
