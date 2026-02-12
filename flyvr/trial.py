@@ -123,11 +123,28 @@ class TrialThread(Service):
                 self.opto.shouldCheckFoodDistance = True
                 self.opto.min_dist_from_food = choice([.15, .05]) #, 40, 60]) #not currently set in GUI to specify these
                 print(f'min euc distance from food by randomize chosen = {self.opto.min_dist_from_food}')
+
+                #make new txt file for each trial to determine what choice is
+                if exp_dir is not None:
+                    fname = os.path.join(exp_dir, 'random_chosen.txt')
+                    rc = {"food euc distance chosen": self.opto.min_dist_from_food}
+                    data = self.pretty_json(rc)
+                    with open(fname, 'w') as f:
+                        f.write(data)
+        
             if self.opto.shouldRandomizePathDistance == True:
                 self.opto.path_distance_min = choice([ .05, .15]) #, 40, 60]) #not currently set in GUI to specify these
                 #self.distance_away_required = choice([5, 15]) #distance_away_required is for off_time override not for distance
                 self.opto.shouldCheckTotalPathDistance = True
                 print(f'min path distance from food by randomize chosen = {self.opto.path_distance_min}')
+
+                 #make new txt file for each trial to determine what choice is
+                if exp_dir is not None:
+                    fname = os.path.join(exp_dir, 'random_chosen.txt')
+                    rc = {"food path distance chosen": self.opto.path_distance_min}
+                    data = self.pretty_json(rc)
+                    with open(fname, 'w') as f:
+                        f.write(data)
 
         if self.stim is not None:
             self.stim.nextTrial(self._trial_dir)
