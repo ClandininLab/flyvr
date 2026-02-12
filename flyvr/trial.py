@@ -121,10 +121,10 @@ class TrialThread(Service):
                 print(f'min off time by randomize chosen = {self.min_off_time}')
             if self.opto.shouldRandomizeFoodDistance == True:
                 self.opto.shouldCheckFoodDistance = True
-                self.opto.min_dist_from_food = choice([.05, .15]) #, 40, 60]) #not currently set in GUI to specify these
+                self.opto.min_dist_from_food = choice([.15, .05]) #, 40, 60]) #not currently set in GUI to specify these
                 print(f'min euc distance from food by randomize chosen = {self.opto.min_dist_from_food}')
             if self.opto.shouldRandomizePathDistance == True:
-                self.opto.path_distance_min = choice([ .15, .05]) #, 40, 60]) #not currently set in GUI to specify these
+                self.opto.path_distance_min = choice([ .05, .15]) #, 40, 60]) #not currently set in GUI to specify these
                 #self.distance_away_required = choice([5, 15]) #distance_away_required is for off_time override not for distance
                 self.opto.shouldCheckTotalPathDistance = True
                 print(f'min path distance from food by randomize chosen = {self.opto.path_distance_min}')
