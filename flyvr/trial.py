@@ -3,6 +3,7 @@ import os
 import platform
 import os.path
 import itertools
+import json
 
 from time import strftime, time, sleep
 
@@ -128,7 +129,7 @@ class TrialThread(Service):
                 if self.exp_dir is not None:
                     fname = os.path.join(self.exp_dir, 'random_chosen.txt')
                     rc = {"food euc distance chosen": self.opto.min_dist_from_food}
-                    data = self.pretty_json(rc)
+                    data = json.dumps(rc)
                     with open(fname, 'w') as f:
                         f.write(data)
         
@@ -142,7 +143,7 @@ class TrialThread(Service):
                 if self.exp_dir is not None:
                     fname = os.path.join(self.exp_dir, 'random_chosen.txt')
                     rc = {"food path distance chosen": self.opto.path_distance_min}
-                    data = self.pretty_json(rc)
+                    data = json.dumps(rc)
                     with open(fname, 'w') as f:
                         f.write(data)
 
