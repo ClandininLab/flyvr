@@ -125,8 +125,8 @@ class TrialThread(Service):
                 print(f'min euc distance from food by randomize chosen = {self.opto.min_dist_from_food}')
 
                 #make new txt file for each trial to determine what choice is
-                if exp_dir is not None:
-                    fname = os.path.join(exp_dir, 'random_chosen.txt')
+                if self.exp_dir is not None:
+                    fname = os.path.join(self.exp_dir, 'random_chosen.txt')
                     rc = {"food euc distance chosen": self.opto.min_dist_from_food}
                     data = self.pretty_json(rc)
                     with open(fname, 'w') as f:
@@ -139,8 +139,8 @@ class TrialThread(Service):
                 print(f'min path distance from food by randomize chosen = {self.opto.path_distance_min}')
 
                  #make new txt file for each trial to determine what choice is
-                if exp_dir is not None:
-                    fname = os.path.join(exp_dir, 'random_chosen.txt')
+                if self.exp_dir is not None:
+                    fname = os.path.join(self.exp_dir, 'random_chosen.txt')
                     rc = {"food path distance chosen": self.opto.path_distance_min}
                     data = self.pretty_json(rc)
                     with open(fname, 'w') as f:
